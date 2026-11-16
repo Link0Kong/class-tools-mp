@@ -1,0 +1,9 @@
+.page-head { padding: 40rpx 0 20rpx; }
+.sel-wrap { display: flex; flex-wrap: wrap; align-items: center; margin-top: 18rpx; }
+.gcard { background: var(--md-surface-container-lowest); border-radius: var(--md-shape-lg); padding: 32rpx; margin-bottom: 24rpx; }
+.gmembers { display: flex; flex-direction: row; flex-wrap: wrap; margin-top: 20rpx; }
+.gmem { display: flex; flex-direction: row; align-items: center; background: var(--md-surface-container-high);
+  border-radius: 999rpx; padding: 10rpx 24rpx; margin: 0 16rpx 16rpx 0; }
+.gmem__n { font-size: 24rpx; font-weight: 600; color: var(--md-primary); margin-right: 12rpx; }
+.gmem__name { font-size: 28rpx; color: var(--md-on-surface); }
+.exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }

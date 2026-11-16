@@ -1,0 +1,72 @@
+.card {
+  padding: 24rpx 28rpx 28rpx;
+  background: #FFFFFF;
+  border-radius: 24rpx;
+}
+.hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1C1B1F;
+}
+.state {
+  font-size: 22rpx;
+  color: #4E9082;
+  background: #E6F2EE;
+  border-radius: 8rpx;
+  padding: 4rpx 12rpx;
+}
+.state--off {
+  color: #B98F63;
+  background: #F7EFE4;
+}
+.row {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #F1F1F1;
+}
+.lb {
+  width: 160rpx;
+  font-size: 26rpx;
+  color: #6E8CA8;
+}
+.vl {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1C1B1F;
+}
+.hold {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  color: #B98F63;
+}
+.act {
+  margin-top: 20rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #FFFFFF;
+  background: #4E9082;
+  border-radius: 16rpx;
+}
+.act--tap {
+  background: #3F7A6E;
+}
+@media (prefers-color-scheme: dark) {
+  .card { background: #1F1F24; }
+  .title { color: #ECECEC; }
+  .state { color: #8FCFC0; background: #23332F; }
+  .state--off { color: #D9B98F; background: #33291F; }
+  .row { border-bottom: 1rpx solid #333338; }
+  .lb { color: #9DB4CC; }
+  .vl { color: #ECECEC; }
+  .hold { color: #D9B98F; }
+  .act { background: #3F7A6E; }
+}

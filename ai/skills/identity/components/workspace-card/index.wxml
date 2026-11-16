@@ -1,0 +1,46 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">工作台</text>
+    <text class="week" wx:if="{{d.week}}">第 {{d.week}} 周</text>
+  </view>
+
+  <view class="blk">
+    <text class="blk-t">今日课程</text>
+    <view class="empty" wx:if="{{!d.todayCourses.length}}">今天没有课</view>
+    <view class="course" wx:for="{{d.todayCourses}}" wx:key="startText">
+      <text class="time">{{item.startText}}-{{item.endText}}</text>
+      <text class="cname">{{item.name}}</text>
+      <text class="room" wx:if="{{item.room}}">{{item.room}}</text>
+    </view>
+  </view>
+
+  <view class="blk" wx:if="{{d.nextCourse}}">
+    <text class="blk-t">下一节课</text>
+    <view class="next">
+      <text class="cname">{{d.nextCourse.name}}</text>
+      <text class="meta">{{d.nextCourse.dayText}} {{d.nextCourse.span}}</text>
+      <text class="meta" wx:if="{{d.nextCourse.room}}">{{d.nextCourse.room}}</text>
+    </view>
+  </view>
+
+  <view class="blk">
+    <text class="blk-t">待办</text>
+    <view class="todo">
+      <text class="todo-lb">作业待交</text>
+      <text class="todo-num">{{d.hwPending}}</text>
+    </view>
+    <view class="urgent" wx:if="{{d.hwMostUrgent}}">最紧：{{d.hwMostUrgent.subject}} · {{d.hwMostUrgent.left}}</view>
+    <view class="todo">
+      <text class="todo-lb">通知待处理</text>
+      <text class="todo-num">{{d.ntPending}}</text>
+    </view>
+    <view class="urgent" wx:if="{{d.ntMostUrgent}}">最紧：{{d.ntMostUrgent.title}} · {{d.ntMostUrgent.statusText}}</view>
+  </view>
+
+  <view class="blk" wx:if="{{d.homeTools.length}}">
+    <text class="blk-t">常用工具</text>
+    <view class="chips">
+      <text class="chip" wx:for="{{d.homeTools}}" wx:key="key">{{item.name}}</text>
+    </view>
+  </view>
+</view>

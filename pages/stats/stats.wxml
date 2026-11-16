@@ -1,0 +1,85 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b {{themeClass}}">
+  <view class="page-head">
+    <view class="t-headline-m">访问统计</view>
+    <view class="t-body-m muted">仅管理员 · 按姓名聚合，不显示学号</view>
+  </view>
+
+  <!-- 筛选：两组各自 nowrap；空间不足时整组换行（不再用 grow 把范围组挤掉单个 chip） -->
+  <view class="st-filters enter enter-1">
+    <view class="st-fgroup st-fgroup--mode">
+      <touchable cls="m3-chip st-chip {{mode === 'account' ? 'm3-chip--selected' : ''}}" data-v="account" bindtap="setMode">按账号</touchable>
+      <touchable cls="m3-chip st-chip {{mode === 'day' ? 'm3-chip--selected' : ''}}" data-v="day" bindtap="setMode">按天</touchable>
+      <touchable cls="m3-chip st-chip {{mode === 'hour' ? 'm3-chip--selected' : ''}}" data-v="hour" bindtap="setMode">按小时</touchable>
+    </view>
+    <view class="st-fgroup st-fgroup--range">
+      <touchable cls="m3-chip st-chip {{range === 'today' ? 'm3-chip--selected' : ''}}" data-v="today" bindtap="setRange">今天</touchable>
+      <touchable cls="m3-chip st-chip {{range === 'week' ? 'm3-chip--selected' : ''}}" data-v="week" bindtap="setRange">近 7 天</touchable>
+    </view>
+  </view>
+
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled enter enter-2">
+      <view class="sk sk-line sk-shimmer" style="width:40%"></view>
+      <view class="sk sk-card sk-shimmer" style="margin-top:20rpx"></view>
+    </view>
+  </block>
+
+  <block wx:elif="{{state === 'error'}}">
+    <view class="m3-card m3-card--outlined enter enter-2">
+      <empty-state icon="🔒" title="仅管理员可见" text="当前身份不是管理员（is_admin）。请用班委管理员身份验证后查看。"></empty-state>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="m3-card m3-card--filled enter enter-2">
+      <view class="st-sum">
+        <view class="st-sum__item">
+          <view class="stat__value t-num">{{summary.accounts}}</view>
+          <view class="stat__label">访问账号</view>
+        </view>
+        <view class="st-sum__item">
+          <view class="stat__value t-num">{{summary.visits}}</view>
+          <view class="stat__label">访问次数</view>
+        </view>
+        <text class="t-label-m muted st-sum__upd">更新 {{atText}}</text>
+      </view>
+    </view>
+
+    <!-- —— 按账号 —— -->
+    <block wx:if="{{mode === 'account'}}">
+      <view wx:if="{{accounts.length}}" class="m3-card m3-card--outlined enter enter-3">
+        <view class="st-acc" wx:for="{{accounts}}" wx:key="key">
+          <view class="st-acc__badge">{{index + 1}}</view>
+          <view class="grow">
+            <view class="st-acc__name">{{item.name}}</view>
+          </view>
+          <view class="st-acc__right">
+            <view class="st-acc__n">{{item.count}} 次</view>
+            <view class="st-acc__last">最近 {{item.lastText}}</view>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="m3-card m3-card--outlined enter enter-3">
+        <empty-state icon="📊" title="还没有访问数据" text="同学完成身份验证并打开工具后，这里会按账号出现统计"></empty-state>
+      </view>
+    </block>
+
+    <!-- —— 按天 / 按小时 —— -->
+    <block wx:else>
+      <view class="m3-card m3-card--outlined enter enter-3">
+        <view class="m3-card__head">
+          <view class="t-title-m">{{mode === 'day' ? '按天 · 访问账号数' : '按小时 · 访问账号数'}}</view>
+          <view class="t-label-m muted">{{range === 'today' ? '今天' : '近 7 天'}}</view>
+        </view>
+        <view class="strow" wx:for="{{bars}}" wx:key="label">
+          <text class="lb">{{item.label}}</text>
+          <view class="stbar"><view class="fill" style="width:{{item.pct}}%"></view></view>
+          <text class="vv">{{item.n}}</text>
+        </view>
+        <view wx:if="{{!bars.length}}" class="t-body-m muted" style="padding:20rpx 0">当前范围暂无访问数据</view>
+      </view>
+    </block>
+  </block>
+</view>

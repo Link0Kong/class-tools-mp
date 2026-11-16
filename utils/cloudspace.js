@@ -1,0 +1,228 @@
+// utils/cloudspace.js —— 「文件传输 · 临时云空间」小程序端 API + 纯逻辑
+//
+// 与网页版「文件传输 = 临时云空间」同一后端：ECS drop 服务（契约 web/drop/CONTRACT.md v2.2）。
+//   * 同账号（同班级 token）自动复用同一云空间，不需要房间码/链接/配对；
+//   * 上传：POST /drop/upload/init → /upload/chunk（8MiB 原始字节分片）→ /upload/finish；
+//   * 列表：GET /drop/state（events: file / filedel；file 事件带签名 downloadUrl，过期/删除后无 URL）；
+//   * 删除：DELETE /drop/file/<fileId>?sessionId=…（v2.2 新增，只允许本账号会话 owner）；
+//   * 清空：POST /drop/close（删除整个会话与全部文件，页面随后自动重开一个新空间）；
+//   * 文件自上传完成起保留 72 小时；会话空闲 72 小时且无未过期文件时回收。
+//
+// 认证：请求头 X-Device-Id = 班级身份 token（与网页同口径）。
+// 域名：开发/体验版默认直连 ECS http://121.196.47.2/drop（需开发者工具「不校验合法域名」）；
+//       体验版/正式版默认 https://tool.furina.fun/drop（需在微信后台配置 request + downloadFile 合法域名，
+//       且 DNS 已恢复、HTTPS 已启用；只有开发版可用 http IP；可在 utils/cloud-config.js 的 dropBase 覆盖）。
+//
+// 纯逻辑（分片规划/大小/剩余时间/事件合并）放本文件，页面只做交互与渲染。
+'use strict';
+
+const CHUNK = 8388608;                 // 与 drop 服务/IOS 网页一致的 8MiB 分片
+const TTL_MS = 3 * 24 * 3600 * 1000;   // 文件自上传完成起 72h
+
+function config() {
+  try { return require('./cloud-config.js') || {}; } catch (e) { return {}; }
+}
+
+function envVersion() {
+  try {
+    const ai = wx.getAccountInfoSync && wx.getAccountInfoSync();
+    return (ai && ai.miniProgram && ai.miniProgram.envVersion) || 'release';
+  } catch (e) { return 'release'; }
+}
+
+// 云空间基址（结尾无 /）；开发/体验版优先直连 ECS，正式版走备案 HTTPS 域名
+function base() {
+  const cfg = config();
+  let raw = cfg && cfg.dropBase ? String(cfg.dropBase).trim() : '';
+  if (!raw) {
+    /* 体验版/正式版都强制 HTTPS + 微信后台合法域名；只有开发版可以用 http IP 调试 */
+    raw = envVersion() === 'develop'
+      ? 'http://121.196.47.2/drop'
+      : 'https://tool.furina.fun/drop';
+  }
+  return raw.replace(/\/+$/, '');
+}
+
+function token() {
+  try { return String(require('./identity.js').token() || ''); } catch (e) { return ''; }
+}
+
+// 统一请求：返回 {ok, ...}；网络失败也 resolve（页面统一 toast），不抛异常
+function request(method, path, data, opt) {
+  opt = opt || {};
+  return new Promise(function (resolve) {
+    const header = { 'X-Device-Id': token() };
+    if (opt.raw) header['Content-Type'] = 'application/octet-stream';
+    else if (data !== undefined && method !== 'GET' && method !== 'HEAD') header['Content-Type'] = 'application/json';
+    const o = {
+      url: base() + path,
+      method: method,
+      header: header,
+      timeout: opt.timeout || 120000,
+      success: function (res) {
+        let j = res && res.data;
+        if (typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { j = null; } }
+        if (!j || typeof j !== 'object') j = { ok: false, reason: '服务响应异常' };
+        if (res && res.statusCode >= 400) {
+          j.ok = false;
+          if (!j.reason) j.reason = res.statusCode === 507 ? '服务器空间不足' : ('服务错误 ' + res.statusCode);
+        }
+        resolve(j);
+      },
+      fail: function () {
+        resolve({ ok: false, reason: '云空间服务不可达' });
+      }
+    };
+    if (data !== undefined) o.data = data;
+    try { wx.request(o); } catch (e) { resolve({ ok: false, reason: '云空间服务不可达' }); }
+  });
+}
+
+// ---------------------------------------------------------------- API
+function mine() { return request('GET', '/mine'); }
+function open() { return request('POST', '/open', {}); }
+function state(sessionId) {
+  return request('GET', '/state?sessionId=' + encodeURIComponent(String(sessionId)) + '&since=0');
+}
+function initUpload(sessionId, name, size, mime, totalChunks) {
+  return request('POST', '/upload/init', {
+    sessionId: sessionId, name: name, size: size, mime: mime || 'application/octet-stream',
+    totalChunks: totalChunks
+  });
+}
+function chunkUpload(uploadId, index, buffer) {
+  return request('POST', '/upload/chunk?uploadId=' + encodeURIComponent(String(uploadId)) + '&index=' + Number(index),
+    buffer, { raw: true, timeout: 180000 });
+}
+function finishUpload(sessionId, uploadId) {
+  return request('POST', '/upload/finish', { sessionId: sessionId, uploadId: uploadId });
+}
+function deleteFile(fileId, sessionId) {
+  return request('DELETE', '/file/' + encodeURIComponent(String(fileId)) +
+    '?sessionId=' + encodeURIComponent(String(sessionId)));
+}
+function closeSpace(sessionId) {
+  return request('POST', '/close', { sessionId: sessionId });
+}
+
+// ---------------------------------------------------------------- 纯逻辑
+// 分片规划：{ totalChunks, chunkSize, chunks:[{index,start,end,size}] }
+function chunkPlan(size, chunkSize) {
+  const total = Math.max(0, Number(size) || 0);
+  const cs = Math.max(1, Number(chunkSize) || CHUNK);
+  const n = Math.max(1, Math.ceil(total / cs));
+  const chunks = [];
+  for (let i = 0; i < n; i++) {
+    const start = i * cs;
+    const end = Math.min(total, start + cs);
+    chunks.push({ index: i, start: start, end: end, size: Math.max(0, end - start) });
+  }
+  return { totalChunks: n, chunkSize: cs, chunks: chunks };
+}
+
+function fmtSize(n) {
+  n = Number(n) || 0;
+  if (n >= 1048576) return (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + ' MB';
+  if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+  return Math.max(1, Math.round(n)) + ' B';
+}
+
+function fullTime(ms) {
+  const d = new Date(Number(ms) || Date.now());
+  const p2 = function (x) { return (x < 10 ? '0' : '') + x; };
+  return p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+}
+
+// 文件剩余保留时间（自上传完成起 72h）
+function ttlText(at, now) {
+  const left = (Number(at) || 0) + TTL_MS - (Number(now) || Date.now());
+  if (left <= 0) return '已过期';
+  const h = Math.ceil(left / 3600000);
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    const r = h % 24;
+    return '剩 ' + d + ' 天' + (r ? ' ' + r + ' 小时' : '');
+  }
+  return '剩 ' + h + ' 小时';
+}
+
+// 事件合并：file / filedel → 当前文件列表（filedel 移除；过期文件保留 expired 标记、不给下载）
+function applyEvents(files, events) {
+  const map = {};
+  (files || []).forEach(function (f) { if (f && f.id) map[String(f.id)] = f; });
+  (events || []).forEach(function (ev) {
+    if (!ev) return;
+    const p = ev.payload || {};
+    const id = String(p.fileId || p.id || '');
+    if (!id) return;
+    if (String(ev.kind) === 'file') {
+      map[id] = {
+        id: id,
+        name: String(p.name || '文件'),
+        size: Number(p.size) || 0,
+        mime: String(p.mime || ''),
+        url: String(p.downloadUrl || ''),
+        expired: !!p.expired || !p.downloadUrl,
+        at: Number(ev.at) || 0
+      };
+    } else if (String(ev.kind) === 'filedel') {
+      delete map[id];
+    }
+  });
+  const out = Object.keys(map).map(function (k) { return map[k]; });
+  out.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+  return out;
+}
+
+function fileView(f, now) {
+  const name = String((f && f.name) || '文件');
+  const ext = (name.indexOf('.') >= 0 ? name.split('.').pop() : '').toLowerCase();
+  let ico = '📄';
+  if (f && f.mime && f.mime.indexOf('image/') === 0) ico = '🖼';
+  else if (ext === 'mp4' || ext === 'mov' || ext === 'm4v') ico = '🎬';
+  else if (ext === 'mp3' || ext === 'm4a' || ext === 'wav') ico = '🎵';
+  else if (ext === 'zip' || ext === 'rar' || ext === '7z') ico = '🗂';
+  else if (ext === 'pdf') ico = '📕';
+  else if (ext === 'ppt' || ext === 'pptx' || ext === 'doc' || ext === 'docx' || ext === 'xls' || ext === 'xlsx') ico = '📊';
+  return {
+    id: f.id,
+    name: name,
+    ico: ico,
+    size: Number(f.size) || 0,
+    sizeText: fmtSize(f.size),
+    timeText: fullTime(f.at),
+    ttlText: ttlText(f.at, now),
+    expired: !!f.expired,
+    url: f.expired ? '' : String(f.url || '')
+  };
+}
+
+// 状态视图：{ files, count, bytes, bytesText, expired }
+function spaceView(events, now) {
+  const merged = applyEvents([], events);
+  const live = merged.filter(function (f) { return f && !f.expired; });
+  let bytes = 0;
+  live.forEach(function (f) { bytes += Number(f.size) || 0; });
+  return {
+    files: live.map(function (f) { return fileView(f, now); }),
+    count: live.length,
+    bytes: bytes,
+    bytesText: fmtSize(bytes),
+    expired: merged.length - live.length
+  };
+}
+
+function safeName(name) {
+  const s = String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim();
+  return s.slice(0, 120) || 'file';
+}
+
+module.exports = {
+  CHUNK: CHUNK, TTL_MS: TTL_MS,
+  base: base, envVersion: envVersion, request: request,
+  mine: mine, open: open, state: state,
+  initUpload: initUpload, chunkUpload: chunkUpload, finishUpload: finishUpload,
+  deleteFile: deleteFile, closeSpace: closeSpace,
+  chunkPlan: chunkPlan, fmtSize: fmtSize, fullTime: fullTime, ttlText: ttlText,
+  applyEvents: applyEvents, fileView: fileView, spaceView: spaceView, safeName: safeName
+};

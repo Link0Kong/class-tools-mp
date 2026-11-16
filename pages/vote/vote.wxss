@@ -1,0 +1,256 @@
+/* pages/vote/vote.wxss —— 投票列表 + 发起/编辑弹层（只用 app.wxss 的 M3 token，无新配色） */
+
+.vote-page { padding-top: 8rpx; }
+
+/* ---------- 顶部 ---------- */
+.vote-head { display: flex; align-items: flex-end; padding: 24rpx 0 16rpx; }
+.vote-head-t { font-size: 56rpx; font-weight: 600; line-height: 1.2; color: var(--md-on-surface); }
+.vote-head-s { margin-top: 6rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.vote-new {
+  flex: none; height: 72rpx; padding: 0 32rpx; display: flex; align-items: center;
+  border-radius: var(--md-shape-full); background: var(--md-primary); color: var(--md-on-primary);
+  font-size: 28rpx; font-weight: 500; box-shadow: var(--md-elev-1);
+}
+.vote-new--tap { opacity: .86; }
+
+/* ---------- 筛选 ---------- */
+.vote-filter {
+  display: flex; padding: 8rpx; margin: 8rpx 0 20rpx;
+  background: var(--md-surface-container-high); border-radius: var(--md-shape-full);
+}
+.vote-filter-btn {
+  flex: 1; height: 72rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); font-size: 28rpx; color: var(--md-on-surface-variant);
+  transition: background var(--md-dur-short) var(--md-ease-standard);
+}
+.vote-filter-btn--on {
+  background: var(--md-surface-container-lowest); color: var(--md-on-surface);
+  font-weight: 600; box-shadow: var(--md-elev-1);
+}
+
+/* ---------- 轻提示 / 骨架 ---------- */
+.vote-tip {
+  margin-bottom: 16rpx; padding: 16rpx 24rpx; border-radius: var(--md-shape-sm);
+  background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); font-size: 24rpx;
+}
+.vote-sk {
+  padding: 28rpx; margin-bottom: 20rpx; border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low);
+}
+
+/* ---------- 卡片 ---------- */
+.vote-card {
+  padding: 28rpx 28rpx 20rpx; margin-bottom: 20rpx; border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low); box-shadow: var(--md-elev-1);
+}
+.vote-card--tap { opacity: .9; }
+.vote-card-hd { display: flex; align-items: flex-start; }
+.vote-card-title {
+  flex: 1; min-width: 0; padding-right: 16rpx; font-size: 32rpx; font-weight: 600;
+  line-height: 1.35; color: var(--md-on-surface);
+  overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.vote-card-cd {
+  flex: none; padding-top: 4rpx; font-size: 24rpx; font-weight: 600;
+  color: var(--md-primary); font-variant-numeric: tabular-nums;
+}
+.vote-card-cd--end { color: var(--md-on-surface-variant); font-weight: 500; }
+.vote-card-meta { margin-top: 10rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.vote-card-tags { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+.vote-tag {
+  margin: 0 8rpx 8rpx 0; padding: 6rpx 16rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  font-size: 22rpx; font-weight: 500;
+}
+.vote-card-ft {
+  display: flex; align-items: center; margin-top: 14rpx; padding-top: 16rpx;
+  border-top: 1rpx solid var(--md-outline-variant);
+}
+.vote-card-total { font-size: 24rpx; font-weight: 500; color: var(--md-on-surface); }
+.vote-card-voted {
+  margin-left: 16rpx; padding: 4rpx 14rpx; border-radius: var(--md-shape-full);
+  background: var(--md-primary-container); color: var(--md-on-primary-container); font-size: 22rpx;
+}
+.vote-card-more { font-size: 36rpx; line-height: 1; color: var(--md-on-surface-variant); }
+
+/* ---------- 空态 ---------- */
+.vote-empty { padding: 120rpx 0; display: flex; flex-direction: column; align-items: center; }
+.vote-empty-art {
+  width: 200rpx; height: 200rpx; margin-bottom: 32rpx; border-radius: var(--md-shape-full);
+  display: flex; align-items: center; justify-content: center; font-size: 84rpx;
+  background: var(--md-surface-container-high);
+}
+.vote-empty-t { font-size: 34rpx; font-weight: 600; color: var(--md-on-surface); }
+.vote-empty-btn {
+  margin-top: 32rpx; height: 88rpx; padding: 0 56rpx; display: flex; align-items: center;
+  border-radius: var(--md-shape-full); background: var(--md-primary); color: var(--md-on-primary);
+  font-size: 28rpx; font-weight: 500;
+}
+.vote-empty-btn--tap { opacity: .86; }
+
+/* ---------- 发起/编辑弹层 ---------- */
+.vote-sheet {
+  display: flex; flex-direction: column; max-height: 88vh;
+  padding-bottom: calc(var(--md-space-4) + env(safe-area-inset-bottom));
+}
+.vote-sheet-hd { display: flex; align-items: center; justify-content: space-between; }
+.vote-sheet-t { font-size: 40rpx; font-weight: 600; color: var(--md-on-surface); }
+.vote-sheet-x {
+  width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; color: var(--md-on-surface-variant);
+}
+.vote-sheet-body { flex: 1; min-height: 0; max-height: 64vh; padding-top: 8rpx; }
+.vote-sheet-ft {
+  display: flex; align-items: center; margin-top: 8rpx; padding-top: 20rpx;
+  border-top: 1rpx solid var(--md-outline-variant);
+}
+
+/* ---------- 表单 ---------- */
+.vote-field { padding: 20rpx 0 8rpx; }
+.vote-label { margin-bottom: 12rpx; font-size: 26rpx; font-weight: 600; color: var(--md-on-surface-variant); }
+.vote-input, .vote-textarea {
+  width: 100%; box-sizing: border-box; padding: 0 24rpx; min-height: 88rpx;
+  background: var(--md-surface-container-high); border-radius: var(--md-shape-sm);
+  font-size: 30rpx; color: var(--md-on-surface);
+}
+.vote-textarea { padding: 20rpx 24rpx; line-height: 1.5; }
+.vote-seg { display: flex; padding: 6rpx; background: var(--md-surface-container-high); border-radius: var(--md-shape-full); }
+.vote-seg-btn {
+  flex: 1; height: 68rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); font-size: 26rpx; color: var(--md-on-surface-variant);
+}
+.vote-seg-btn--on {
+  background: var(--md-surface-container-lowest); color: var(--md-on-surface);
+  font-weight: 600; box-shadow: var(--md-elev-1);
+}
+.vote-quicks { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+.vote-quick {
+  margin: 0 12rpx 12rpx 0; padding: 14rpx 26rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant); font-size: 26rpx;
+}
+.vote-quick--on { background: var(--md-primary-container); color: var(--md-on-primary-container); font-weight: 600; }
+.vote-dt { display: flex; margin-top: 16rpx; }
+.vote-dt-btn {
+  flex: 1; height: 84rpx; display: flex; align-items: center; justify-content: center;
+  margin-right: 16rpx; border-radius: var(--md-shape-sm);
+  background: var(--md-surface-container-high); font-size: 30rpx; color: var(--md-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 选项编辑 ---------- */
+.vote-opt {
+  margin-bottom: 16rpx; padding: 20rpx 20rpx 14rpx; border-radius: var(--md-shape-md);
+  background: var(--md-surface-container-high);
+}
+.vote-opt-hd { display: flex; align-items: center; }
+.vote-opt-n {
+  flex: none; width: 48rpx; height: 48rpx; margin-right: 8rpx; border-radius: var(--md-shape-full);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--md-surface-container-lowest); color: var(--md-on-surface-variant);
+  font-size: 24rpx; font-variant-numeric: tabular-nums;
+}
+.vote-opt-in { flex: 1; min-width: 0; height: 64rpx; font-size: 30rpx; color: var(--md-on-surface); }
+.vote-opt-del {
+  flex: none; width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
+  font-size: 36rpx; color: var(--md-on-surface-variant);
+}
+.vote-opt-desc {
+  margin-top: 6rpx; height: 56rpx; padding-left: 56rpx;
+  font-size: 26rpx; color: var(--md-on-surface-variant);
+}
+.vote-opt-ft { display: flex; align-items: center; margin-top: 6rpx; }
+.vote-opt-imgwrap { position: relative; width: 120rpx; height: 120rpx; }
+.vote-opt-img { width: 120rpx; height: 120rpx; border-radius: var(--md-shape-sm); background: var(--md-surface-container); }
+.vote-opt-imgx {
+  position: absolute; top: -10rpx; right: -10rpx; width: 40rpx; height: 40rpx;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); background: var(--md-error); color: var(--md-on-error); font-size: 26rpx;
+}
+.vote-opt-addimg {
+  height: 80rpx; padding: 0 24rpx; display: flex; align-items: center;
+  border-radius: var(--md-shape-full); border: 1rpx dashed var(--md-outline);
+  font-size: 24rpx; color: var(--md-on-surface-variant);
+}
+.vote-opt-move {
+  width: 72rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
+  font-size: 30rpx; color: var(--md-on-surface-variant);
+}
+.vote-opt-addbtn {
+  height: 84rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-md); border: 1rpx dashed var(--md-outline);
+  font-size: 26rpx; color: var(--md-primary);
+}
+.vote-opt-addbtn--tap { opacity: .7; }
+
+/* ---------- 规则 ---------- */
+.vote-row {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 96rpx; padding: 8rpx 0; border-bottom: 1rpx solid var(--md-outline-variant);
+}
+.vote-row--sub { padding-left: 24rpx; }
+.vote-row-l { flex: 1; min-width: 0; padding-right: 16rpx; }
+.vote-row-t { font-size: 30rpx; color: var(--md-on-surface); }
+.vote-row-s { margin-top: 2rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.vote-maxs { display: flex; flex-wrap: wrap; justify-content: flex-end; max-width: 380rpx; }
+.vote-maxbtn {
+  min-width: 64rpx; height: 56rpx; margin: 4rpx; padding: 0 12rpx; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); font-size: 24rpx; color: var(--md-on-surface-variant);
+}
+.vote-maxbtn--on { background: var(--md-primary-container); color: var(--md-on-primary-container); font-weight: 600; }
+.vote-vis { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+.vote-vis-btn {
+  margin: 0 12rpx 12rpx 0; padding: 14rpx 26rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant); font-size: 26rpx;
+}
+.vote-vis-btn--on { background: var(--md-primary-container); color: var(--md-on-primary-container); font-weight: 600; }
+
+/* ---------- 可见范围（§1.6） ---------- */
+.vote-aud {
+  display: flex; padding: 6rpx; margin-top: 4rpx;
+  background: var(--md-surface-container-high); border-radius: var(--md-shape-full);
+}
+.vote-aud-btn {
+  flex: 1; min-width: 0; height: 80rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); font-size: 25rpx; color: var(--md-on-surface-variant);
+}
+.vote-aud-btn--on {
+  background: var(--md-surface-container-lowest); color: var(--md-on-surface);
+  font-weight: 600; box-shadow: var(--md-elev-1);
+}
+.vote-mem-hd { margin-top: 18rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.vote-mem-n { color: var(--md-primary); font-weight: 600; }
+/* 快捷预设（需求 8）：全班 / 班委 / 团员 / 清空；点按区域 ≥40px */
+.vote-mem-quick { display: flex; flex-direction: row; align-items: center; gap: 12rpx; margin-top: 14rpx; }
+.vote-mem-qbtn {
+  flex: none; min-height: 80rpx; padding: 0 24rpx; border-radius: var(--md-shape-full); box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; font-weight: 700; color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-high);
+}
+.vote-mem-qbtn--ghost { background: transparent; border: 1rpx solid var(--md-outline-variant); }
+.vote-mem-qbtn--busy { opacity: .6; }
+.vote-mem-scroll {
+  margin-top: 12rpx; max-height: 380rpx; padding: 10rpx 4rpx;
+  background: var(--md-surface-container-high); border-radius: var(--md-shape-md); box-sizing: border-box;
+}
+.vote-mem-chips { display: flex; flex-wrap: wrap; }
+.vote-mem {
+  min-height: 80rpx; padding: 0 24rpx; margin: 6rpx; box-sizing: border-box;
+  display: flex; align-items: center; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-lowest); color: var(--md-on-surface); font-size: 26rpx;
+}
+.vote-mem--on {
+  background: var(--md-primary-container); color: var(--md-on-primary-container);
+  font-weight: 600; border: 1rpx solid var(--md-primary);
+}
+.vote-mem-empty {
+  margin-top: 12rpx; padding: 20rpx 24rpx; border-radius: var(--md-shape-md);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant); font-size: 24rpx;
+}
+
+/* ---------- 隐藏 canvas（配图压缩） ---------- */
+.vote-canvas {
+  position: fixed; left: -2000rpx; top: 0; width: 320px; height: 320px;
+  opacity: 0; pointer-events: none;
+}

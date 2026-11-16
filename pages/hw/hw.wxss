@@ -1,0 +1,18 @@
+.subj { color: var(--md-primary); }
+.done-txt { color: var(--md-on-surface-variant); text-decoration: line-through; }
+.hw-body { margin-top: 6rpx; white-space: pre-wrap; word-break: break-all; font-size: 30rpx; line-height: 1.55; color: var(--md-on-surface); }
+.exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
+.hw-acts { display: flex; flex-direction: column; gap: 8rpx; align-items: flex-end; }
+.hw-lead { color: var(--md-primary); }
+.hw-book { position: relative; width: 36rpx; height: 44rpx; border-radius: 6rpx; background: currentColor; }
+.hw-book__spine { position: absolute; left: 7rpx; top: 0; bottom: 0; width: 4rpx; background: var(--md-surface-container-lowest); opacity: .65; }
+.hw-book__line { position: absolute; left: 17rpx; right: 6rpx; top: 11rpx; height: 3rpx; border-radius: 2rpx; background: var(--md-surface-container-lowest); }
+.hw-book__line--short { top: 22rpx; right: 14rpx; }
+.hw-clear { flex: none; margin-left: 16rpx; font-size: 24rpx; color: var(--md-primary); padding: 8rpx 0; }
+.hw-next { margin-top: 14rpx; display: flex; flex-direction: row; align-items: center; gap: 12rpx;
+  padding: 16rpx 18rpx; border-radius: 14rpx; background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.hw-next__txt { flex: 1; min-width: 0; font-size: 25rpx; line-height: 1.45; }
+.hw-next__act { flex: none; font-size: 24rpx; font-weight: 600; padding: 4rpx 0; }
+.remind-hint { font-size: 24rpx; line-height: 1.55; color: var(--md-on-surface-variant); margin: 4rpx 0 20rpx; }
+/* AI 接力定位到某条作业时的高亮（只做视觉提示，不遮挡、不阻塞） */
+.ho-focus { box-shadow: 0 0 0 3rpx var(--md-primary, #5E8F87); }

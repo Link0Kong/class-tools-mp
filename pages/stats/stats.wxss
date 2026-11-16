@@ -1,0 +1,47 @@
+.page-head { padding: 40rpx 0 20rpx; }
+/* 筛选：两组各自 nowrap；整组换行，group 内 chip 不拆行 */
+.st-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10rpx; margin-bottom: 16rpx; }
+.st-fgroup { display: flex; flex-wrap: nowrap; align-items: center; gap: 10rpx; min-width: 0; }
+.st-fgroup--mode { flex: 1 1 auto; }
+.st-fgroup--range { flex: 0 0 auto; margin-left: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.st-chip {
+  flex: 1 1 0; min-width: 0; height: auto; min-height: 80rpx;
+  padding: 0 14rpx; margin: 0; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap;
+}
+.st-fgroup--range .st-chip { width: auto; min-width: 104rpx; }
+.st-sum { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12rpx 44rpx; }
+.st-sum__item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; }
+.st-sum__upd { flex: 0 1 auto; margin-left: auto; text-align: right; line-height: 1.4; }
+.st-acc { display: flex; flex-direction: row; align-items: center; gap: 18rpx; padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--md-outline-variant); }
+.st-acc:last-child { border-bottom: none; }
+.st-acc__badge { flex: none; width: 56rpx; height: 56rpx; border-radius: 50%;
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 600; }
+.st-acc__name {
+  font-size: 30rpx; font-weight: 600; color: var(--md-on-surface);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.st-acc__right { flex: none; text-align: right; }
+.st-acc__n { font-size: 30rpx; font-weight: 600; color: var(--md-primary); font-variant-numeric: tabular-nums; }
+.st-acc__last { margin-top: 4rpx; font-size: 20rpx; color: var(--md-on-surface-variant); }
+.strow { display: flex; flex-wrap: nowrap; align-items: center; gap: 12rpx; padding: 8rpx 0; min-width: 0; }
+.lb {
+  width: 120rpx; flex: none; box-sizing: border-box;
+  font-size: 20rpx; color: var(--md-on-surface-variant);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.stbar { flex: 1 1 auto; min-width: 0; height: 18rpx; border-radius: 999rpx; background: rgba(6,37,31,.08); overflow: hidden; }
+.stbar .fill { height: 100%; border-radius: 999rpx; background: var(--md-primary); }
+.vv {
+  width: 64rpx; flex: none; box-sizing: border-box;
+  text-align: right; font-size: 20rpx; color: var(--md-on-surface);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— 暗色：柱状图底槽（浅色 rgba(6,37,31,.08) 在深色下几乎看不见）—— */
+/* 2026-11-15 外观：柱状图底槽暗色跟随实际生效主题（.theme-dark 由 utils/appearance.js 注入） */
+.theme-dark .stbar { background: rgba(255, 255, 255, .10); }

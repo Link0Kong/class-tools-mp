@@ -1,0 +1,32 @@
+<view class="rollcard">
+  <view class="rollhead">
+    <text class="rolltitle">{{title}}</text>
+    <text class="rollsub" wx:if="{{sub}}">{{sub}}</text>
+  </view>
+
+  <view class="rollstats">
+    <view class="rollstat">
+      <text class="rollnum in">{{present}}</text>
+      <text class="rolllabel">已到</text>
+    </view>
+    <view class="rollstat">
+      <text class="rollnum ab">{{absent}}</text>
+      <text class="rolllabel">请假</text>
+    </view>
+    <view class="rollstat">
+      <text class="rollnum un">{{unmarked}}</text>
+      <text class="rolllabel">未点</text>
+    </view>
+  </view>
+
+  <view class="rolllist" wx:if="{{list.length}}">
+    <view class="rollitem" wx:for="{{list}}" wx:key="k">
+      <text class="rollname">{{item.main}}</text>
+      <text class="rollstate" wx:if="{{item.stateText}}">{{item.stateText}}</text>
+    </view>
+  </view>
+
+  <view class="rollfoot" wx:if="{{foot}}">
+    <text class="rollmuted">{{foot}}</text>
+  </view>
+</view>

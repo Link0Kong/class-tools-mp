@@ -1,0 +1,170 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b wt-page {{themeClass}}">
+
+  <!-- 关注宿舍：单行入口（与宿舍电费共用同一个选择），点击打开同款自定义 bottom-sheet -->
+  <view class="wt-pick" bindtap="openSheet" hover-class="wt-pick--hover" hover-stay-time="60">
+    <text class="wt-pick-label">{{hasSel ? '关注宿舍' : '选择宿舍'}}</text>
+    <text class="wt-pick-value">{{hasSel ? selLabel : '未选择'}}</text>
+    <text class="wt-pick-chev">›</text>
+  </view>
+
+  <!-- 2026-11-11 云端共享状态（契约 §3）：宿舍共享 · 已同步 / 离线 · 已存本机 -->
+  <view wx:if="{{syncText}}" class="wt-sync {{syncErr ? 'wt-sync--err' : ''}}">{{syncText}}<text wx:if="{{waterPending}}" class="wt-sync-pend">· 待补发</text></view>
+
+  <!-- 未选择：引导（0 请求、0 数据） -->
+  <block wx:if="{{state === 'idle'}}">
+    <view class="m3-card m3-card--outlined wt-guide">
+      <view class="wt-guide-t">先关注一个宿舍，再每月抄水表</view>
+      <view class="wt-guide-s">关注宿舍与「宿舍电费」共用；选择保存在账号里，换设备登录会同步。水费按校方规则估算，数据只在本机与账号里。</view>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--block" style="margin-top:20rpx" bindtap="openSheet">选择宿舍</touchable>
+      <view class="wt-guide-link" bindtap="goPower">去宿舍电费页查看电量</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 本期对比（最新一条 vs 上一条） -->
+    <view class="m3-card m3-card--filled wt-hero">
+      <view class="wt-hero-hd">
+        <text class="wt-hero-title">本期对比</text>
+        <text class="wt-hero-month" wx:if="{{!cmp.empty}}">{{cmp.monthText}} · 读数 {{cmp.readingText}} 吨</text>
+      </view>
+      <block wx:if="{{cmp.empty}}">
+        <text class="wt-hero-empty">还没有抄表记录</text>
+        <text class="wt-hero-s">录入第一次水表读数后，从下个月开始自动对比用量</text>
+      </block>
+      <block wx:elif="{{cmp.first}}">
+        <text class="wt-hero-empty">首次记录（无上次对比）</text>
+        <text class="wt-hero-s">{{cmp.monthText}} 读数 {{cmp.readingText}} 吨 · 下次抄表自动算用量</text>
+      </block>
+      <block wx:else>
+        <text class="wt-hero-usage">较上次（{{cmp.prevMonthText}}）用量 <text class="wt-b">{{cmp.usageText}}</text> 吨</text>
+        <view class="wt-tiles">
+          <view class="wt-tile wt-tile--hl">
+            <view class="wt-tile-l">本期水费</view>
+            <view class="wt-tile-v">{{cmp.feeText}}<text class="wt-tile-u">元</text></view>
+          </view>
+          <view class="wt-tile">
+            <view class="wt-tile-l">折合扣电</view>
+            <view class="wt-tile-v">{{cmp.degText}}<text class="wt-tile-u">度</text></view>
+          </view>
+        </view>
+        <text class="wt-over" wx:if="{{cmp.overText}}">超出定额 {{cmp.overText}}</text>
+        <text class="wt-quota">{{cmp.quotaText}}</text>
+      </block>
+    </view>
+
+    <!-- 宿舍人数（4 / 6）→ 每月定额；23A/23B 固定 4 人间不可改（2026-11-11 契约 §4/§5） -->
+    <view class="m3-card m3-card--outlined wt-card">
+      <view class="wt-row">
+        <text class="wt-label">宿舍人数</text>
+        <view class="wt-persons" wx:if="{{personsLocked}}">
+          <view class="wt-person wt-person--on wt-person--lock">4 人间（固定）</view>
+        </view>
+        <view class="wt-persons" wx:else>
+          <view wx:for="{{personsOptions}}" wx:key="p"
+                class="wt-person {{item.p === persons ? 'wt-person--on' : ''}}"
+                data-p="{{item.p}}" bindtap="pickPersons">{{item.label}}</view>
+        </view>
+      </view>
+      <view class="wt-note">每月定额 {{personQuota}} 吨水（{{persons}} 人 × 2 吨/人/月）<text wx:if="{{personsLocked}}"> · 23 号楼 A/B 座固定四人间</text></view>
+    </view>
+
+    <!-- 录入抄表 -->
+    <view class="m3-card m3-card--outlined wt-card">
+      <view class="wt-card-hd">
+        <text class="wt-card-t">录入抄表</text>
+        <text class="wt-card-s">每月一次</text>
+      </view>
+      <picker mode="date" fields="month" value="{{month}}" bindchange="onMonthChange">
+        <view class="wt-field">
+          <text class="wt-field-l">月份</text>
+          <text class="wt-field-v">{{month}}</text>
+          <text class="wt-chev">›</text>
+        </view>
+      </picker>
+      <view class="wt-field">
+        <text class="wt-field-l">水表读数</text>
+        <input class="wt-input" type="digit" value="{{reading}}" placeholder="吨，如 123.45"
+               disabled="{{!hasSel}}" bindinput="onReadingInput" />
+        <text class="wt-unit">吨</text>
+      </view>
+      <view class="wt-preview" wx:if="{{preview}}">
+        <block wx:if="{{preview.valid}}">
+          <text>用量 <text class="wt-b">{{preview.usageText}}</text> 吨 · 水费 ¥<text class="wt-b">{{preview.feeText}}</text> · 折合扣电 <text class="wt-b">{{preview.degText}}</text> 度</text>
+          <text class="wt-preview-warn" wx:if="{{preview.overText}}">超出定额 {{preview.overText}}</text>
+        </block>
+        <text class="wt-preview-err" wx:else>{{preview.reason}}</text>
+      </view>
+      <touchable cls="m3-btn m3-btn--pri m3-btn--block wt-save" disabled="{{!hasSel}}" bindtap="saveRecord">保存记录</touchable>
+    </view>
+
+    <!-- 抄表历史（按月倒序；删除后用量/水费自动重算） -->
+    <view class="m3-card m3-card--outlined wt-card">
+      <view class="wt-card-hd">
+        <text class="wt-card-t">抄表历史</text>
+        <text class="wt-card-s">按月份倒序 · {{histCount}} 条</text>
+      </view>
+      <view class="wt-empty" wx:if="{{!history.length}}">还没有抄表记录</view>
+      <view class="wt-hrow" wx:for="{{history}}" wx:key="m">
+        <view class="wt-hmain">
+          <text class="wt-hm">{{item.m}}</text>
+          <text class="wt-hr">读数 {{item.rText}} 吨</text>
+        </view>
+        <view class="wt-hvals">
+          <text>用量 {{item.usageText}}</text>
+          <text>水费 ¥{{item.feeText}}</text>
+          <text>折合 {{item.degText}} 度</text>
+        </view>
+        <view class="wt-del" data-m="{{item.m}}" catchtap="delRecord" aria-role="button" aria-label="删除 {{item.m}} 记录">删除</view>
+      </view>
+    </view>
+
+    <!-- 水费规则卡（2026-11-06 用户反馈：电费规则移入「电量统计」，水量页只留水费规则） -->
+    <view class="m3-card m3-card--outlined wt-rule">
+      <view class="wt-card-hd">
+        <text class="wt-card-t">水费规则</text>
+        <text class="wt-card-s">以学校最新通知为准</text>
+      </view>
+      <view class="wt-rule-row"><text class="wt-rule-k">水费</text><text class="wt-rule-v">{{rules.waterPrice}} 元/吨</text></view>
+      <view class="wt-rule-row"><text class="wt-rule-k">定额</text><text class="wt-rule-v">{{rules.freeText}}</text></view>
+      <view class="wt-rule-row"><text class="wt-rule-k">水费算法</text><text class="wt-rule-v">{{rules.formula}}</text></view>
+      <view class="wt-rule-row"><text class="wt-rule-k">折合扣电</text><text class="wt-rule-v">{{rules.degFormula}}</text></view>
+      <view class="wt-rule-row"><text class="wt-rule-k">计费说明</text><text class="wt-rule-v">{{rules.cycle}}</text></view>
+      <view class="wt-rule-src">来源：{{rules.source}}</view>
+    </view>
+
+    <view class="wt-foot">{{footer}}</view>
+  </block>
+
+  <!-- ============ 自定义宿舍选择 bottom-sheet（与电费页同款） ============ -->
+  <view class="wt-mask" wx:if="{{sheetOpen}}" bindtap="closeSheet" catchtouchmove="noop">
+    <view class="wt-sheet" catchtap="noop" catchtouchmove="noop">
+      <view class="wt-sheet-hd">
+        <text class="wt-sheet-title">关注宿舍</text>
+        <view class="wt-sheet-x" bindtap="closeSheet" aria-role="button" aria-label="关闭">×</view>
+      </view>
+      <view class="wt-sheet-scroll">
+        <view class="wt-sheet-label">楼栋</view>
+        <view class="wt-blds">
+          <view wx:for="{{buildings}}" wx:key="*this"
+                class="wt-bld {{item === activeBuilding ? 'wt-bld--on' : ''}}"
+                data-b="{{item}}" bindtap="pickBuilding">{{item}}</view>
+        </view>
+        <view class="wt-sheet-label">房间（{{activeBuilding}}）</view>
+        <view class="wt-rooms">
+          <view wx:for="{{buildingRooms}}" wx:key="rv"
+                class="wt-room-btn {{item.rv === selectedRv ? 'wt-room-btn--on' : ''}}"
+                data-rv="{{item.rv}}" bindtap="pickRoom">
+            <text class="wt-room-n">{{item.room}}</text>
+            <text class="wt-room-c" wx:if="{{item.rv === selectedRv}}">✓</text>
+          </view>
+        </view>
+      </view>
+      <view class="wt-sheet-ft">
+        <view class="wt-cancel" bindtap="closeSheet">取消</view>
+      </view>
+    </view>
+  </view>
+
+</view>

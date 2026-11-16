@@ -1,0 +1,6 @@
+<view class="es">
+  <view class="es__art"><text class="es__glyph">{{icon}}</text></view>
+  <view class="es__title">{{title}}</view>
+  <view class="es__text" wx:if="{{text}}">{{text}}</view>
+  <touchable cls="m3-btn m3-btn--filled" wx:if="{{actionText}}" bindtap="onAction">{{actionText}}</touchable>
+</view>

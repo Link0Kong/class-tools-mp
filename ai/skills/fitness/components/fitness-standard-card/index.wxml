@@ -1,0 +1,12 @@
+<view class="fs-card">
+  <view class="fs-hd">{{title}}</view>
+  <view wx:if="{{sub}}" class="fs-sub">{{sub}}</view>
+  <view wx:if="{{rows.length}}" class="fs-rows">
+    <view class="fs-row" wx:for="{{rows}}" wx:key="label">
+      <view class="fs-cell fs-label">{{item.label}}</view>
+      <view class="fs-cell fs-full">满分 {{item.full}}{{item.unit}}</view>
+      <view class="fs-cell fs-pass">60 分 {{item.pass}}{{item.unit}}</view>
+    </view>
+  </view>
+  <view wx:if="{{empty}}" class="fs-empty">没有可展示的评分项</view>
+</view>

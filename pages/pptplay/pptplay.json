@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "演示",
+  "navigationStyle": "custom",
+  "pageOrientation": "auto",
+  "disableScroll": true,
+  "backgroundColor": "#000000",
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
+}

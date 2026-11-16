@@ -1,0 +1,58 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b id-page {{themeClass}}">
+
+  <!-- —— 品牌区 —— -->
+  <view class="id-hero enter enter-1">
+    <image class="id-logo" src="/images/logo.png" mode="aspectFit" aria-hidden="true"></image>
+    <view class="t-headline-m">班级身份</view>
+    <view class="t-body-m muted id-hero__sub">用真实姓名 + 学号验证后进入班级工具</view>
+  </view>
+
+  <!-- —— 已保存身份（自动进入工作台；不显示头像 / 学号）—— -->
+  <view wx:if="{{identity}}" class="m3-card m3-card--filled enter enter-2">
+    <view class="id-card">
+      <view class="grow">
+        <view class="t-title-l">{{identity.name}}</view>
+      </view>
+      <view class="id-pills">
+                <text wx:if="{{identity.role}}" class="pill pill--tertiary">{{identity.role}}</text>
+        <text wx:if="{{identity.badge && identity.badge !== identity.role}}" class="pill pill--neutral">{{identity.badge}}</text>
+      </view>
+    </view>
+    <view class="t-body-m muted id-note">身份已保存，正在进入工作台…</view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:20rpx" bindtap="enter">进入工作台</touchable>
+    <touchable cls="m3-btn m3-btn--text m3-btn--block" style="margin-top:8rpx" bindtap="switchIdentity">切换身份</touchable>
+  </view>
+
+  <!-- —— 身份验证 —— -->
+  <view wx:else class="m3-card m3-card--filled enter enter-2">
+    <view class="field">
+      <view class="field__label">真实姓名</view>
+      <view class="field__ctrl">
+        <input class="field__input" value="{{name}}" placeholder="请输入姓名" placeholder-class="ph" maxlength="20" bindinput="onName" />
+      </view>
+    </view>
+    <view class="field" style="margin-bottom:12rpx">
+      <view class="field__label">学号</view>
+      <view class="field__ctrl">
+        <input class="field__input" type="number" value="{{sid}}" placeholder="请输入 10 位学号" placeholder-class="ph" maxlength="10" bindinput="onSid" />
+      </view>
+    </view>
+    <view wx:if="{{err}}" class="id-err">{{err}}</view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:20rpx" bindtap="submit">{{verifying ? '验证中…' : '验证并进入'}}</touchable>
+    <view class="id-tip">身份与班级名单由云端校验；换人使用时请在「我的」退出身份。</view>
+  </view>
+
+  <!-- —— 数据与隐私 —— -->
+  <view class="m3-card m3-card--outlined enter enter-3">
+    <view class="t-title-m">数据与隐私</view>
+    <view class="id-priv">
+      <view class="id-priv__row"><text class="id-priv__k">身份信息</text><text class="id-priv__v">姓名 / 学号 / 角色只用于班级名单校验</text></view>
+      <view class="id-priv__row"><text class="id-priv__k">页面展示</text><text class="id-priv__v">只显示姓名与角色，不显示学号</text></view>
+      <view class="id-priv__row"><text class="id-priv__k">云端同步</text><text class="id-priv__v">作业 / 通知 / 勾选 / 体测 / 访问统计按账号同步</text></view>
+      <view class="id-priv__row"><text class="id-priv__k">用户改动</text><text class="id-priv__v">抽签 / 分组 / 点名 / 隐藏项 / 偏好同步，可在「我的 → 数据与隐私」管理</text></view>
+    </view>
+  </view>
+
+</view>

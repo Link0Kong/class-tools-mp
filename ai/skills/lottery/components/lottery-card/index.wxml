@@ -1,0 +1,19 @@
+<view class="ld-card">
+  <view class="ld-hd">{{title}}</view>
+
+  <view wx:if="{{cfgRows.length}}" class="ld-cfg">
+    <view class="ld-cfg-item" wx:for="{{cfgRows}}" wx:key="k">{{item.k}}：{{item.v}}</view>
+  </view>
+
+  <view wx:if="{{rows.length}}" class="ld-chips">
+    <view class="ld-chip" wx:for="{{rows}}" wx:key="*this">{{item}}</view>
+  </view>
+  <view wx:if="{{more > 0}}" class="ld-more">还有 {{more}} 个结果，可在抽签页查看</view>
+  <view wx:if="{{removedText}}" class="ld-removed">已剔除：{{removedText}}</view>
+
+  <view wx:if="{{textLines.length}}" class="ld-text">
+    <view class="ld-line" wx:for="{{textLines}}" wx:key="*this">{{item}}</view>
+  </view>
+
+  <view wx:if="{{empty}}" class="ld-empty">还没有抽签结果</view>
+</view>

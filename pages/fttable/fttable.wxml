@@ -1,0 +1,41 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b {{themeClass}}">
+  <view class="page-head">
+    <view class="t-headline-m">国标体测评分表</view>
+    <view class="t-body-m muted">《国家学生体质健康标准（2014 年修订）》大学组 · 单项 100–10 分</view>
+  </view>
+
+  <view class="row wrap">
+    <touchable cls="m3-chip {{sex === 'm' ? 'm3-chip--selected' : ''}}" data-v="m" bindtap="setSex">男</touchable>
+    <touchable cls="m3-chip {{sex === 'f' ? 'm3-chip--selected' : ''}}" data-v="f" bindtap="setSex">女</touchable>
+    <touchable cls="m3-chip {{grade === '12' ? 'm3-chip--selected' : ''}}" data-v="12" bindtap="setGr">大一 / 大二</touchable>
+    <touchable cls="m3-chip {{grade === '34' ? 'm3-chip--selected' : ''}}" data-v="34" bindtap="setGr">大三 / 大四</touchable>
+  </view>
+
+  <view class="m3-card m3-card--filled enter enter-1">
+    <view class="row between" style="margin-bottom:10rpx">
+      <view class="t-title-m">单项评分</view>
+      <view class="t-label-m muted">左右滑动查看全部</view>
+    </view>
+    <scroll-view scroll-x class="ftt-scroll" enhanced show-scrollbar="{{false}}"
+                 scroll-left="{{smLeft}}" bindscroll="onGridScroll">
+      <view class="ftt-table">
+        <view class="ftt-row ftt-head">
+          <view class="ftt-item">项目</view>
+          <view class="ftt-cell" wx:for="{{scores}}" wx:key="*this">{{item}}</view>
+        </view>
+        <view id="ftt-{{item.key}}" class="ftt-row {{focus === item.key ? 'ftt-focus' : ''}}" wx:for="{{rows}}" wx:key="key">
+          <view class="ftt-item">{{item.n}}<text class="ftt-unit">{{item.u}}</text></view>
+          <view class="ftt-cell" wx:for="{{item.vals}}" wx:for-item="v" wx:key="index">{{v}}</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="m3-card m3-card--outlined">
+    <view class="t-title-m">BMI（体重指数）</view>
+    <view class="t-body-m muted" style="margin-top:10rpx">男：正常 17.9–23.9；女：正常 17.2–23.9。低体重 80 分、正常 100 分、超重 80 分、肥胖 60 分。</view>
+    <view class="t-body-m muted" style="margin-top:8rpx">单项权重：BMI 15% · 肺活量 15% · 50 米 20% · 坐位体前屈 10% · 立定跳远 10% · 引体/仰卧 10% · 长跑 20%。</view>
+  </view>
+</view>

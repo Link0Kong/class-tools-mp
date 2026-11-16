@@ -1,0 +1,198 @@
+/* homework-card：原子组件 WXSS（只允许基础选择器/属性；禁用动画、滚动、transition） */
+.hw-card {
+  display: flex;
+  flex-direction: column;
+  padding: 24rpx 28rpx 20rpx;
+  border-radius: 24rpx;
+  background-color: #FFFCF6;
+  color: #1F2622;
+}
+.hw-hd {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+.hw-ttl {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1F2622;
+}
+.hw-cnt {
+  font-size: 24rpx;
+  color: #6B746E;
+}
+.hw-off {
+  margin: 8rpx 0 12rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 12rpx;
+  background-color: #F4E7D8;
+  font-size: 22rpx;
+  color: #8A6A45;
+}
+.hw-row {
+  display: flex;
+  flex-direction: column;
+  padding: 20rpx 8rpx;
+  border-bottom: 1rpx solid #ECE7DE;
+}
+.hw-rowhd {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+.hw-subj {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1F2622;
+}
+.hw-chip {
+  padding: 4rpx 14rpx;
+  border-radius: 10rpx;
+  font-size: 22rpx;
+  color: #5E8F87;
+  background-color: #E8F0EC;
+}
+.hw-chip-overdue {
+  color: #B87870;
+  background-color: #F7E7E2;
+}
+.hw-chip-done {
+  color: #7D9EBB;
+  background-color: #E9EFF6;
+}
+.hw-txt {
+  font-size: 26rpx;
+  color: #3C4540;
+  word-break: break-all;
+}
+.hw-more {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #8A948E;
+}
+.hw-meta {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #6B746E;
+}
+.hw-author {
+  font-size: 22rpx;
+  color: #8A948E;
+}
+.hw-rowft {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8rpx;
+}
+.hw-due {
+  font-size: 24rpx;
+  color: #5E8F87;
+}
+.hw-atts {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10rpx;
+}
+.hw-att {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 0;
+}
+.hw-att-n {
+  font-size: 24rpx;
+  color: #7D9EBB;
+  word-break: break-all;
+}
+.hw-att-s {
+  font-size: 22rpx;
+  color: #8A948E;
+}
+.hw-acts {
+  display: flex;
+  flex-direction: row;
+  margin-top: 16rpx;
+}
+.hw-btn {
+  min-width: 160rpx;
+  min-height: 80rpx;
+  padding: 0 28rpx;
+  border-radius: 16rpx;
+  background-color: #5E8F87;
+  color: #FFFCF6;
+  font-size: 26rpx;
+  text-align: center;
+  line-height: 80rpx;
+}
+.hw-btn-ghost {
+  background-color: #E8F0EC;
+  color: #5E8F87;
+}
+.hw-empty {
+  padding: 32rpx 8rpx;
+  font-size: 26rpx;
+  color: #8A948E;
+  text-align: center;
+}
+.hw-stats {
+  display: flex;
+  flex-direction: row;
+  padding: 14rpx 0;
+  border-radius: 16rpx;
+  background-color: #F7F3E9;
+}
+.hw-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.hw-num { font-size: 36rpx; font-weight: 600; color: #1F2622; }
+.hw-num-hot { color: #B87870; }
+.hw-num-mut { color: #7D9EBB; }
+.hw-lab { margin-top: 4rpx; font-size: 21rpx; color: #6B746E; }
+.hw-next {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 16rpx;
+  background-color: #E8F0EC;
+}
+.hw-next-lab { font-size: 21rpx; color: #5E8F87; }
+.hw-next-t { font-size: 24rpx; color: #1F2622; word-break: break-all; }
+@media (prefers-color-scheme: dark) {
+  .hw-card { background-color: #1E2420; color: #E7ECE8; }
+  .hw-ttl { color: #E7ECE8; }
+  .hw-cnt, .hw-meta { color: #A9B3AD; }
+  .hw-off { background-color: #3A3226; color: #D8BE97; }
+  .hw-row { border-bottom-color: #333B36; }
+  .hw-subj { color: #E7ECE8; }
+  .hw-txt { color: #CBD3CE; }
+  .hw-chip { color: #9BC9BB; background-color: #2A3733; }
+  .hw-chip-overdue { color: #E0A79C; background-color: #3A2B28; }
+  .hw-chip-done { color: #A9C4DD; background-color: #27313A; }
+  .hw-due { color: #9BC9BB; }
+  .hw-author, .hw-att-s, .hw-more { color: #8E9A93; }
+  .hw-att-n { color: #A9C4DD; }
+  .hw-btn { background-color: #5E8F87; color: #12211C; }
+  .hw-btn-ghost { background-color: #2A3733; color: #9BC9BB; }
+  .hw-empty { color: #8E9A93; }
+  .hw-stats { background-color: #262E29; }
+  .hw-num { color: #E7ECE8; }
+  .hw-num-hot { color: #E0A79C; }
+  .hw-num-mut { color: #A9C4DD; }
+  .hw-lab { color: #A9B3AD; }
+  .hw-next { background-color: #2A3733; }
+  .hw-next-lab { color: #9BC9BB; }
+  .hw-next-t { color: #E7ECE8; }
+}

@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "分组",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "touchable": "/components/touchable/index",
+    "segmented": "/components/segmented/index",
+    "empty-state": "/components/empty-state/index",
+    "roster-picker": "/components/roster-picker/index"
+  }
+}

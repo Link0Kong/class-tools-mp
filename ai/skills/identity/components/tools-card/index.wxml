@@ -1,0 +1,17 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd"><text class="title">工具目录</text></view>
+  <view class="sec">
+    <text class="sec-t">首页快捷</text>
+    <view class="chips">
+      <text class="chip" wx:for="{{d.homeTools}}" wx:key="key">{{item.name}}</text>
+    </view>
+  </view>
+  <view class="sec">
+    <text class="sec-t">全部工具</text>
+    <view class="item" wx:for="{{d.all}}" wx:key="key">
+      <text class="cat">{{item.cat}}</text>
+      <text class="name">{{item.name}}</text>
+      <text class="desc">{{item.desc}}</text>
+    </view>
+  </view>
+</view>

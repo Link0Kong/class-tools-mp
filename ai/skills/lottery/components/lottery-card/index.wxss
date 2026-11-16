@@ -1,0 +1,88 @@
+/* lottery-card：抽签结果 / 结果单（原子组件约束：无动画、无 overflow-y） */
+.ld-card {
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #FFFBFE;
+  color: #1C1B1F;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ld-hd {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1C1B1F;
+  margin-bottom: 8px;
+}
+.ld-cfg {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.ld-cfg-item {
+  color: #49454F;
+  font-size: 12px;
+  margin-right: 12px;
+  margin-bottom: 2px;
+}
+.ld-chips {
+  display: flex;
+  flex-wrap: wrap;
+}
+.ld-chip {
+  min-height: 24px;
+  padding: 2px 10px;
+  margin: 0 6px 6px 0;
+  border-radius: 12px;
+  background: #E8F0EE;
+  color: #34544E;
+  font-size: 13px;
+  line-height: 20px;
+}
+.ld-more,
+.ld-empty {
+  color: #79747E;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.ld-removed {
+  margin-top: 6px;
+  color: #8A4B36;
+  font-size: 12px;
+}
+.ld-text {
+  margin-top: 4px;
+}
+.ld-line {
+  color: #34544E;
+  font-size: 13px;
+  line-height: 19px;
+  word-break: break-all;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ld-card {
+    background: #1C1B1F;
+    color: #E6E1E5;
+  }
+  .ld-hd {
+    color: #E6E1E5;
+  }
+  .ld-cfg-item {
+    color: #CAC4D0;
+  }
+  .ld-chip {
+    background: #2E3B37;
+    color: #B7D6CD;
+  }
+  .ld-more,
+  .ld-empty {
+    color: #938F99;
+  }
+  .ld-removed {
+    color: #E8B4A2;
+  }
+  .ld-line {
+    color: #B7D6CD;
+  }
+}

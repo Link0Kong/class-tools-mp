@@ -1,0 +1,5 @@
+<view class="appbar {{collapsed ? 'appbar--collapsed' : ''}}">
+  <view class="appbar__title">{{title}}</view>
+  <view class="appbar__sub" wx:if="{{subtitle}}">{{subtitle}}</view>
+  <slot></slot>
+</view>

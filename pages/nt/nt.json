@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "班级通知",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "empty-state": "/components/empty-state/index",
+    "bottom-sheet": "/components/bottom-sheet/index"
+  }
+}

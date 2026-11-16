@@ -1,0 +1,189 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b pad-action {{themeClass}}">
+
+  <view class="page-head">
+    <view class="t-headline-m">抽签</view>
+    <view class="t-body-m muted">第 1 步 · 抽号并保存结果</view>
+  </view>
+
+  <segmented items="{{steps}}" value="s1" bindchange="onStep" />
+
+  <view class="section-gap"></view>
+
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="sk sk-title sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+    <view class="m3-card m3-card--filled enter enter-2"><view class="sk sk-card sk-shimmer"></view></view>
+  </block>
+
+  <block wx:else>
+    <view class="m3-card m3-card--outlined" wx:if="{{state === 'error'}}">
+      <empty-state mode="error" icon="⚠" title="读取失败" text="{{errorText}}" action-text="重试" bind:action="load"></empty-state>
+    </view>
+
+    <block wx:else>
+      <!-- —— 参数卡片 —— -->
+      <view class="m3-card m3-card--elevated enter enter-1">
+        <view class="m3-card__head">
+          <view class="t-title-m">抽签参数</view>
+          <view class="pill pill--neutral">第 1 步</view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">范围</view>
+          <view class="row">
+            <view class="field__ctrl grow"><input class="field__input" type="number" data-k="start" value="{{start}}" bindinput="onNum" /></view>
+            <text class="muted" style="padding:0 20rpx">–</text>
+            <view class="field__ctrl grow"><input class="field__input" type="number" data-k="end" value="{{end}}" bindinput="onNum" /></view>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">抽取个数</view>
+          <view class="field__ctrl"><input class="field__input" type="number" data-k="count" value="{{count}}" bindinput="onNum" /></view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">快速调节</view>
+          <slider class="slider" min="1" max="50" value="{{count}}" show-value activeColor="{{th.primary}}" backgroundColor="{{th.track}}" block-size="24" bindchange="onCountSlider" />
+        </view>
+
+        <view class="field">
+          <view class="field__label">排除序号</view>
+          <view class="field__ctrl"><input class="field__input" data-k="excl" value="{{excl}}" placeholder="如 3,7,10-12" placeholder-class="ph" bindinput="onInput" /></view>
+          <view class="field__hint">支持逗号与区间：3,7,10-12</view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">结果排序</view>
+          <view class="row wrap">
+            <touchable cls="m3-chip {{sort === 'draw' ? 'm3-chip--selected' : ''}}" data-v="draw" bindtap="setSort">抽取顺序</touchable>
+            <touchable cls="m3-chip {{sort === 'num' ? 'm3-chip--selected' : ''}}" data-v="num" bindtap="setSort">序号升序</touchable>
+            <touchable cls="m3-chip {{sort === 'desc' ? 'm3-chip--selected' : ''}}" data-v="desc" bindtap="setSort">从大到小</touchable>
+            <touchable cls="m3-chip {{sort === 'rand' ? 'm3-chip--selected' : ''}}" data-v="rand" bindtap="setSort">随机打乱</touchable>
+          </view>
+        </view>
+
+        <view class="field field--row field__row-divider">
+          <view class="col grow">
+            <text class="t-body-l">允许重复</text>
+            <text class="field__hint">{{dup ? '重复抽到的序号会保留' : '同一序号只出现一次'}}</text>
+          </view>
+          <switch checked="{{dup}}" color="{{th.primary}}" bindchange="onSwitch" />
+        </view>
+
+        <view class="field field--row field__row-divider">
+          <view class="col grow">
+            <text class="t-body-l">剔除后自动重抽</text>
+          </view>
+          <switch checked="{{autoRe}}" color="{{th.primary}}" bindchange="setAutoRe" />
+        </view>
+
+        <view class="field field--row">
+          <view class="col grow">
+            <text class="t-body-l">参与名单</text>
+            <text class="field__hint">{{selCount ? '已选 ' + selCount + ' 人 · 只从名单中抽' : '未选择 · 只抽序号'}}</text>
+          </view>
+          <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="openPicker">选择名单</touchable>
+        </view>
+        <view wx:if="{{selCount}}" class="sel-wrap">
+          <view class="lp-chip" wx:for="{{selChips}}" wx:key="seat">
+            <text class="lp-chip__seat">{{item.seat}}</text><text class="lp-chip__name">{{item.name}}</text>
+          </view>
+          <view wx:if="{{selMore}}" class="lp-chip lp-chip--more">+{{selMore}}</view>
+        </view>
+
+        <!-- 名称映射（契约 web/draw/CONTRACT.md §3.1：每行「序号 名称」；优先级 映射 > 班级名单 > 空） -->
+        <view class="field field--row" style="margin-bottom:0">
+          <view class="col grow">
+            <text class="t-body-l">名称映射</text>
+            <text class="field__hint">{{namesSum}} · 结果名称优先用映射</text>
+          </view>
+          <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="openNames">编辑</touchable>
+        </view>
+      </view>
+
+      <!-- —— 结果卡片 —— -->
+      <view class="m3-card m3-card--filled enter enter-2">
+        <view class="m3-card__head">
+          <view class="t-title-m">抽签结果</view>
+          <view class="row">
+            <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="openRecords">抽签记录</touchable>
+            <view class="pill {{rows.length ? 'pill--primary' : 'pill--neutral'}}">{{rows.length}} 个</view>
+          </view>
+        </view>
+
+        <empty-state wx:if="{{state === 'empty'}}" icon="🎲" title="还没有抽签结果" text="设置好参数后点下面的按钮开始" action-text="开始抽签" bind:action="doDraw"></empty-state>
+
+        <block wx:else>
+          <view class="t-body-m muted">可用序号池 {{poolLen}} 个<text wx:if="{{selCount}}"> · 参与名单 {{selCount}} 人</text><text wx:if="{{cfg}}"> · 范围 {{cfg.range}}</text></view>
+          <!-- 存证状态（契约 §3.2：存证中… / 已存证 · 今日第 N 次（全班今日共 M 次） / 未存证（网络不可用）） -->
+          <view wx:if="{{proofText}}" class="proof-line proof-line--{{proofCls}}">
+            <text class="proof-line__text">{{proofText}}</text>
+            <text wx:if="{{proofId}}" class="proof-line__link" bindtap="openRecordDetail">查看存证</text>
+          </view>
+          <view class="result-list">
+            <swipe-item wx:for="{{rows}}" wx:key="key" index="{{index}}"
+                        actions="{{[{id:'del',label:'删除',type:'error'}]}}"
+                        bind:action="remove" bind:longpress="onLongPress">
+              <view class="m3-li">
+                <view class="idx-badge">{{item.n}}</view>
+                <view class="m3-li__body">
+                  <view class="m3-li__title ellipsis">{{item.nm || '（无名单对应）'}}</view>
+                </view>
+                <view class="m3-li__trail t-label-m muted">左滑删除</view>
+              </view>
+            </swipe-item>
+          </view>
+          <view wx:if="{{removed.length}}" class="row wrap">
+            <text class="pill pill--error">已删除 {{removed.length}} 个：{{removed}}</text>
+          </view>
+        </block>
+      </view>
+    </block>
+  </block>
+
+  <canvas type="2d" id="card" class="exp-canvas"></canvas>
+
+  <!-- —— 底部固定操作条 —— -->
+  <view class="actionbar">
+    <view class="actionbar__inner" style="margin-bottom:16rpx">
+      <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="reset">重置</touchable>
+      <view class="grow"></view>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--sm m3-btn--gap" bindtap="refill">补抽</touchable>
+      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="exportImg">导出图片</touchable>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="doDraw">{{rows.length ? '重新抽签' : '开始抽签'}}</touchable>
+    <touchable cls="m3-btn m3-btn--text m3-btn--block" bindtap="toGroup">下一步 · 分组</touchable>
+  </view>
+
+  <!-- —— 名称映射弹层（契约 §3.1：textarea + 已映射计数 + 清空/取消/保存） —— -->
+  <block wx:if="{{namesOpen}}">
+    <view class="sheet-mask" bindtap="closeNames"></view>
+    <view class="sheet nm-sheet" catchtap="noop">
+      <view class="sheet__grabber"></view>
+      <view class="nm-hd">
+        <text class="nm-t">名称映射</text>
+        <view class="nm-x" bindtap="closeNames" aria-role="button" aria-label="关闭">×</view>
+      </view>
+      <view class="nm-hint">每行：序号 名称</view>
+      <textarea class="nm-text" value="{{namesDraft}}" maxlength="6000" auto-height
+                placeholder="1 第一组" placeholder-class="ph" bindinput="onNamesInput"></textarea>
+      <view class="nm-count">{{namesDraftN ? '已映射 ' + namesDraftN + ' 项' : '未映射'}}</view>
+      <view class="nm-ft">
+        <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="clearNamesDraft">清空</touchable>
+        <view class="grow"></view>
+        <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="closeNames">取消</touchable>
+        <touchable cls="m3-btn m3-btn--filled m3-btn--sm" bindtap="saveNames">保存</touchable>
+      </view>
+    </view>
+  </block>
+
+  <!-- —— 名单选择（只来自班级名单 class_members，液态气泡）—— -->
+  <roster-picker id="rosterPicker" show="{{picker}}" title="参与名单" selected="{{rosterSel}}"
+                 bind:confirm="onRosterConfirm" bind:close="closePicker"></roster-picker>
+</view>

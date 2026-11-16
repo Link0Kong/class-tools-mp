@@ -1,0 +1,191 @@
+<!-- pages/pptplay/pptplay.wxml —— 全屏播放器（契约 §5/§7/§8.1/§11；DESIGN §4.3–4.9）
+     层级：图片层 10 → 媒体热点 20 → 视频层 30 → 顶部进度 40 → 控制条 41 → 抽屉遮罩/抽屉 50/51 → 黑屏/轻提示 60
+     两种模式（§11.3.1）：「原样播放」视频（manifest.video，网络良好/用户偏好时默认）与「分步浏览」。
+     全屏由页面配置承担（navigationStyle:custom + pageOrientation:auto + disableScroll），不叠站点导航/底栏。 -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="pl-root {{themeClass}}">
+
+  <!-- 舞台（分步浏览）：纯黑、图片 contain letterbox；手势区不触发任何页面滚动 -->
+  <view class="pl-stage" wx:if="{{state === 'ready' && mode !== 'video'}}"
+        bindtouchstart="onTS" bindtouchend="onTE" bindtouchcancel="onTC" catchtouchmove="noop">
+    <!-- 双图 A/B：A=当前帧（动效层），B=上一张（交叉底图；切完置空释放解码） -->
+    <image wx:if="{{imgB}}" class="pl-img" src="{{imgB}}" mode="aspectFit" webp="{{true}}" lazy-load="{{false}}"></image>
+    <image class="pl-img {{animCls}}" src="{{imgA}}" mode="aspectFit" webp="{{true}}"
+           bindload="onImgLoad" binderror="onImgErr"></image>
+
+    <!-- 图片失败：保留上一张图 + 重试（DESIGN §4.8/§5.4） -->
+    <view wx:if="{{imgErr}}" class="pl-imgfail" bindtap="retryImg">
+      <text class="pl-imgfail-t">图片加载失败 · 重试</text>
+    </view>
+
+    <!-- 媒体热点：圆钮（点击才播，绝不自动播放；失败灰化「视频不可用」）
+         v1.2 §11.3.3：直径 ≥56px（手机 64px）+ 时长角标 + 轻微脉冲提示 -->
+    <view wx:for="{{hot}}" wx:key="s"
+          class="pl-hot {{item.k === 'a' ? 'pl-hot--audio' : ''}} {{item.fail ? 'pl-hot--fail' : ''}}"
+          style="left:{{item.left}}px;top:{{item.top}}px;width:{{item.size}}px;height:{{item.size}}px"
+          data-i="{{index}}" catchtouchstart="noop" catchtouchend="noop" bindtap="openMedia">
+      <view wx:if="{{!item.fail && item.k === 'v'}}" class="pl-hot-pulse"></view>
+      <text class="pl-hot-ico">{{item.fail ? '!' : (item.k === 'a' ? '♪' : '▶')}}</text>
+      <text wx:if="{{item.fail}}" class="pl-hot-badge">视频不可用</text>
+      <text wx:elif="{{item.k === 'v'}}" class="pl-hot-badge">{{item.badge}}</text>
+    </view>
+  </view>
+
+  <!-- ============ v1.2 原样播放（视频模式，契约 §11.3.2/§11.4） ============ -->
+  <view wx:if="{{state === 'ready' && mode === 'video'}}" class="pl-vroot">
+    <!-- 全屏 letterbox；自制控制条（不用原生 controls）；直连 OSS → 失败/5s 未起播 → 下载临时文件 -->
+    <video wx:if="{{vsrc}}" id="plv" class="pl-v" src="{{vsrc}}" poster="{{vposter}}"
+           autoplay="{{vauto}}" controls="{{false}}"
+           show-center-play-btn="{{false}}" show-play-btn="{{false}}" show-fullscreen-btn="{{false}}"
+           show-progress="{{false}}" enable-progress-gesture="{{false}}"
+           object-fit="contain" loop="{{false}}" initial-time="{{0}}"
+           bindloadedmetadata="onVMeta" bindtimeupdate="onVTime" bindplay="onVPlay" bindpause="onVPause"
+           bindwaiting="onVWaiting" bindplaying="onVPlaying" bindcanplay="onVCanPlay"
+           bindended="onVEnded" binderror="onVErr" bindtap="onVStageTap"
+           catchtouchstart="onVTS" catchtouchend="onVTE"></video>
+
+    <!-- 手势/点击层：点舞台显隐控制条；左右滑=上一页/下一页；不做 1/3 点击翻页（§11.3.2） -->
+    <view class="pl-vhit" bindtap="onVStageTap" catchtouchstart="onVTS" catchtouchend="onVTE"></view>
+
+    <!-- 初始加载 / 缓冲中（40–55MB 视频必须给缓冲态，不能白屏） -->
+    <view wx:if="{{vloading}}" class="pl-vload">
+      <view class="pl-vspin"></view>
+      <text class="pl-vload-t">{{vdl && vdl.on ? vdl.text : '缓冲中…'}}</text>
+    </view>
+
+    <!-- 下载降级进度（§11.4：直链失败后 wx.downloadFile 临时文件，显示进度） -->
+    <view wx:if="{{vdl && vdl.on}}" class="pl-vdl">
+      <text class="pl-vdl-t">{{vdl.text}}</text>
+      <view class="pl-vdl-bar"><view class="pl-vdl-bar-i" style="width:{{vdl.pct > 0 ? vdl.pct : 0}}%"></view></view>
+    </view>
+
+    <!-- 暂停大播放键（autoplay 被系统拒绝 / 暂停时） -->
+    <view wx:if="{{!vloading && vpaused && vstage !== 'download'}}" class="pl-vbig" catchtap="onVBigPlay">
+      <view class="pl-vbig-ico">▶</view>
+    </view>
+
+    <!-- 短提示（续播 / 降级原因） -->
+    <text wx:if="{{vhint}}" class="pl-vhint" style="top:{{topPad + 54}}px">{{vhint}}</text>
+
+    <!-- 原样播放控制条（3s 自动隐藏：播放/暂停、mm:ss/mm:ss、章节上一页/下一页、章节进度条点 seek、倍速、复制链接、从头） -->
+    <view class="pl-vctrl {{vctrlOn ? 'pl-vctrl--on' : ''}}" catchtouchstart="noop" catchtouchend="noop">
+      <view class="pl-vbar" catchtap="onVBarTap" catchtouchstart="noop" catchtouchend="noop">
+        <view class="pl-vbar-bg"></view>
+        <view class="pl-vbar-fill" style="width:{{vpct}}%"></view>
+        <view wx:for="{{vticks}}" wx:key="i" class="pl-vtick" style="left:{{item.pct}}%"
+              data-i="{{item.i}}" data-t="{{item.t}}" catchtap="onVTickTap"></view>
+      </view>
+      <view class="pl-vrow">
+        <view class="pl-vbtn" catchtap="onVPrevPage">⏮</view>
+        <view class="pl-vbtn pl-vbtn--play" catchtap="onVToggle">{{vpaused ? '▶' : '⏸'}}</view>
+        <view class="pl-vbtn" catchtap="onVNextPage">⏭</view>
+        <text class="pl-vtime">{{vtimeText}}</text>
+        <text class="pl-vpage">{{vpage}}/{{vpages}}</text>
+        <view class="grow"></view>
+        <view class="pl-vchip" catchtap="onVRateTap">{{vrateText}}</view>
+      </view>
+      <view class="pl-vrow pl-vrow--chips">
+        <view class="grow"></view>
+        <view class="pl-vchip" catchtap="onVCopyLink">链接</view>
+        <view class="pl-vchip" catchtap="onVRestart">从头</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 黑屏（课堂单键；点任意处恢复，恢复不显示 UI） -->
+  <view wx:if="{{black}}" class="pl-black" bindtap="toggleBlack">
+    <text wx:if="{{blackHint}}" class="pl-black-hint">黑屏中 · 点击恢复</text>
+  </view>
+
+  <!-- 加载/错误/未验证身份 -->
+  <view wx:if="{{state === 'error'}}" class="pl-error">
+    <text class="pl-error-t">{{errorText}}</text>
+    <view class="pl-error-btn" bindtap="closePlayer">返回</view>
+  </view>
+  <view wx:if="{{state === 'denied'}}" class="pl-error">
+    <text class="pl-error-t">需要班级身份</text>
+    <view class="pl-error-btn" bindtap="goAll">返回工具</view>
+  </view>
+
+  <!-- 顶部：文件名（3s 淡出）+ 原样/分步胶囊 + 关闭 + 2px step 进度条（§11.3.1 显眼的模式切换） -->
+  <view class="pl-top" wx:if="{{state === 'ready' && !black && !video}}"
+        style="padding-top:{{topPad + 10}}px" catchtouchstart="noop" catchtouchend="noop">
+    <text class="pl-title {{titleOn ? 'pl-title--on' : ''}}">{{title}}</text>
+    <view class="pl-modeseg" wx:if="{{hasVideo}}" style="top:{{topPad + 4}}px">
+      <view class="pl-modeseg-i {{mode === 'video' ? 'pl-modeseg-i--on' : ''}}" catchtap="switchVideo">原样</view>
+      <view class="pl-modeseg-i {{mode === 'step' ? 'pl-modeseg-i--on' : ''}}" catchtap="switchStep">分步</view>
+    </view>
+    <view class="pl-topx" style="top:{{topPad + 2}}px" catchtap="closePlayer">✕</view>
+    <view class="pl-progress" wx:if="{{mode === 'step'}}"><view class="pl-progress-bar" style="width:{{view.progressPct}}%"></view></view>
+  </view>
+
+  <!-- 控制条（自动隐藏；任意触摸淡入 160ms，3s 无操作淡出） -->
+  <view class="pl-ctrl {{ctrlOn ? 'pl-ctrl--on' : ''}}"
+        wx:if="{{state === 'ready' && !black && !video}}" catchtouchstart="noop" catchtouchend="noop">
+    <view class="pl-btn" bindtap="prevStep">‹</view>
+    <view class="pl-pos">
+      <text class="pl-pos-t">{{view.pageText}}</text>
+      <view class="pl-dots" wx:if="{{view.showDots}}">
+        <view wx:for="{{view.dots}}" wx:key="k" class="pl-dot {{item.on ? 'pl-dot--on' : ''}}"></view>
+      </view>
+    </view>
+    <view class="pl-btn" bindtap="nextStep">›</view>
+    <view class="pl-sep"></view>
+    <view class="pl-ico" bindtap="openThumb">▤</view>
+    <view class="pl-ico" bindtap="openNotes">≡</view>
+    <view class="pl-ico" bindtap="toggleBlack">◼</view>
+    <view class="pl-ico pl-ico--more" bindtap="openMore">⋯</view>
+    <view class="pl-audio" wx:if="{{audioOn}}">
+      <view class="pl-audio-bar"></view><view class="pl-audio-bar"></view><view class="pl-audio-bar"></view>
+    </view>
+  </view>
+
+  <!-- 媒体层（视频）：独立全屏黑底 + 原生 controls；× 在左上安全区；结束/关闭回当前步 -->
+  <view wx:if="{{video}}" class="pl-media">
+    <video class="pl-video" src="{{video.url}}" poster="{{view.img}}" autoplay controls object-fit="contain"
+           show-center-play-btn show-fullscreen-btn="{{false}}"
+           bindended="onVideoEnd" binderror="onVideoErr"></video>
+    <view class="pl-media-close" bindtap="closeMedia">✕</view>
+  </view>
+
+  <!-- 缩略图抽屉（底部 62vh，点页跳转，当前页高亮） -->
+  <block wx:if="{{drawer === 'thumb'}}">
+    <view class="pl-mask" bindtap="closeDrawer"></view>
+    <view class="pl-drawer pl-drawer--thumb" catchtouchstart="noop" catchtouchend="noop">
+      <view class="pl-grabber"></view>
+      <view class="pl-drawer-hd">
+        <text class="pl-drawer-t">缩略图</text>
+        <text class="pl-drawer-x" bindtap="closeDrawer">✕</text>
+      </view>
+      <scroll-view class="pl-thumbs" scroll-x scroll-with-animation>
+        <view wx:for="{{thumbs}}" wx:key="p" data-p="{{item.p}}"
+              class="pl-thumb {{view.page === item.pageNo ? 'pl-thumb--cur' : ''}}" bindtap="pickThumb">
+          <image class="pl-thumb-img" src="{{item.url}}" mode="aspectFill" webp="{{true}}" lazy-load></image>
+          <text class="pl-thumb-n">{{item.pageNo}}</text>
+          <!-- 该页多步时：下方短线标当前步（DESIGN §4.5） -->
+          <view wx:if="{{item.steps > 1}}" class="pl-thumb-dots">
+            <view wx:for="{{item.stepArr}}" wx:for-item="sn" wx:key="*this"
+                  class="pl-thumb-step {{view.page === item.pageNo && view.step === sn ? 'pl-thumb-step--on' : ''}}"></view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </block>
+
+  <!-- 备注抽屉（底部 50vh；不透明底，避免投屏误认；空则「本页无备注」） -->
+  <block wx:if="{{drawer === 'notes'}}">
+    <view class="pl-mask" bindtap="closeDrawer"></view>
+    <view class="pl-drawer pl-drawer--notes" catchtouchstart="noop" catchtouchend="noop">
+      <view class="pl-grabber"></view>
+      <view class="pl-drawer-hd">
+        <text class="pl-drawer-t">备注 · 第 {{view.page}} 页</text>
+        <text class="pl-drawer-x" bindtap="closeDrawer">✕</text>
+      </view>
+      <scroll-view class="pl-notes" scroll-y>
+        <text wx:if="{{view.hasNotes}}" class="pl-notes-t">{{view.notes}}</text>
+        <text wx:else class="pl-notes-empty">本页无备注</text>
+      </scroll-view>
+    </view>
+  </block>
+</view>

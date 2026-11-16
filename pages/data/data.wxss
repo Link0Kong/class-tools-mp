@@ -1,0 +1,33 @@
+/* pages/data/data.wxss —— 数据与隐私（v19）
+ * 只写本页样式；颜色一律取 app.wxss 的 M3 变量（var(--md-*)），暗色自动切换。
+ * 版式保持克制：分区标题 + 圆角卡片 + 行式键值 + 短分点，不堆解释段落。
+ */
+.data-page { padding-top: var(--md-space-4); }
+.data-sk { display: flex; flex-direction: column; gap: 12rpx; }
+
+/* —— 身份摘要 —— */
+.data-pills { margin-top: 20rpx; }
+.data-gap { margin-top: var(--md-space-4); }
+.data-sub { font-size: 25rpx; line-height: 1.55; color: var(--md-on-surface-variant); margin-top: 6rpx; }
+
+/* —— 行式键值（云同步 / 云端数据）—— */
+.data-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 64rpx; }
+.data-v { flex: 1; min-width: 0; text-align: right; }
+.data-btn { margin-top: var(--md-space-4); }
+
+/* —— 同步范围 chips —— */
+.data-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12rpx; }
+.data-chip { background: var(--md-surface-container-low); }
+
+/* —— 本机数据 4×2 —— */
+.data-grid { display: flex; flex-direction: row; flex-wrap: wrap; }
+.data-cell { width: 25%; box-sizing: border-box; padding: 10rpx 0; }
+.data-cell .stat__value { font-size: 44rpx; }
+
+/* —— 操作列表：卡片内不再叠加左右内边距 —— */
+.m3-li--flush { padding-left: 0; padding-right: 0; }
+
+/* —— 隐私说明：键 + 值两列（值可换行）—— */
+.data-li { display: flex; flex-direction: row; align-items: flex-start; gap: 16rpx; padding: 10rpx 0; }
+.data-li__k { flex: none; width: 96rpx; font-size: 26rpx; font-weight: 500; color: var(--md-on-surface); }
+.data-li__v { flex: 1; min-width: 0; font-size: 26rpx; line-height: 1.6; color: var(--md-on-surface-variant); }

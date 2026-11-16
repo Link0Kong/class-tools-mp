@@ -1,0 +1,143 @@
+<!-- pages/votedetail/votedetail.wxml —— 投票详情 / 投票·改票 / 结果 / 管理（契约 web/vote/CONTRACT.md §4.2） -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-action vd-page {{themeClass}}">
+
+  <block wx:if="{{state === 'denied'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="🗳" title="需要班级身份" text="完成学号 + 姓名验证后即可查看和参与投票。" action-text="返回工具" bind:action="goAll"></empty-state>
+    </view>
+  </block>
+
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="vd-sk">
+      <view class="sk sk-title sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer" style="width: 60%"></view>
+      <view class="sk sk-card sk-shimmer"></view>
+    </view>
+  </block>
+
+  <block wx:elif="{{state === 'error'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="🗳" title="投票加载失败" text="{{errorText}}" action-text="重试" bind:action="retryLoad"></empty-state>
+    </view>
+  </block>
+
+  <block wx:elif="{{d}}">
+    <!-- 顶部：状态 + 倒计时 + 标题 -->
+    <view class="vd-hero">
+      <view class="vd-hero-hd">
+        <text class="vd-pill {{d.closed ? 'vd-pill--off' : 'vd-pill--on'}}">{{d.statusText}}</text>
+        <text class="vd-cd {{d.closed ? 'vd-cd--off' : ''}}">{{d.countdownText}}</text>
+      </view>
+      <view class="vd-title">{{d.title}}</view>
+      <view class="vd-sub">{{d.ownerText}} · {{d.modeText}} · {{d.deadlineText}}</view>
+      <view class="vd-desc" wx:if="{{d.desc}}">{{d.desc}}</view>
+      <view class="vd-tags">
+        <text class="vd-tag" wx:for="{{d.tags}}" wx:key="key">{{item.text}}</text>
+      </view>
+      <view class="vd-stats">
+        <view class="vd-stat">
+          <view class="vd-stat-v">{{d.total}}</view>
+          <view class="vd-stat-l">已投人数</view>
+        </view>
+        <view class="vd-stat">
+          <view class="vd-stat-v">{{d.hasVoted ? '已投' : '未投'}}</view>
+          <view class="vd-stat-l">我的状态</view>
+        </view>
+        <view class="vd-stat">
+          <view class="vd-stat-v">{{d.resultsHidden ? '隐藏' : '公开'}}</view>
+          <view class="vd-stat-l">结果</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 结果隐藏提示 -->
+    <view class="vd-hide" wx:if="{{d.resultsHidden}}">{{d.hiddenTip}}</view>
+
+    <!-- 选项：可勾选（单选圆 / 多选方），结果可见时显示百分比条与人数 -->
+    <view class="vd-card">
+      <view class="vd-card-t">选项</view>
+      <view class="vd-opt {{item.selected ? 'vd-opt--on' : ''}} {{d.canVote ? 'vd-opt--tap' : ''}}"
+            wx:for="{{d.options}}" wx:key="id" data-id="{{item.id}}" bindtap="pickOption">
+        <view class="vd-box {{d.settings.multi ? 'vd-box--multi' : ''}} {{item.selected ? 'vd-box--on' : ''}}">
+          <text wx:if="{{item.selected}}" class="vd-box-t">✓</text>
+        </view>
+        <view class="vd-opt-main">
+          <view class="vd-opt-t">{{item.text}}</view>
+          <view class="vd-opt-d" wx:if="{{item.desc}}">{{item.desc}}</view>
+          <image class="vd-opt-img" wx:if="{{item.img}}" src="{{item.img}}" mode="aspectFill"></image>
+          <view class="vd-bar" wx:if="{{item.showBar}}">
+            <view class="vd-bar-in" style="width: {{item.pct}}%"></view>
+          </view>
+        </view>
+        <view class="vd-opt-n" wx:if="{{item.showBar}}">
+          <text class="vd-opt-pct">{{item.pct}}%</text>
+          <text class="vd-opt-cnt">{{item.count}} 票</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 实名投票人（仅实名 && 结果可见；匿名投票不渲染） -->
+    <view class="vd-card" wx:if="{{d.voters.length}}">
+      <view class="vd-card-t">{{d.votersTitle}}</view>
+      <view class="vd-voter" wx:for="{{d.voters}}" wx:key="name">
+        <text class="vd-voter-n">{{item.name}}</text>
+        <text class="vd-voter-c">{{item.text}}</text>
+      </view>
+    </view>
+
+    <!-- 管理（发起人 / 管理员；编辑仅无票时） -->
+    <view class="vd-card" wx:if="{{d.canManage}}">
+      <view class="vd-card-t">管理</view>
+      <view class="vd-mbtns">
+        <view class="vd-mbtn" wx:if="{{d.canEdit}}" bindtap="manageEdit">编辑</view>
+        <view class="vd-mbtn" wx:if="{{d.canClose}}" bindtap="manageClose">提前结束</view>
+        <view class="vd-mbtn" bindtap="openExtend">{{d.extendLabel}}</view>
+        <view class="vd-mbtn vd-mbtn--danger" bindtap="manageDelete">删除</view>
+      </view>
+      <view class="vd-manage-hint" wx:if="{{!d.canEdit && d.total > 0}}">已有投票后不可编辑标题与选项</view>
+    </view>
+  </block>
+
+  <!-- 提交 / 改票操作条 -->
+  <block wx:if="{{d && d.canVote}}">
+    <view class="actionbar">
+      <view class="actionbar__inner">
+        <text class="vd-sel">已选 {{choices.length}} 项</text>
+        <view class="m3-btn m3-btn--filled grow {{submitting ? 'm3-btn--disabled' : ''}}" bindtap="submitVote">{{submitting ? '提交中…' : d.submitText}}</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- ============ 延长 / 重开弹层 ============ -->
+  <block wx:if="{{extendOpen}}">
+    <view class="sheet-mask" bindtap="closeExtend"></view>
+    <view class="sheet vd-sheet" catchtap="noop">
+      <view class="sheet__grabber"></view>
+      <view class="vd-sheet-hd">
+        <text class="vd-sheet-t">{{d && d.closed ? '重开投票' : '延长截止'}}</text>
+        <view class="vd-sheet-x" bindtap="closeExtend" aria-role="button" aria-label="关闭">×</view>
+      </view>
+      <view class="vd-sheet-label">从现在起</view>
+      <view class="vd-quicks">
+        <view class="vd-quick {{extQuick === item ? 'vd-quick--on' : ''}}" wx:for="{{extQuickOpts}}" wx:key="*this"
+              data-min="{{item}}" bindtap="pickExtQuick">+{{item}} 分钟</view>
+      </view>
+      <view class="vd-sheet-label">或指定截止日期时间</view>
+      <view class="vd-dt">
+        <picker mode="date" value="{{extDate}}" bindchange="onExtDate">
+          <view class="vd-dt-btn">{{extDate || '选择日期'}}</view>
+        </picker>
+        <picker mode="time" value="{{extTime}}" bindchange="onExtTime">
+          <view class="vd-dt-btn">{{extTime || '选择时间'}}</view>
+        </picker>
+      </view>
+      <view class="vd-sheet-ft">
+        <view class="m3-btn m3-btn--text" bindtap="closeExtend">取消</view>
+        <view class="grow"></view>
+        <view class="m3-btn m3-btn--filled" bindtap="confirmExtend">确定</view>
+      </view>
+    </view>
+  </block>
+</view>

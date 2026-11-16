@@ -1,0 +1,40 @@
+.page-head { padding: 40rpx 0 20rpx; }
+.rollstat { display: flex; gap: 12rpx; }
+.rs { flex: 1; border-radius: 20rpx; padding: 18rpx 10rpx; text-align: center; background: var(--md-surface-container-high); }
+.rs b { display: block; font-size: 52rpx; line-height: 1.05; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rs span { display: block; font-size: 22rpx; margin-top: 4rpx; opacity: .75; }
+.rs-in { background: #E3F1EC; color: #24604F; }
+.rs-ab { background: #F5EBDD; color: #7A5C38; }
+.rs-un { background: #EDF0EF; color: #5C6860; }
+.rollhint { margin-top: 16rpx; font-size: 24rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.rollgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; padding: 4rpx 0 20rpx; }
+.rcard { background: var(--md-surface-container-low, #fff); border: 2rpx solid transparent; border-radius: 24rpx; padding: 18rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,.05); }
+.rcard.in { background: #E9F3F0; border-color: #BFDCD3; }
+.rcard.ab { background: #F5EBDD; border-color: #E2D2B8; }
+.rrow { display: flex; align-items: center; justify-content: space-between; gap: 8rpx; }
+.rseat { flex: none; font-size: 22rpx; font-weight: 600; color: var(--md-primary); opacity: .85; font-variant-numeric: tabular-nums; }
+.rnm { flex: 1; font-size: 32rpx; font-weight: 700; color: var(--md-on-surface); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rcard.in .rnm { color: #24604F; }
+.rcard.ab .rnm { color: #7A5C38; }
+.rcard.ab { opacity: .82; }
+.rpill { flex: none; font-size: 20rpx; padding: 4rpx 10rpx; border-radius: 999rpx; background: rgba(0,0,0,.06); color: var(--md-on-surface-variant); }
+.rcard.in .rpill { background: #5E8F87; color: #fff; }
+.rcard.ab .rpill { background: #C6A475; color: #fff; }
+.rbtns { display: flex; gap: 10rpx; margin-top: 14rpx; align-items: stretch; }
+.rbtn { flex: 1 1 0; width: auto !important; min-width: 0; height: 72rpx; display: flex; align-items: center; justify-content: center; border-radius: 16rpx;
+  border: 2rpx solid var(--md-outline-variant, #DCE3E1); background: var(--md-surface-container-lowest); color: var(--md-on-surface);
+  font-size: 28rpx; font-weight: 700; white-space: nowrap; }
+.rbtn-in.on { background: #5E8F87; border-color: #5E8F87; color: #fff; }
+.rbtn-ab.on { background: #C6A475; border-color: #C6A475; color: #fff; }
+
+/* 2026-11-15 外观：点名暗色表面跟随实际生效主题（.theme-dark 由 utils/appearance.js 注入） */
+.theme-dark .rs-in { background: #173029; color: #D9EAE3; }
+.theme-dark .rs-ab { background: #35281A; color: #F3E7D3; }
+.theme-dark .rs-un { background: #242827; color: #C8C2B5; }
+.theme-dark .rcard.in { background: #173029; border-color: #2E5B52; }
+.theme-dark .rcard.ab { background: #35281A; border-color: #5A4226; }
+.theme-dark .rcard.in .rnm { color: #D9EAE3; }
+.theme-dark .rcard.ab .rnm { color: #F3E7D3; }
+
+/* —— 暗色：未处理状态的 pill 底（浅色 rgba(0,0,0,.06) 在深色下不可见）—— */
+.theme-dark .rpill { background: rgba(255, 255, 255, .10); }

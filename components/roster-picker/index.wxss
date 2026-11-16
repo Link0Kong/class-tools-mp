@@ -1,0 +1,32 @@
+/* components/roster-picker —— 班级名单选择器（1.4.2）
+ * 气泡视觉在 app.wxss（.lp-bubble / .lp-chip 的 M3 简约 chip，组件 styleIsolation: apply-shared 共享）；
+ * 这里只放弹层内的布局：头部计数、55vh 滚动气泡网格、底部操作。 */
+.rp { display: flex; flex-direction: column; min-height: 0; }
+
+.rp-head { display: flex; flex-direction: row; align-items: baseline; justify-content: space-between; margin-bottom: 18rpx; }
+.rp-title { font-size: 34rpx; font-weight: 600; color: var(--md-on-surface); }
+.rp-count { font-size: 24rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.rp-count__n { font-size: 32rpx; font-weight: 700; color: var(--md-primary); }
+
+.rp-tip { padding: 64rpx 0; display: flex; flex-direction: column; align-items: center; gap: 24rpx;
+  font-size: 28rpx; color: var(--md-on-surface-variant); }
+.rp-tip__text { text-align: center; line-height: 1.5; }
+
+/* 快捷预设行（2026-11-11 需求 8：全班 / 班委 / 团员 / 清空；点击套基础集合后可继续逐个增删） */
+.rp-quick { display: flex; flex-direction: row; align-items: center; gap: 12rpx; margin: 0 0 16rpx; }
+.rp-qbtn {
+  flex: none; min-height: 64rpx; padding: 0 22rpx; border-radius: 999rpx; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; font-weight: 700; color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-high);
+}
+.rp-qbtn--on { background: var(--md-primary); color: #FFFFFF; }
+.rp-qbtn--ghost { background: transparent; border: 1rpx solid var(--md-outline-variant); }
+.rp-qbtn--busy { opacity: .6; }
+
+.rp-scroll { max-height: 55vh; }
+.rp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20rpx 16rpx; padding: 8rpx 4rpx 20rpx; }
+
+.rp-actions { padding-top: 18rpx; margin-top: 6rpx; border-top: 1rpx solid var(--md-outline-variant); }
+.rp-row { display: flex; flex-direction: row; align-items: center; gap: 16rpx; margin-top: 14rpx; }
+.rp-row--between { justify-content: space-between; }

@@ -1,0 +1,21 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd"><text class="title">我的数据</text></view>
+  <view class="grid">
+    <view class="cell">
+      <text class="num">{{d.pendingHomework}}</text>
+      <text class="lb">待交作业</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.doneHomework}}</text>
+      <text class="lb">已完成</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.drawRecords}}</text>
+      <text class="lb">抽签结果</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.fitnessRecords}}</text>
+      <text class="lb">体测记录</text>
+    </view>
+  </view>
+</view>

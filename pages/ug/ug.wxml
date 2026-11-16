@@ -1,0 +1,267 @@
+<!-- pages/ug/ug.wxml —— 使用说明（v2.0.0 卡片化：一屏一张卡 + 分类 chips + 总览 + 上下张）
+
+     配图：11 类 scene 全部用 view 形状 + WXSS 绘制（契约 §1.3），不新增任何图片资源、无网络资源。
+     文案：全部来自 ug.js 的 CARDS（同一份数据同时渲染卡片与总览，禁止两处维护）。 -->
+
+<!-- ============================================================ 场景配图模板（11 类 scene） -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<template name="ug-scene">
+  <view class="ug-s">
+
+    <!-- picks：三颗号码球 + 虚线洗牌箭头 -->
+    <view wx:if="{{scene === 'picks'}}" class="ug-sc ug-sc-picks">
+      <view class="ug-ball ug-ball--1">02</view>
+      <view class="ug-ball ug-ball--2">07</view>
+      <view class="ug-ball ug-ball--3">13</view>
+      <view class="ug-dash ug-dash--1"></view>
+      <view class="ug-dash ug-dash--2"></view>
+    </view>
+
+    <!-- steps：3 个编号圆点由连线串起 + 终点小旗 -->
+    <view wx:elif="{{scene === 'steps'}}" class="ug-sc ug-sc-steps">
+      <view class="ug-spot">1</view>
+      <view class="ug-track"></view>
+      <view class="ug-spot">2</view>
+      <view class="ug-track"></view>
+      <view class="ug-spot">3</view>
+      <view class="ug-flag"></view>
+    </view>
+
+    <!-- grid：4×3 宫格，一格高亮 -->
+    <view wx:elif="{{scene === 'grid'}}" class="ug-sc ug-sc-grid">
+      <view class="ug-grid">
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell ug-cell--on"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+        <view class="ug-cell"></view>
+      </view>
+    </view>
+
+    <!-- list：3 行列表，一行带勾 -->
+    <view wx:elif="{{scene === 'list'}}" class="ug-sc ug-sc-list">
+      <view class="ug-list">
+        <view class="ug-row">
+          <view class="ug-row-dot"></view>
+          <view class="ug-row-bar"></view>
+        </view>
+        <view class="ug-row">
+          <view class="ug-row-dot"></view>
+          <view class="ug-row-bar ug-row-bar--short"></view>
+        </view>
+        <view class="ug-row">
+          <view class="ug-row-dot ug-row-dot--on"></view>
+          <view class="ug-row-bar"></view>
+          <view class="ug-row-chk">✓</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- chart：柱状 + 折线（电量/趋势） -->
+    <view wx:elif="{{scene === 'chart'}}" class="ug-sc ug-sc-chart">
+      <view class="ug-chart">
+        <view class="ug-bars">
+          <view class="ug-bar ug-bar--1"></view>
+          <view class="ug-bar ug-bar--2"></view>
+          <view class="ug-bar ug-bar--3"></view>
+          <view class="ug-bar ug-bar--4"></view>
+          <view class="ug-bar ug-bar--5"></view>
+        </view>
+        <view class="ug-tline"></view>
+        <view class="ug-tdot ug-tdot--1"></view>
+        <view class="ug-tdot ug-tdot--2"></view>
+        <view class="ug-tdot ug-tdot--3"></view>
+      </view>
+    </view>
+
+    <!-- people：4 个圆形头像 + 姓名条，两个高亮 -->
+    <view wx:elif="{{scene === 'people'}}" class="ug-sc ug-sc-people">
+      <view class="ug-people">
+        <view class="ug-person">
+          <view class="ug-ava"></view>
+          <view class="ug-nm"></view>
+        </view>
+        <view class="ug-person ug-person--on">
+          <view class="ug-ava"></view>
+          <view class="ug-nm"></view>
+        </view>
+        <view class="ug-person">
+          <view class="ug-ava"></view>
+          <view class="ug-nm"></view>
+        </view>
+        <view class="ug-person ug-person--on">
+          <view class="ug-ava"></view>
+          <view class="ug-nm"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- transfer：手机 ↔ 云 ↔ 电脑，双向箭头 -->
+    <view wx:elif="{{scene === 'transfer'}}" class="ug-sc ug-sc-transfer">
+      <view class="ug-tr">
+        <view class="ug-dev">
+          <view class="ug-dev-scr"></view>
+        </view>
+        <view class="ug-arrow">⇄</view>
+        <view class="ug-cloud">
+          <view class="ug-cloud-a"></view>
+          <view class="ug-cloud-b"></view>
+          <view class="ug-cloud-base"></view>
+        </view>
+        <view class="ug-arrow">⇄</view>
+        <view class="ug-dev ug-dev--pc">
+          <view class="ug-dev-scr"></view>
+          <view class="ug-pc-base"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ballot：3 条不同长度的选项条 + 勾 -->
+    <view wx:elif="{{scene === 'ballot'}}" class="ug-sc ug-sc-ballot">
+      <view class="ug-ballot">
+        <view class="ug-opt">
+          <view class="ug-opt-box"></view>
+          <view class="ug-opt-bar" style="width:300rpx"></view>
+        </view>
+        <view class="ug-opt">
+          <view class="ug-opt-box"></view>
+          <view class="ug-opt-bar" style="width:230rpx"></view>
+        </view>
+        <view class="ug-opt">
+          <view class="ug-opt-box ug-opt-box--on">✓</view>
+          <view class="ug-opt-bar" style="width:180rpx"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- droplet：大水滴 + 用量刻度条 -->
+    <view wx:elif="{{scene === 'droplet'}}" class="ug-sc ug-sc-droplet">
+      <view class="ug-droplet">
+        <view class="ug-drop"><view class="ug-drop-in"></view></view>
+        <view class="ug-scale">
+          <view class="ug-tick ug-tick--on"></view>
+          <view class="ug-tick ug-tick--on"></view>
+          <view class="ug-tick ug-tick--on"></view>
+          <view class="ug-tick"></view>
+          <view class="ug-tick ug-tick--short"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- shield：盾牌 + 对勾 + 锁点 -->
+    <view wx:elif="{{scene === 'shield'}}" class="ug-sc ug-sc-shield">
+      <view class="ug-shield">
+        <view class="ug-shield-top"></view>
+        <view class="ug-shield-bot"></view>
+        <view class="ug-shield-chk"></view>
+        <view class="ug-shield-lock"><view class="ug-shield-shackle"></view></view>
+      </view>
+    </view>
+
+    <!-- slides：层叠幻灯片 + 播放三角 -->
+    <view wx:elif="{{scene === 'slides'}}" class="ug-sc ug-sc-slides">
+      <view class="ug-slides">
+        <view class="ug-sl ug-sl--3"></view>
+        <view class="ug-sl ug-sl--2"></view>
+        <view class="ug-sl ug-sl--1"><view class="ug-play"></view></view>
+      </view>
+    </view>
+
+  </view>
+</template>
+
+<!-- ============================================================ 卡片模板 -->
+<template name="ug-card">
+  <view class="ug-card" style="{{cardH > 0 ? 'height:' + cardH + 'px;' : ''}}">
+    <view class="ug-hero ug-tone-{{card.tone}}">
+      <template is="ug-scene" data="{{scene: card.scene}}" />
+    </view>
+    <view class="ug-card-body">
+      <view class="ug-title">{{card.title}}</view>
+      <view class="ug-sub">{{card.sub}}</view>
+      <view class="ug-steps">
+        <view class="ug-step" wx:for="{{card.steps}}" wx:key="*this">
+          <view class="ug-step-n">{{index + 1}}</view>
+          <view class="ug-step-t">{{item}}</view>
+        </view>
+      </view>
+      <view class="ug-tip">
+        <text class="ug-tip-i">💡</text>
+        <text class="ug-tip-t">{{card.tip}}</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<!-- ============================================================ 页面 -->
+<view class="page ug-page {{themeClass}}">
+
+  <!-- 顶栏只保留一行副标题 + 分类胶囊 + 页码 + 总览，避免与原生导航栏「使用说明」标题重复 -->
+  <top-app-bar title="" subtitle="" collapsed="{{scrolled}}">
+    <view class="ug-head">
+      <view class="ug-hint">左右滑动 · 一键总览</view>
+      <view class="ug-cat-pill">{{catName}}</view>
+      <view class="ug-page-num">{{cur + 1}}/{{cards.length}}</view>
+      <view class="ug-ov-btn" bindtap="openOv" hover-class="ug-ov-btn--tap" aria-role="button" aria-label="打开全部说明总览">▦ 总览</view>
+    </view>
+  </top-app-bar>
+
+  <!-- 分类快捷标签：点标签跳到该分类首张卡，当前分类高亮 -->
+  <scroll-view class="ug-chips" scroll-x enhanced show-scrollbar="{{false}}" scroll-into-view="chip-{{curCat}}" scroll-with-animation>
+    <view class="ug-chip {{item.key === curCat ? 'ug-chip--on' : ''}}"
+          wx:for="{{cats}}" wx:key="key" id="chip-{{item.key}}"
+          data-cat="{{item.key}}" bindtap="jumpCat" aria-role="button" aria-label="跳到{{item.name}}说明">{{item.name}}</view>
+  </scroll-view>
+
+  <!-- 一屏一张卡：swiper 高度由 JS 实测卡片最大高度后 setData（clamp 屏幕可用高度） -->
+  <swiper class="ug-swiper" style="height:{{swiperH}}px" current="{{cur}}" duration="280" circular="{{false}}" bindchange="onSwipe">
+    <swiper-item wx:for="{{cards}}" wx:key="id" class="ug-slide">
+      <scroll-view scroll-y class="ug-slide-scroll" enhanced show-scrollbar="{{false}}">
+        <template is="ug-card" data="{{card: item, idx: index, cardH: cardH}}" />
+      </scroll-view>
+    </swiper-item>
+  </swiper>
+
+  <!-- 底部：上一张 / 页码 / 下一张（首尾禁用、不循环） -->
+  <view class="ug-foot">
+    <view class="ug-nav {{cur === 0 ? 'ug-nav--off' : ''}}" bindtap="prev" hover-class="ug-nav--tap" aria-role="button" aria-label="上一张说明">‹ 上一张</view>
+    <view class="ug-count">{{cur + 1}} / {{cards.length}}</view>
+    <view class="ug-nav {{cur === cards.length - 1 ? 'ug-nav--off' : ''}}" bindtap="next" hover-class="ug-nav--tap" aria-role="button" aria-label="下一张说明">下一张 ›</view>
+  </view>
+
+  <view class="ugver">{{versionText}}</view>
+
+  <!-- ============================================================ 一键总览（遮罩弹层，按分类分组） -->
+  <view class="ug-ov" wx:if="{{ov}}" bindtap="closeOv" catchtouchmove="noop">
+    <view class="ug-ov-panel" catchtap="noop">
+      <view class="ug-ov-head">
+        <view class="ug-ov-title">全部说明 · {{cards.length}} 张</view>
+        <view class="ug-ov-x" bindtap="closeOv" aria-role="button" aria-label="关闭总览">×</view>
+      </view>
+      <scroll-view scroll-y class="ug-ov-body" enhanced show-scrollbar="{{false}}">
+        <view class="ug-ov-grp" wx:for="{{ovGroups}}" wx:key="key">
+          <view class="ug-ov-cat">{{item.name}} · {{item.cards.length}}</view>
+          <view class="ug-ov-li" wx:for="{{item.cards}}" wx:for-item="c" wx:key="id"
+                data-idx="{{c.idx}}" bindtap="jumpTo" hover-class="ug-ov-li--tap"
+                aria-role="button" aria-label="跳到{{c.title}}说明">
+            <view class="ug-ov-ico ug-tone-{{c.tone}}">{{c.icon}}</view>
+            <view class="ug-ov-txt">
+              <view class="ug-ov-t">{{c.title}}</view>
+              <view class="ug-ov-s">{{c.sub}}</view>
+            </view>
+            <view class="ug-ov-arr">›</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+</view>

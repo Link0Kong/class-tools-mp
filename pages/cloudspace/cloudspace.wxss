@@ -1,0 +1,77 @@
+/* pages/cloudspace/cloudspace.wxss —— 文件传输 · 临时云空间（M3 token，无新配色） */
+
+.cs-page { padding: 8rpx 0 48rpx; }
+
+.cs-head { display: flex; align-items: flex-end; padding: 20rpx 0 18rpx; }
+.cs-head-l { flex: 1; min-width: 0; }
+.cs-title { font-size: 52rpx; font-weight: 600; line-height: 1.2; color: var(--md-on-surface); }
+.cs-sub { margin-top: 6rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.cs-refresh {
+  flex: none; height: 64rpx; padding: 0 28rpx; display: flex; align-items: center;
+  border-radius: var(--md-shape-full); background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant); font-size: 26rpx;
+}
+.cs-hover { opacity: .82; }
+
+.cs-stats { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
+.cs-stat {
+  flex: 1; min-width: 0; padding: 20rpx 22rpx; border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low);
+}
+.cs-stat-n { font-size: 34rpx; font-weight: 600; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+.cs-stat-l { margin-top: 4rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+
+.cs-actions { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
+.cs-primary {
+  flex: 1; height: 88rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); background: var(--md-primary); color: var(--md-on-primary);
+  font-size: 30rpx; font-weight: 500; box-shadow: var(--md-elev-1);
+}
+.cs-ghost {
+  flex: none; height: 88rpx; padding: 0 36rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant); font-size: 28rpx;
+}
+
+.cs-tip {
+  margin-bottom: 20rpx; padding: 18rpx 24rpx; border-radius: var(--md-shape-sm);
+  background: var(--md-error-container, #F3DDD6); color: var(--md-on-error-container, #6B2A1C);
+  font-size: 24rpx; line-height: 1.5;
+}
+
+.cs-card {
+  margin-bottom: 20rpx; padding: 24rpx; border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low);
+}
+.cs-card-h { display: flex; align-items: baseline; font-size: 28rpx; font-weight: 600; color: var(--md-on-surface); }
+.cs-card-c { margin-left: auto; font-size: 22rpx; font-weight: 400; color: var(--md-on-surface-variant); }
+
+.cs-empty { padding: 48rpx 0; text-align: center; font-size: 25rpx; color: var(--md-on-surface-variant); }
+
+.cs-up { margin-top: 20rpx; }
+.cs-up-top { display: flex; align-items: baseline; gap: 16rpx; }
+.cs-up-name {
+  flex: 1; min-width: 0; font-size: 25rpx; color: var(--md-on-surface);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cs-up-pct { flex: none; font-size: 23rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.cs-up-bar { height: 10rpx; margin-top: 10rpx; border-radius: 999rpx; background: var(--md-surface-container-high); overflow: hidden; }
+.cs-up-in { height: 100%; width: 0; border-radius: 999rpx; background: var(--md-primary); transition: width .18s linear; }
+.cs-up-foot { margin-top: 8rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+
+.cs-file { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 0; border-top: 1rpx solid var(--md-outline-variant, rgba(0,0,0,.06)); }
+.cs-file:first-of-type { border-top: 0; }
+.cs-file-ico { flex: none; width: 56rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; font-size: 30rpx; border-radius: var(--md-shape-md); background: var(--md-surface-container-high); }
+.cs-file-main { flex: 1; min-width: 0; }
+.cs-file-name { font-size: 26rpx; font-weight: 500; color: var(--md-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-file-meta { margin-top: 4rpx; font-size: 21rpx; color: var(--md-on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-file-acts { flex: none; display: flex; gap: 10rpx; }
+.cs-dl, .cs-del {
+  height: 64rpx; min-width: 88rpx; padding: 0 16rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); font-size: 24rpx; font-weight: 500;
+}
+.cs-dl { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.cs-del { background: var(--md-surface-container-high); color: var(--md-error, #9A3D2B); }
+
+.cs-expired { margin-top: 16rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.cs-note { padding: 4rpx 8rpx; font-size: 22rpx; line-height: 1.65; color: var(--md-on-surface-variant); }

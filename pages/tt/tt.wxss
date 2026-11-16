@@ -1,0 +1,335 @@
+.ttp { padding-top: 12rpx; }
+
+/* ===================== 课表页本地配色（浅色 = 原值；暗色 = M3 深色） ===================== */
+.ttp {
+  --tt-card-a: #FFFFFF;
+  --tt-card-b: #FFFCF6;
+  --tt-btn-bg: #FFFFFF;
+  --tt-line: #E8ECE6;
+  --tt-line-2: #E9EDE7;
+  --tt-line-3: #E7EBE4;
+  --tt-line-soft: #F0F3EF;
+  --tt-title: #33443F;
+  --tt-title-2: #2F3F3B;
+  --tt-text: #5F6F6A;
+  --tt-text-2: #68766F;
+  --tt-text-3: #5C6B66;
+  --tt-text-4: #6D7C75;
+  --tt-dim: #93A09A;
+  --tt-dim-2: #9AA7A1;
+  --tt-dim-3: #8A968F;
+  --tt-dim-4: #93A29B;
+  --tt-faint: #A2ACA6;
+  --tt-accent: #4C7A6B;
+  --tt-accent-strong: #2F5B4C;
+  --tt-seg-bg: #EFF2EC;
+  --tt-seg-on-bg: #FFFFFF;
+  --tt-today-bg: #E7F2EC;
+  --tt-today-text: #3F6B58;
+  --tt-day-on-border: #BCD6C9;
+  --tt-day-on-a: #EFF6F1;
+  --tt-day-on-b: #F8F3EA;
+  --tt-dot: #7FA697;
+  --tt-grid-bg: #FBFCFB;
+  --tt-grid-mask: #FFFCF6;
+  --tt-label-bg: #F1F5F0;
+  --tt-pill-bg: #F2F5F1;
+  --tt-next-a: #EAF4EF;
+  --tt-next-b: #F8F1E9;
+  --tt-next-border: rgba(255, 255, 255, .75);
+  --tt-next-divider: rgba(120, 150, 135, .22);
+  --tt-shadow-1: rgba(90, 110, 100, .06);
+  --tt-shadow-2: rgba(90, 110, 100, .07);
+  --tt-shadow-3: rgba(90, 110, 100, .10);
+  --tt-shadow-seg: rgba(61, 74, 70, .10);
+}
+.ttp.theme-dark {
+    --tt-card-a: #262B23;
+    --tt-card-b: #20251E;
+    --tt-btn-bg: #262B23;
+    --tt-line: #3A4038;
+    --tt-line-2: #363C34;
+    --tt-line-3: #363C34;
+    --tt-line-soft: #30362E;
+    --tt-title: #EDE8DC;
+    --tt-title-2: #EDE8DC;
+    --tt-text: #C8C2B5;
+    --tt-text-2: #C8C2B5;
+    --tt-text-3: #C8C2B5;
+    --tt-text-4: #C8C2B5;
+    --tt-dim: #A9A69B;
+    --tt-dim-2: #A09D93;
+    --tt-dim-3: #B0AC9F;
+    --tt-dim-4: #A09D93;
+    --tt-faint: #8F958A;
+    --tt-accent: #9BC9BB;
+    --tt-accent-strong: #D9EAE3;
+    --tt-seg-bg: #2A2F27;
+    --tt-seg-on-bg: #3A4038;
+    --tt-today-bg: #2E5147;
+    --tt-today-text: #D9EAE3;
+    --tt-day-on-border: #4A5F55;
+    --tt-day-on-a: #2A352F;
+    --tt-day-on-b: #2B2620;
+    --tt-dot: #9BC9BB;
+    --tt-grid-bg: #1E231C;
+    --tt-grid-mask: #1B1E1A;
+    --tt-label-bg: #262B24;
+    --tt-pill-bg: #2E332B;
+    --tt-next-a: #233029;
+    --tt-next-b: #2B2620;
+    --tt-next-border: rgba(255, 255, 255, .06);
+    --tt-next-divider: rgba(255, 255, 255, .10);
+    --tt-shadow-1: rgba(0, 0, 0, .35);
+    --tt-shadow-2: rgba(0, 0, 0, .40);
+    --tt-shadow-3: rgba(0, 0, 0, .50);
+    --tt-shadow-seg: rgba(0, 0, 0, .45);
+}
+
+/* —— 与网页端一致的暖白卡片（暗色为深色卡）—— */
+.ttcard {
+  background: linear-gradient(180deg, var(--tt-card-a) 0%, var(--tt-card-b) 100%);
+  border-radius: 40rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden; /* 左右滑动飞出/飞入时裁剪在卡片内（卡片自带 28rpx 内边距，阴影不会被切） */
+  box-shadow: 0 4rpx 18rpx var(--tt-shadow-1);
+}
+
+.tthead { display: flex; flex-direction: column; }
+.ttwk { display: flex; align-items: center; }
+.wbtn {
+  width: 72rpx; height: 72rpx; flex: none;
+  border: 2rpx solid var(--tt-line); background: var(--tt-btn-bg); border-radius: 22rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38rpx; line-height: 1; color: var(--tt-text);
+}
+.wlab { flex: 1; min-width: 0; text-align: center; line-height: 1.25; }
+.wlb { display: block; font-size: 34rpx; font-weight: 800; color: var(--tt-title); }
+.wli { display: block; font-size: 21rpx; color: var(--tt-dim); margin-top: 2rpx; }
+.ttseg { display: flex; flex: none; background: var(--tt-seg-bg); border-radius: 22rpx; padding: 5rpx; }
+.ttseg .seg {
+  height: 62rpx; line-height: 62rpx; padding: 0 24rpx;
+  font-size: 25rpx; font-weight: 700; color: var(--tt-text-2); border-radius: 17rpx;
+}
+.ttseg .seg.on { background: var(--tt-seg-on-bg); color: var(--tt-accent); box-shadow: 0 2rpx 8rpx var(--tt-shadow-seg); }
+
+.ttacts { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12rpx; margin-top: 18rpx; }
+.tbtn {
+  display: flex; align-items: center; justify-content: center;
+  height: 62rpx; padding: 0 24rpx;
+  border: 2rpx solid var(--tt-line); background: var(--tt-btn-bg); border-radius: 20rpx;
+  font-size: 24rpx; color: var(--tt-text);
+}
+.tbtn--center { margin: 28rpx auto 0; width: 200rpx; }
+.syncst { margin-left: auto; font-size: 20rpx; color: var(--tt-dim); }
+
+/* —— 下一节 —— */
+.nextbox {
+  display: flex; align-items: center; gap: 20rpx;
+  background: linear-gradient(135deg, var(--tt-next-a) 0%, var(--tt-next-b) 100%);
+  border: 2rpx solid var(--tt-next-border);
+  border-radius: 30rpx; padding: 24rpx 28rpx; margin-top: 20rpx;
+}
+.nwhen { flex: none; min-width: 136rpx; text-align: center; border-right: 1rpx solid var(--tt-next-divider); padding-right: 20rpx; }
+.nk { display: block; font-size: 20rpx; letter-spacing: 2rpx; color: var(--tt-accent); font-weight: 700; }
+.nclock { display: block; font-size: 38rpx; font-weight: 800; color: var(--tt-accent-strong); line-height: 1.3; margin-top: 2rpx; }
+.nmain { flex: 1; min-width: 0; }
+.nv { display: block; font-size: 30rpx; font-weight: 700; color: var(--tt-title-2); }
+.nt { display: block; font-size: 22rpx; color: var(--tt-text-4); margin-top: 4rpx; line-height: 1.5; }
+
+/* —— 周表 —— */
+.ttswipe-track { will-change: transform, opacity; } /* 内容区左右滑动：transform/opacity 由 tt.js 跟手控制 */
+.tscroll { margin-top: 20rpx; width: 100%; }
+.tgrid { display: inline-block; min-width: 100%; }
+.trow { display: flex; flex-direction: row; align-items: stretch; }
+.tpd {
+  width: 96rpx; flex: none; text-align: center;
+  font-size: 21rpx; color: var(--tt-faint); padding: 12rpx 0;
+}
+.tpb { display: block; font-size: 23rpx; font-weight: 700; color: var(--tt-text-3); }
+.tpt { display: block; font-size: 18rpx; line-height: 1.35; color: var(--tt-dim-4); }
+/* 表头列宽由 tt.js 的 colW 行内 style 覆盖（106/89/76rpx）；border-box 保证 width=行内值、
+   不因左右 padding 加宽而把整行撑出卡片（旧版内容盒会多 6rpx/列，6/7 天时加剧横向溢出）。 */
+.td { width: 106rpx; flex: none; text-align: center; padding: 4rpx 3rpx; box-sizing: border-box; }
+.thead .td { padding: 10rpx 0 14rpx; }
+.td.today .tdn, .td.today .tdd { color: var(--tt-accent); }
+.tdn { display: block; font-size: 24rpx; font-weight: 700; color: var(--tt-text-3); }
+.tdd { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 4rpx; font-size: 20rpx; font-weight: 600; color: var(--tt-dim-2); margin-top: 2rpx; }
+.th-today {
+  display: inline-block; padding: 0 7rpx;
+  border-radius: 999rpx; background: var(--tt-today-bg); color: var(--tt-today-text);
+  font-size: 17rpx; font-weight: 700; line-height: 1.6;
+}
+.cell { padding: 3rpx; min-height: 74rpx; }
+.crs {
+  border-radius: 20rpx; padding: 10rpx 8rpx; margin-bottom: 8rpx;
+  min-height: 76rpx; box-sizing: border-box; overflow: hidden;
+  background: var(--tt-c-bg); color: var(--tt-c-fg);
+  box-shadow: 0 2rpx 10rpx var(--tt-shadow-3);
+}
+.crs.cont { border-radius: 0; padding: 0; margin-bottom: 0; box-shadow: none; min-height: 100%; height: 100%; }
+.cname { display: block; font-size: 23rpx; font-weight: 700; line-height: 1.28; word-break: break-all; }
+.croom { display: block; font-size: 19rpx; opacity: .78; margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cspan { display: block; font-size: 18rpx; opacity: .72; margin-top: 3rpx; }
+
+/* —— 日视图 —— */
+.ttday { display: flex; flex-direction: row; gap: 10rpx; margin-top: 20rpx; }
+.daybtn {
+  position: relative;
+  flex: 1; min-width: 0; border: 2rpx solid var(--tt-line-2); background: var(--tt-btn-bg);
+  border-radius: 26rpx; padding: 14rpx 2rpx 18rpx; text-align: center;
+}
+.daybtn.on { border-color: var(--tt-day-on-border); background: linear-gradient(180deg, var(--tt-day-on-a), var(--tt-day-on-b)); }
+.daybtn.today .ddn { color: var(--tt-accent); }
+.ddot { position: absolute; left: 50%; bottom: 7rpx; width: 8rpx; height: 8rpx; margin-left: -4rpx; border-radius: 50%; background: var(--tt-dot); }
+.ddn { display: block; font-size: 24rpx; font-weight: 700; color: var(--tt-text-2); }
+.ddd { display: block; font-size: 18rpx; color: var(--tt-dim-2); margin-top: 2rpx; }
+.daylist { margin-top: 20rpx; }
+.dcourse {
+  position: relative; display: flex; flex-direction: row; align-items: flex-start;
+  background: var(--tt-btn-bg); border-radius: 28rpx; padding: 20rpx 24rpx 20rpx 30rpx;
+  margin-top: 16rpx; overflow: hidden;
+  box-shadow: 0 3rpx 14rpx var(--tt-shadow-2);
+}
+.dbar { position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; border-radius: 0 10rpx 10rpx 0; background: var(--tt-c-bg); }
+.dt { flex: none; width: 112rpx; }
+.dtime { display: block; font-size: 27rpx; font-weight: 800; color: var(--tt-title); }
+.dperiod { display: block; font-size: 19rpx; color: var(--tt-dim-2); margin-top: 2rpx; }
+.db { flex: 1; min-width: 0; }
+.dname { display: block; font-size: 30rpx; font-weight: 700; color: var(--tt-title); word-break: break-all; }
+.dmeta { display: block; font-size: 22rpx; color: var(--tt-text-4); margin-top: 4rpx; }
+.dweeks { display: inline-block; font-size: 19rpx; color: var(--tt-dim-3); border: 2rpx solid var(--tt-line-3); border-radius: 999rpx; padding: 1rpx 12rpx; margin-top: 8rpx; }
+
+/* —— 全部课程 —— */
+.ttlisttol {
+  display: flex; flex-direction: row; align-items: center; gap: 8rpx;
+  margin-top: 22rpx; padding: 20rpx 24rpx;
+  border: 2rpx solid var(--tt-line-2); border-radius: 24rpx; background: var(--tt-btn-bg);
+  font-size: 24rpx; font-weight: 600; color: var(--tt-accent);
+}
+.ttln { font-size: 21rpx; color: var(--tt-dim); }
+.ttlisttol .ar { margin-left: auto; font-size: 26rpx; }
+.ttlist { margin-top: 10rpx; }
+.gitem { display: flex; flex-direction: row; align-items: flex-start; gap: 16rpx; padding: 18rpx 4rpx; border-bottom: 1rpx solid var(--tt-line-soft); }
+.gitem:last-child { border-bottom: none; }
+.cdot { width: 18rpx; height: 18rpx; border-radius: 50%; margin-top: 8rpx; flex: none; background: var(--tt-c-fg); }
+.ginfo { flex: 1; min-width: 0; }
+.gname { display: block; font-size: 28rpx; font-weight: 600; color: var(--tt-title); }
+.gpills { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8rpx; margin-top: 8rpx; }
+.gpill { font-size: 19rpx; color: var(--tt-text-2); background: var(--tt-pill-bg); border-radius: 999rpx; padding: 2rpx 12rpx; }
+.gmeta { display: block; font-size: 21rpx; color: var(--tt-dim-3); margin-top: 8rpx; }
+
+/* —— 空/错误/加载 —— */
+.ttstate { text-align: center; padding: 80rpx 0 40rpx; font-size: 24rpx; color: var(--tt-dim); }
+.ttstate--sm { padding: 48rpx 0; }
+.ttstate-t { display: block; font-size: 30rpx; color: var(--tt-title); font-weight: 600; }
+.ttstate-s { display: block; font-size: 22rpx; margin-top: 8rpx; }
+
+/* —— 详情 —— */
+.ttc-name { display: flex; flex-direction: row; align-items: center; gap: 12rpx; font-size: 34rpx; font-weight: 600; color: var(--md-on-surface); margin-bottom: 16rpx; }
+.ttc-dot { width: 20rpx; height: 20rpx; border-radius: 6rpx; flex: none; background: var(--tt-c-fg); }
+.ttc-row { display: flex; flex-direction: row; align-items: flex-start; padding: 18rpx 0; border-bottom: 1rpx solid var(--tt-line-soft); }
+.ttc-row:last-child { border-bottom: none; }
+.ttc-k { width: 96rpx; flex: none; font-size: 25rpx; color: var(--tt-dim-3); }
+.ttc-v { flex: 1; min-width: 0; font-size: 27rpx; color: var(--tt-title); line-height: 1.5; word-break: break-all; }
+
+.exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
+
+/* —— 周表：绝对定位课程块，跨节次连续 —— */
+.tbody { display: flex; flex-direction: row; align-items: flex-start; }
+.tplabels { width: 96rpx; flex: none; }
+.tplabel { display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 2rpx; background: var(--tt-label-bg); border: 3rpx solid var(--tt-grid-mask); border-radius: 16rpx; box-shadow: 0 1rpx 4rpx var(--tt-shadow-1); }
+.daycol { width: 106rpx; flex: none; position: relative; box-sizing: border-box; }
+.rowline { width: 100%; box-sizing: border-box; border: 3rpx solid var(--tt-grid-mask); background: var(--tt-grid-bg); border-radius: 14rpx; }
+.crs.abs {
+  position: absolute; left: 3rpx; right: 3rpx; z-index: 2;
+  margin: 0; min-height: 0; padding: 6rpx 7rpx;
+  border-radius: 16rpx; box-sizing: border-box; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center;
+  box-shadow: 0 2rpx 10rpx var(--tt-shadow-3);
+}
+.crs.abs .cname { font-size: 22rpx; line-height: 1.26; }
+.crs.abs .croom { font-size: 18rpx; margin-top: 3rpx; }
+.crs.abs .cspan { font-size: 17rpx; margin-top: 2rpx; }
+
+/* ===================== 6/7 天窄列 dense（2026-11-06 用户反馈） =====================
+ * 周六/周日有课时周表也要一屏完整显示（不靠左右滑动）。列宽由 tt.js 按卡片内宽自适应：
+ * 5/6/7 天 = 106/89/76rpx，内容宽 96+days×colW = 626/630/628rpx ≤ TT_CARD_INNER(630rpx)。
+ * 这里只收紧窄列字号/内边距：行高 96rpx、跨节次绝对定位、课程块 bindtap 可点区都不变。
+ * 课程名字号下限 19rpx（≈9.5px）；单节课块课程名最多 2 行（省略），跨节块可完整换行；
+ * 7 天隐藏冗余「第X-Y节」（跨节高度已表达，省出的高度留给课程名/教室）。 */
+.tt-dense .td { padding: 2rpx 0; }
+.tt-dense .thead .td { padding: 8rpx 0 10rpx; }
+.tt-dense .tdn { font-size: 22rpx; }
+.tt-dense .tdd { font-size: 18rpx; gap: 2rpx; flex-wrap: wrap; }
+.tt-dense .th-today { font-size: 15rpx; padding: 0 5rpx; }
+.tt-dense .crs.abs { padding: 4rpx 3rpx; border-radius: 12rpx; }
+.tt-dense .crs.abs .cname { font-size: 21rpx; line-height: 1.2; }
+.tt-dense .crs.abs .croom { font-size: 17rpx; margin-top: 2rpx; }
+.tt-dense .crs.abs .cspan { font-size: 15rpx; margin-top: 1rpx; }
+.tt-dense .crs.abs.crs-one .cname {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.tt-dense7 .crs.abs { padding: 3rpx 2rpx; }
+.tt-dense7 .crs.abs .cname { font-size: 19rpx; line-height: 1.16; }
+.tt-dense7 .crs.abs .croom { font-size: 15rpx; margin-top: 1rpx; }
+.tt-dense7 .crs.abs.crs-one .cname { -webkit-line-clamp: 2; }
+
+/* ===================== 课程色板（浅色 / 暗色） =====================
+ * JS 只负责给每门课分配稳定索引（.tt-c0 ~ .tt-c15），颜色全部由这里决定，
+ * 因此系统主题切换时无需重新渲染即可自动换色。
+ */
+.tt-c0  { --tt-c-bg: #DCE6F0; --tt-c-fg: #3D5872; }
+.tt-c1  { --tt-c-bg: #E7D9EC; --tt-c-fg: #5A4368; }
+.tt-c2  { --tt-c-bg: #DDEBDD; --tt-c-fg: #3F6047; }
+.tt-c3  { --tt-c-bg: #F1DDD9; --tt-c-fg: #6E4441; }
+.tt-c4  { --tt-c-bg: #F0E5CD; --tt-c-fg: #66572F; }
+.tt-c5  { --tt-c-bg: #D9E3E8; --tt-c-fg: #3E5A63; }
+.tt-c6  { --tt-c-bg: #EEDCE4; --tt-c-fg: #6B4356; }
+.tt-c7  { --tt-c-bg: #DFE6CD; --tt-c-fg: #546132; }
+.tt-c8  { --tt-c-bg: #D8E7E4; --tt-c-fg: #35605A; }
+.tt-c9  { --tt-c-bg: #E8DBD2; --tt-c-fg: #644A3A; }
+.tt-c10 { --tt-c-bg: #DEDBEC; --tt-c-fg: #474569; }
+.tt-c11 { --tt-c-bg: #F2E3D4; --tt-c-fg: #6D4F36; }
+.tt-c12 { --tt-c-bg: #D5E3F2; --tt-c-fg: #3B5578; }
+.tt-c13 { --tt-c-bg: #E9E2C9; --tt-c-fg: #625A33; }
+.tt-c14 { --tt-c-bg: #E5D8DE; --tt-c-fg: #5D4250; }
+.tt-c15 { --tt-c-bg: #D3E5DB; --tt-c-fg: #39604E; }
+/* 2026-11-15 外观：课程色板暗色跟随实际生效主题（.theme-dark 由 utils/appearance.js 注入） */
+  .theme-dark .tt-c0  { --tt-c-bg: #2A3C4E; --tt-c-fg: #CCD4DC; }
+  .theme-dark .tt-c1  { --tt-c-bg: #432D4B; --tt-c-fg: #D5CED9; }
+  .theme-dark .tt-c2  { --tt-c-bg: #304830; --tt-c-fg: #CED9D1; }
+  .theme-dark .tt-c3  { --tt-c-bg: #512E27; --tt-c-fg: #DBCECD; }
+  .theme-dark .tt-c4  { --tt-c-bg: #544524; --tt-c-fg: #DED8CA; }
+  .theme-dark .tt-c5  { --tt-c-bg: #314047; --tt-c-fg: #CDD7DA; }
+  .theme-dark .tt-c6  { --tt-c-bg: #4B2C3A; --tt-c-fg: #DACDD3; }
+  .theme-dark .tt-c7  { --tt-c-bg: #434B2D; --tt-c-fg: #D7DCCB; }
+  .theme-dark .tt-c8  { --tt-c-bg: #314742; --tt-c-fg: #CCDBD9; }
+  .theme-dark .tt-c9  { --tt-c-bg: #4A392D; --tt-c-fg: #DBD2CD; }
+  .theme-dark .tt-c10 { --tt-c-bg: #332E4A; --tt-c-fg: #CFCED9; }
+  .theme-dark .tt-c11 { --tt-c-bg: #543C24; --tt-c-fg: #DDD3CB; }
+  .theme-dark .tt-c12 { --tt-c-bg: #243B54; --tt-c-fg: #CAD2DD; }
+  .theme-dark .tt-c13 { --tt-c-bg: #4F4729; --tt-c-fg: #DCD9CB; }
+  .theme-dark .tt-c14 { --tt-c-bg: #45333B; --tt-c-fg: #D8CFD4; }
+  .theme-dark .tt-c15 { --tt-c-bg: #30473B; --tt-c-fg: #CDDBD4; }
+
+/* ===================== 课表登录（2026-11-08）：入口按钮 / 弹层 / 状态 =====================
+ * 登录成功写 store.ttLocal（个人教务课表，UD v6 tt.ttLocal 跨端同步）→ 课表页优先显示「我的课表」；
+ * 「清除我的课表」回退公共课表。密码只在本页 data 中短暂存在，提交后立刻清空（不落 storage/日志）。 */
+.tbtn--login { color: var(--tt-accent); border-color: var(--tt-accent); }
+.syncst--mine { color: var(--tt-accent); font-weight: 700; }
+.ttl-row { display: flex; flex-direction: row; align-items: center; padding: 18rpx 0; border-bottom: 1rpx solid var(--tt-line-soft); }
+.ttl-row:last-of-type { border-bottom: none; }
+.ttl-k { width: 96rpx; flex: none; font-size: 25rpx; color: var(--tt-dim-3); }
+.ttl-v { flex: 1; min-width: 0; font-size: 27rpx; color: var(--tt-title); font-variant-numeric: tabular-nums; }
+.ttl-in { flex: 1; min-width: 0; height: 64rpx; font-size: 27rpx; color: var(--tt-title); }
+.ttl-msg { margin-top: 14rpx; font-size: 22rpx; line-height: 1.5; color: var(--tt-dim); }
+.ttl-err { margin-top: 14rpx; font-size: 22rpx; line-height: 1.5; color: var(--md-error); }
+.ttl-btns { display: flex; flex-direction: row; gap: 16rpx; margin-top: 24rpx; }
+.ttl-btns .tbtn { flex: 1; height: 76rpx; border-radius: 24rpx; font-size: 27rpx; font-weight: 700; }
+.tbtn--login-main { background: var(--tt-accent); color: #FFFFFF; border-color: var(--tt-accent); }
+.tbtn--dis { opacity: .55; pointer-events: none; }
+.tbtn--clear { color: var(--md-error); border-color: var(--md-error); }
+
+.nmap{margin-top:12rpx;height:58rpx;line-height:58rpx;text-align:center;border:1rpx solid #DCE6DE;border-radius:12rpx;background:#fff;color:#4E9082;font-size:22rpx;font-weight:600}

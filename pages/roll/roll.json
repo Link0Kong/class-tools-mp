@@ -1,0 +1,9 @@
+{
+  "navigationStyle": "default",
+  "navigationBarTitleText": "点名",
+  "usingComponents": {
+    "touchable": "/components/touchable/index",
+    "empty-state": "/components/empty-state/index",
+    "roster-picker": "/components/roster-picker/index"
+  }
+}

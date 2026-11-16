@@ -1,0 +1,194 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b pad-action {{themeClass}}">
+
+  <top-app-bar title="作业板" subtitle="未完成 {{open.length}} 条 · 已完成 {{done.length}} 条" collapsed="{{scrolled}}" />
+
+  <segmented items="{{segs}}" value="{{tab}}" bindchange="onSeg" />
+
+  <view wx:if="{{cloudEnabled}}" class="muted" style="padding:12rpx 32rpx 0;font-size:22rpx">{{syncText}}</view>
+
+  <view class="section-gap"></view>
+
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="sk sk-title sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+    <view class="sk sk-card sk-shimmer enter enter-2"></view>
+  </block>
+
+  <view class="m3-card m3-card--outlined" wx:elif="{{state === 'error'}}">
+    <empty-state icon="⚠" title="读取作业失败" text="{{errorText}}" action-text="重试" bind:action="refresh"></empty-state>
+  </view>
+
+  <block wx:else>
+    <!-- —— 未完成 —— -->
+    <block wx:if="{{tab === 'open'}}">
+      <view class="m3-card m3-card--filled enter enter-1" wx:if="{{!open.length}}">
+        <empty-state icon="📝" title="没有未完成的作业" text="真棒，或者点下面添加一条" action-text="添加作业" bind:action="openSheet"></empty-state>
+      </view>
+
+      <block wx:else>
+        <swipe-item wx:for="{{open}}" wx:key="index" index="{{index}}"
+                    actions="{{item.actions}}" bind:action="delOpen">
+          <view id="hw-{{item.id}}" class="m3-li m3-li--card {{hoFocus === item.id ? 'ho-focus' : ''}}">
+            <view class="m3-li__lead m3-li__lead--tertiary hw-lead" aria-hidden="true">
+              <view class="hw-book">
+                <view class="hw-book__spine"></view>
+                <view class="hw-book__line"></view>
+                <view class="hw-book__line hw-book__line--short"></view>
+              </view>
+            </view>
+            <view class="m3-li__body">
+              <view class="m3-li__title" wx:if="{{item.subject}}">
+                <text class="subj">【{{item.subject}}】</text>
+              </view>
+              <view class="hw-body">{{item.content}}</view>
+              <view class="att-row" wx:if="{{item.attCount}}">
+                <block wx:for="{{item.atts}}" wx:for-item="att" wx:for-index="ai" wx:key="n">
+                  <image wx:if="{{att.img}}" class="att-thumb" lazy-load src="data:{{att.t}};base64,{{att.d}}" mode="aspectFill"
+                         data-list="open" data-i="{{index}}" data-j="{{ai}}" bindtap="previewAtt" />
+                  <view wx:else class="att-chip" data-list="open" data-i="{{index}}" data-j="{{ai}}" bindtap="previewAtt">📎 {{att.n}}</view>
+                </block>
+              </view>
+              <view class="row wrap" style="margin-top:8rpx">
+                <text class="pill pill--{{item.tagCls === 'danger' ? 'error' : (item.tagCls === 'warn' ? 'tertiary' : (item.tagCls === 'ok' ? 'primary' : 'neutral'))}}">{{item.dueInfo.txt}}</text>
+                <text wx:if="{{item.dateText}}" class="pill pill--neutral">{{item.dateText}}</text>
+                <text wx:if="{{item.author}}" class="t-label-m muted" style="margin-left:12rpx">{{item.author}}</text>
+                <text wx:if="{{item.remindText}}" class="pill pill--primary">提醒 {{item.remindText}}</text>
+              </view>
+            </view>
+            <view class="m3-li__trail hw-acts">
+              <text class="m3-btn m3-btn--tonal m3-btn--sm" data-index="{{index}}" catchtap="toggle">完成</text>
+              <text wx:if="{{item.date}}" class="m3-btn m3-btn--text m3-btn--sm" data-index="{{index}}" catchtap="remind">提醒</text>
+            </view>
+          </view>
+        </swipe-item>
+      </block>
+      <view wx:if="{{hiddenN}}" class="t-label-m muted" style="padding:12rpx 8rpx">另有 {{hiddenN}} 条已隐藏，仅你不可见</view>
+    </block>
+
+    <!-- —— 已完成 —— -->
+    <block wx:else>
+      <view class="m3-card m3-card--filled enter enter-1" wx:if="{{!done.length}}">
+        <empty-state icon="✅" title="还没有完成的作业"></empty-state>
+      </view>
+
+        <swipe-item wx:for="{{done}}" wx:key="index" index="{{index}}"
+                    actions="{{item.actions}}" bind:action="delDone">
+        <view id="hw-{{item.id}}" class="m3-li m3-li--card {{hoFocus === item.id ? 'ho-focus' : ''}}">
+          <view class="m3-li__lead m3-li__lead--primary">✓</view>
+          <view class="m3-li__body">
+            <view class="m3-li__title" wx:if="{{item.subject}}">
+              <text class="subj">【{{item.subject}}】</text>
+            </view>
+            <view class="hw-body done-txt">{{item.content}}</view>
+            <view class="att-row" wx:if="{{item.attCount}}">
+              <block wx:for="{{item.atts}}" wx:for-item="att" wx:for-index="ai" wx:key="n">
+                <image wx:if="{{att.img}}" class="att-thumb" lazy-load src="data:{{att.t}};base64,{{att.d}}" mode="aspectFill"
+                       data-list="done" data-i="{{index}}" data-j="{{ai}}" bindtap="previewAtt" />
+                <view wx:else class="att-chip" data-list="done" data-i="{{index}}" data-j="{{ai}}" bindtap="previewAtt">📎 {{att.n}}</view>
+              </block>
+            </view>
+          </view>
+          <view class="m3-li__trail">
+            <text class="m3-btn m3-btn--text m3-btn--sm" data-index="{{index}}" catchtap="untoggle">撤销</text>
+          </view>
+        </view>
+      </swipe-item>
+    </block>
+  </block>
+
+  <canvas type="2d" id="card" class="exp-canvas"></canvas>
+  
+
+  <view class="actionbar" wx:if="{{state !== 'loading' && state !== 'error'}}">
+    <view class="actionbar__inner" style="margin-bottom:16rpx">
+      <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="pullCloud">同步</touchable>
+      <view class="grow"></view>
+      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="exportImg">导出图片</touchable>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="openSheet">添加作业</touchable>
+  </view>
+
+  <bottom-sheet show="{{sheet}}" title="添加作业" bind:close="closeSheet">
+    <view class="field">
+      <view class="field__label">科目</view>
+      <view class="field__ctrl"><input class="field__input" data-k="subject" value="{{form.subject}}" placeholder="如 高数" placeholder-class="ph" bindinput="onInput" /></view>
+    </view>
+    <view class="field">
+      <view class="field__label">内容</view>
+      <view class="field__ctrl"><textarea class="area" data-k="content" value="{{form.content}}" maxlength="-1" placeholder="作业内容（可多行，Enter 换行）" placeholder-class="ph" bindinput="onInput"></textarea></view>
+    </view>
+    <view class="field">
+      <view class="field__label">图片 / 文件（图片 ≤5MB 自动压缩 · 文件 ≤2MB · 最多 2 个）</view>
+      <view class="row wrap" style="gap:12rpx">
+        <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="chooseImages">添加图片</touchable>
+        <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="chooseFiles">添加文件</touchable>
+      </view>
+      
+      <view class="att-row" wx:if="{{attachCount}}">
+        <block wx:for="{{attachList}}" wx:for-item="f" wx:for-index="fi" wx:key="n">
+          <view class="att-edit">
+            <image wx:if="{{f.img}}" class="att-thumb" lazy-load src="data:{{f.t}};base64,{{f.d}}" mode="aspectFill" data-list="files" data-j="{{fi}}" bindtap="previewAtt" />
+            <view wx:else class="att-chip" data-list="files" data-j="{{fi}}" bindtap="previewAtt">📎 {{f.n}}</view>
+            <text class="att-x" data-i="{{fi}}" bindtap="removeFile">×</text>
+          </view>
+        </block>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">截止日期（可选）</view>
+      <picker mode="date" value="{{form.date || today}}" start="{{today}}" bindchange="onDate">
+        <view class="field__ctrl"><text class="field__text {{form.date ? '' : 'muted'}}">{{form.date || '选择日期'}}</text><text class="m3-li__trail chev"></text></view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field__label">截止时间（可选）</view>
+      <view class="row">
+        <picker class="grow" mode="time" value="{{form.time || '00:00'}}" bindchange="onTime">
+          <view class="field__ctrl grow"><text class="field__text {{form.time ? '' : 'muted'}}">{{form.time || '当天 00:00'}}</text><text class="m3-li__trail chev"></text></view>
+        </picker>
+        <text wx:if="{{form.time}}" class="hw-clear" bindtap="clearTime">恢复 00:00</text>
+      </view>
+      <view class="field__hint">不设置时间按截止日期当天 00:00；若选今天，请设置将来的时间</view>
+      <view wx:if="{{nextClass}}" class="hw-next" bindtap="useNextClass">
+        <text class="hw-next__txt">下一节 {{nextClass.name}} · {{nextClass.date}} {{nextClass.time}}</text>
+        <text class="hw-next__act">设为截止</text>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">截止说明（可选）</view>
+      <view class="field__ctrl"><input class="field__input" data-k="due" value="{{form.due}}" placeholder="如下节课前" placeholder-class="ph" bindinput="onInput" /></view>
+    </view>
+    <view class="field">
+      <view class="field__label">署名</view>
+      <view class="field__ctrl"><input class="field__input" data-k="author" value="{{form.author}}" placeholder="{{nick || '默认使用班级姓名'}}" placeholder-class="ph" bindinput="onInput" /></view>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:8rpx" bindtap="add">确认添加</touchable>
+  </bottom-sheet>
+
+  <bottom-sheet show="{{remindSheet}}" title="自定义提醒时间" bind:close="closeRemind">
+    <view class="field">
+      <view class="field__label">提醒日期</view>
+      <picker mode="date" value="{{remindDate}}" start="{{remindStart}}" end="{{remindEnd}}" bindchange="onRemindDate">
+        <view class="field__ctrl"><text class="field__text">{{remindDate || '选择日期'}}</text><text class="m3-li__trail chev"></text></view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field__label">提醒时间</view>
+      <picker mode="time" value="{{remindClock}}" bindchange="onRemindClock">
+        <view class="field__ctrl"><text class="field__text">{{remindClock || '选择时间'}}</text><text class="m3-li__trail chev"></text></view>
+      </picker>
+    </view>
+    <view class="remind-hint">{{remindDueText}} · 提醒需晚于现在至少 1 分钟，且不能晚于截止时间</view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:8rpx" bindtap="confirmRemind">设置提醒</touchable>
+  </bottom-sheet>
+</view>
+
+
+
+
+

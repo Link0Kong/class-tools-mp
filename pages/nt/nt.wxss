@@ -1,0 +1,579 @@
+/* pages/nt/nt.wxss —— 班级通知 · 莫奈纸面 v2（更整洁 / 深浅双主题）
+ *
+ * 设计口径（2026-11-06 用户要求「仍以莫奈色为主，整体更倾向于整洁」）：
+ *   1) 表面：奶油纸底 + 暖纸白卡片 + 极浅睡莲绿简报；唯一分隔手段 = 1rpx 细线（无投影、无渐变、无虚线拼贴）。
+ *   2) 莫奈六色只当语义标签：睡莲青(团务/进行中)、雾蓝(教务/长期安排)、暖沙(考试/时间/截止)、
+ *      灰粉(缴费/紧急/规则)、藕紫(活动)、鼠尾草灰(班级事务/其他)。全部「tint 底 + ink 字」，不再白字实底。
+ *   3) 文字三级：墨 / 次级墨 / 三级墨，在卡片与简报底上全部 ≥ 4.5:1（WCAG AA）。
+ *   4) 深色模式走同一套 token（墨绿纸底 + 抬升卡片），不再使用 filter 亮度补丁。
+ *   5) 页面级 token 全部限定在 .nt-page，不污染全站 app.wxss。
+ */
+
+/* ===================== 通知页 · 莫奈纸面 token（浅色） ===================== */
+.nt-page {
+  /* 表面 / 线条 */
+  --nt-bg: #F4F0E6;              /* 奶油纸（与全站一致） */
+  --nt-card: #FFFCF6;            /* 卡片：暖纸白 */
+  --nt-card-soft: #F8F3E9;       /* 卡片内嵌块（摘要/附件/摘录/合并消息） */
+  --nt-brief: #F3F7F1;           /* 简报：极浅睡莲绿（替代原渐变） */
+  --nt-brief-chip: #FFFCF6;      /* 简报徽标底（浅色=纸白；深色需抬一档才看得见） */
+  --nt-line: #E7DED0;            /* 1rpx 细线 */
+  --nt-line-strong: #DCD1BF;     /* 次级描边（ghost 按钮） */
+
+  /* 文字 */
+  --nt-ink: #303A35;             /* 主文字（对卡片 11.5:1） */
+  --nt-ink-2: #5C6860;           /* 次级文字（5.7:1） */
+  --nt-ink-3: #667166;           /* 三级文字（5.0:1，仍达 AA） */
+
+  /* 睡莲青：品牌 / 主交互 / 进行中 */
+  --nt-cy: #5E8F87;
+  --nt-cy-deep: #46776F;         /* 实心交互底（白字 5.1:1） */
+  --nt-on-cy: #FFFFFF;
+  --nt-cy-ink: #3F6F66;
+  --nt-cy-tint: #EAF2EC;
+  /* 雾蓝：教务 / 长期安排 */
+  --nt-bl: #7D9EBB;
+  --nt-bl-ink: #4E6D8C;
+  --nt-bl-tint: #EDF2F7;
+  /* 暖沙：考试 / 时间 / 截止 */
+  --nt-sd: #C6A475;
+  --nt-sd-ink: #8A643B;
+  --nt-sd-tint: #FAF3E6;
+  /* 灰粉：缴费 / 紧急 / 规则 */
+  --nt-rose: #C18B83;
+  --nt-rose-ink: #9C5147;
+  --nt-rose-tint: #F7EDEB;
+  /* 藕紫：活动 */
+  --nt-violet: #A192B8;
+  --nt-violet-ink: #66579A;
+  --nt-violet-tint: #F1EEF7;
+  /* 鼠尾草灰：班级事务 / 其他 */
+  --nt-grey: #8E9A90;
+  --nt-grey-ink: #5F6A61;
+  --nt-grey-tint: #F0F2F1;
+}
+/* 2026-11-15 外观（跟随系统/浅色/深色）：页面级暗色 token 改由 .theme-dark 驱动，
+   不再依赖 @media(prefers-color-scheme) —— 否则「显式浅色 + 系统深色」时通知页局部仍是暗色。
+   .theme-dark 由 utils/appearance.js 注入页面根节点（跟随实际生效主题）。 */
+.nt-page.theme-dark {
+  --nt-bg: #1B1E1A;            /* 墨绿纸底（与全站暗色一致） */
+  --nt-card: #23271F;          /* 抬升卡片 */
+  --nt-card-soft: #1C2019;     /* 内嵌块：下沉 */
+  --nt-brief: #242B20;
+  --nt-brief-chip: #2E382C;    /* 深色下徽标比简报底亮一档 */
+  --nt-line: #333930;
+  --nt-line-strong: #444B3F;
+
+  --nt-ink: #EAE5D9;           /* 对卡片 12.2:1 */
+  --nt-ink-2: #BDB8AB;         /* 7.8:1 */
+  --nt-ink-3: #9AA093;         /* 5.6:1 */
+
+  --nt-cy: #9BC9BB;
+  --nt-cy-deep: #9BC9BB;
+  --nt-on-cy: #12332C;
+  --nt-cy-ink: #BFE0D3;
+  --nt-cy-tint: #2A4039;
+
+  --nt-bl: #AAC6D8;
+  --nt-bl-ink: #C6DEEE;
+  --nt-bl-tint: #293A45;
+
+  --nt-sd: #E5C79B;
+  --nt-sd-ink: #EACFA8;
+  --nt-sd-tint: #3B3224;
+
+  --nt-rose: #E0AFA7;
+  --nt-rose-ink: #F0C4BC;
+  --nt-rose-tint: #402A26;
+
+  --nt-violet: #BDB0D2;
+  --nt-violet-ink: #D3C7E3;
+  --nt-violet-tint: #322D3B;
+
+  --nt-grey: #A9B3A7;
+  --nt-grey-ink: #C7CEC3;
+  --nt-grey-tint: #2B3029;
+}
+
+.nt-page { padding-top: 8rpx; background: var(--nt-bg); }
+
+/* ===== 简报（扁平极浅绿卡，无渐变/无投影） ===== */
+.nt-brief {
+  margin: 16rpx 0 8rpx;
+  padding: 26rpx 26rpx 18rpx;
+  border-radius: 28rpx;
+  background: var(--nt-brief);
+  border: 1rpx solid var(--nt-line);
+}
+.nt-brief-hd { display: flex; align-items: center; gap: 12rpx; }
+.nt-eyebrow { font-size: 21rpx; font-weight: 700; letter-spacing: 2rpx; color: var(--nt-cy-ink); }
+/* 简报徽标：与筛选 chip 彻底分开命名（原 .nt-chip 重名导致样式互相覆盖） */
+.nt-brief-chip {
+  flex: none; font-size: 20rpx; font-weight: 600;
+  padding: 4rpx 14rpx; border-radius: 999rpx;
+  background: var(--nt-brief-chip); color: var(--nt-cy-ink);
+}
+.nt-sync { font-size: 20rpx; color: var(--nt-ink-2); }
+/* 2026-11-11 需求 11：新通知提醒状态（已开启 · 收到后自动关闭 · 云端 N 人已订阅） */
+.nt-substate { color: var(--nt-cy-deep); font-weight: 600; }
+.nt-btn--busy { opacity: .6; }
+.nt-date { margin-left: auto; font-size: 20rpx; color: var(--nt-ink-2); }
+
+/* 契约 2026-11-14 §2.1：顶部 5 张可点数据卡（3+2 两行，360px 无横向溢出；点按区 96rpx ≈ 48px ≥ 40px） */
+.nt-dcards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10rpx; margin-top: 18rpx; }
+.nt-dcard {
+  grid-column: span 2; min-width: 0; min-height: 96rpx; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10rpx 6rpx; border-radius: 16rpx;
+  background: var(--nt-brief-chip); border: 1rpx solid var(--nt-line);
+}
+.nt-dcard--half { grid-column: span 3; }
+.nt-dcard.on { background: var(--nt-cy-deep); border-color: transparent; }
+.nt-dcard.on .nt-dcard-n, .nt-dcard.on .nt-dcard-l { color: var(--nt-on-cy); }
+.nt-dcard-n {
+  max-width: 100%; font-size: 34rpx; line-height: 1.15; font-weight: 700;
+  color: var(--nt-ink); font-variant-numeric: tabular-nums;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+/* 最新发布显示「今天 12:49」这类相对文案：字号小一档，长日期省略不撑破卡片 */
+.nt-dcard-n--t { font-size: 23rpx; font-weight: 600; }
+.nt-dcard-l { margin-top: 4rpx; font-size: 19rpx; color: var(--nt-ink-2); white-space: nowrap; }
+.nt-dcard-n.nt-urgent { color: var(--nt-rose-ink); }
+.nt-dcard-n.nt-week, .nt-dcard-n.nt-dcard-n--bl { color: var(--nt-bl-ink); }
+
+/* 简报 · 最近截止 */
+.nt-next { margin-top: 14rpx; border-top: 1rpx solid var(--nt-line); padding-top: 2rpx; }
+.nt-next-row {
+  display: flex; align-items: center; gap: 12rpx;
+  min-height: 64rpx; padding: 6rpx 2rpx;
+  border-bottom: 1rpx solid var(--nt-line);
+}
+.nt-next-row:last-child { border-bottom: 0; }
+.nt-next-row--alert {
+  border-bottom: 0; margin: 6rpx 0; padding: 8rpx 12rpx;
+  background: var(--nt-rose-tint); border-radius: 12rpx;
+}
+.nt-next-t { flex: 1; min-width: 0; font-size: 25rpx; color: var(--nt-ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.nt-next-m { flex: none; font-size: 21rpx; color: var(--nt-ink-2); }
+.nt-brief-ft {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 14rpx; padding-top: 12rpx;
+  border-top: 1rpx solid var(--nt-line);
+}
+.nt-brief-acts { display: flex; align-items: center; gap: 10rpx; }
+
+/* ===== 筛选（两级：主筛选=实心睡莲青；分类=浅青 tint） ===== */
+.nt-filters { padding: 6rpx 0 2rpx; }
+.nt-chips { display: flex; flex-wrap: wrap; gap: 12rpx; padding: 8rpx 0; }
+.nt-cats { padding-top: 0; }
+.nt-chip {
+  min-height: 60rpx; display: flex; align-items: center;
+  padding: 0 24rpx; border-radius: 999rpx;
+  font-size: 25rpx; color: var(--nt-ink-2);
+  background: var(--nt-card);
+  border: 1rpx solid var(--nt-line);
+}
+.nt-chip--sm { min-height: 52rpx; font-size: 22rpx; padding: 0 20rpx; }
+.nt-chip.on {
+  background: var(--nt-cy-deep); color: var(--nt-on-cy);
+  border-color: transparent; font-weight: 600;
+}
+.nt-cats .nt-chip.on {
+  background: var(--nt-cy-tint); color: var(--nt-cy-ink);
+  border-color: var(--nt-cy); font-weight: 600;
+}
+
+/* ===== 加载骨架：与卡片同一表面（避免奶油底上出现整块灰色） ===== */
+.nt-page .m3-card--filled {
+  background: var(--nt-card);
+  border: 1rpx solid var(--nt-line);
+}
+.nt-page .sk { background: var(--nt-grey-tint); }
+
+/* ===== 列表头 ===== */
+.nt-list-hd { display: flex; align-items: center; gap: 12rpx; padding: 10rpx 4rpx 2rpx; }
+.nt-list-n { font-size: 22rpx; font-weight: 600; color: var(--nt-ink-2); }
+.nt-list-hint { margin-left: auto; font-size: 20rpx; color: var(--nt-ink-2); }
+
+/* ===== 卡片（暖纸白 + 1rpx 细线，无投影） ===== */
+.nt-card-wrap { margin-bottom: 20rpx; }
+.nt-card {
+  padding: 24rpx 24rpx 14rpx;
+  border-radius: 28rpx;
+  background: var(--nt-card);
+  border: 1rpx solid var(--nt-line);
+}
+.nt-card--expired { background: var(--nt-card-soft); }
+.nt-card--expired .nt-title { color: var(--nt-ink-2); }
+/* 已处理：用「下沉底色 + 灰化状态 + 删除线」表达弱化，不用整卡 opacity（保证文字仍达 AA） */
+.nt-card--done { background: var(--nt-card-soft); }
+.nt-card--done .nt-title { color: var(--nt-ink-2); text-decoration: line-through; text-decoration-color: var(--nt-ink-2); }
+.nt-card--done .nt-status,
+.nt-card--done .nt-status--active {
+  background: var(--nt-grey-tint); color: var(--nt-ink-2); border-color: transparent;
+}
+/* 暗色专项：页底与卡片本来就只差一档，已过期/已处理卡若再下沉到 card-soft 会与页底几乎同色（丢失卡片边界）；
+   暗色下改用普通卡片表面 + 文字灰化表达弱化（浅色仍保留下沉底色）。 */
+.theme-dark .nt-card--expired,
+.theme-dark .nt-card--done { background: var(--nt-card); }
+
+/* 卡头：分类 / OCR / 状态 / 已隐藏 / 已更新 / 原始消息 */
+.nt-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx; }
+.nt-cat {
+  flex: none; font-size: 20rpx; font-weight: 700;
+  padding: 4rpx 14rpx; border-radius: 8rpx;
+}
+.nt-cat--jw { background: var(--nt-bl-tint); color: var(--nt-bl-ink); }
+.nt-cat--tw { background: var(--nt-cy-tint); color: var(--nt-cy-ink); }
+.nt-cat--ks { background: var(--nt-sd-tint); color: var(--nt-sd-ink); }
+.nt-cat--jf { background: var(--nt-rose-tint); color: var(--nt-rose-ink); }
+.nt-cat--hd { background: var(--nt-violet-tint); color: var(--nt-violet-ink); }
+.nt-cat--qt { background: var(--nt-grey-tint); color: var(--nt-grey-ink); }
+.nt-ocr {
+  flex: none; font-size: 18rpx; font-weight: 700; letter-spacing: 1rpx;
+  padding: 3rpx 10rpx; border-radius: 8rpx;
+  color: var(--nt-ink-2); border: 1rpx solid var(--nt-line-strong);
+}
+.nt-status { flex: none; font-size: 20rpx; font-weight: 600; padding: 4rpx 12rpx; border-radius: 999rpx; }
+.nt-status--urgent   { background: var(--nt-rose-tint); color: var(--nt-rose-ink); }
+.nt-status--active   { background: var(--nt-cy-tint);   color: var(--nt-cy-ink); }
+.nt-status--extended { background: var(--nt-sd-tint);   color: var(--nt-sd-ink); }
+.nt-status--expired  { background: var(--nt-grey-tint); color: var(--nt-ink-2); }
+.nt-status--alert    { background: var(--nt-rose-tint); color: var(--nt-rose-ink); border: 1rpx solid var(--nt-rose); }
+.nt-status--none     { background: var(--nt-grey-tint); color: var(--nt-ink-2); }
+.nt-status--recurring { background: var(--nt-bl-tint);  color: var(--nt-bl-ink); }
+.nt-raw-btn { flex: none; font-size: 20rpx; font-weight: 600; color: var(--nt-ink-2); padding: 8rpx 4rpx; }
+
+.nt-title { margin-top: 14rpx; font-size: 31rpx; font-weight: 600; line-height: 1.5; color: var(--nt-ink); }
+
+/* 来源：中性描边胶囊 + 10rpx 莫奈色点（替代原饱和色底） */
+.nt-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 10rpx; margin-top: 10rpx; }
+.nt-src {
+  display: inline-flex; align-items: center; gap: 8rpx;
+  padding: 3rpx 12rpx 3rpx 10rpx; border-radius: 8rpx;
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+  font-size: 20rpx; font-weight: 600; color: var(--nt-ink-2);
+}
+.nt-src-dot { flex: none; width: 10rpx; height: 10rpx; border-radius: 50%; background: var(--nt-grey); }
+.nt-src--qq .nt-src-dot { background: var(--nt-bl); }
+.nt-src--wx .nt-src-dot { background: var(--nt-cy); }
+.nt-src--doc .nt-src-dot { background: var(--nt-grey); }
+.nt-who { font-size: 21rpx; color: var(--nt-ink-2); }
+.nt-role {
+  font-size: 19rpx; font-weight: 700; padding: 2rpx 10rpx; border-radius: 6rpx;
+  background: var(--nt-sd-tint); color: var(--nt-sd-ink);
+}
+.nt-raw-time { font-size: 20rpx; color: var(--nt-ink-2); }
+
+/* 长期安排 */
+.nt-recur {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10rpx;
+  margin-top: 12rpx; padding: 12rpx 16rpx; border-radius: 12rpx;
+  background: var(--nt-bl-tint); color: var(--nt-bl-ink);
+}
+.nt-recur-label { font-size: 23rpx; font-weight: 700; }
+.nt-recur-next { font-size: 23rpx; }
+
+/* AI 摘要（内嵌块：下沉底 + 细线） */
+.nt-ai {
+  margin-top: 14rpx; padding: 16rpx 18rpx; border-radius: 16rpx;
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+.nt-ai-hd { display: flex; align-items: center; gap: 8rpx; font-size: 21rpx; font-weight: 700; color: var(--nt-cy-ink); }
+.nt-ai-tag {
+  font-size: 18rpx; font-weight: 800; padding: 2rpx 8rpx; border-radius: 6rpx;
+  background: var(--nt-cy-tint); color: var(--nt-cy-ink);
+}
+.nt-ai-sum { margin-top: 8rpx; font-size: 26rpx; line-height: 1.65; color: var(--nt-ink); }
+.nt-points { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 10rpx; }
+.nt-point {
+  font-size: 21rpx; line-height: 1.5; padding: 6rpx 14rpx; border-radius: 10rpx;
+  background: var(--nt-card); border: 1rpx solid var(--nt-line);
+  color: var(--nt-ink-2);
+}
+.nt-more { margin-top: 12rpx; font-size: 21rpx; color: var(--nt-ink-2); }
+
+/* 分段事实（标签收敛：时间/截止=暖沙，要求=灰粉，其余中性） */
+.nt-seg-grid { margin-top: 14rpx; border-top: 1rpx solid var(--nt-line); }
+.nt-seg {
+  display: flex; align-items: flex-start; gap: 14rpx;
+  padding: 14rpx 0; border-bottom: 1rpx solid var(--nt-line);
+}
+.nt-seg:last-child { border-bottom: 0; }
+.nt-seg-k {
+  flex: none; width: 96rpx; font-size: 19rpx; font-weight: 700;
+  line-height: 1.6; text-align: center; padding: 2rpx 0;
+  border-radius: 8rpx;
+  background: var(--nt-grey-tint); color: var(--nt-ink-2);
+}
+.nt-seg--time .nt-seg-k, .nt-seg--due .nt-seg-k { background: var(--nt-sd-tint); color: var(--nt-sd-ink); }
+.nt-seg--rule .nt-seg-k { background: var(--nt-rose-tint); color: var(--nt-rose-ink); }
+.nt-seg-t { flex: 1; min-width: 0; font-size: 25rpx; line-height: 1.65; color: var(--nt-ink); word-break: break-all; }
+
+/* 图片 */
+.nt-img-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12rpx; margin-top: 14rpx; }
+.nt-img-cell {
+  position: relative; width: 100%; height: 280rpx; border-radius: 16rpx; overflow: hidden;
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+.nt-img { width: 100%; height: 100%; display: block; }
+.nt-img-cap {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 8rpx 12rpx; font-size: 20rpx;
+  color: #FFFFFF; background: linear-gradient(transparent, rgba(30, 40, 35, .55));
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.nt-imgs-loading { margin-top: 14rpx; font-size: 21rpx; color: var(--nt-ink-2); }
+
+/* 时间线条目 */
+.nt-item { margin-top: 14rpx; }
+.nt-item:first-child { margin-top: 0; }
+.nt-file {
+  display: flex; align-items: center; gap: 16rpx; padding: 16rpx; border-radius: 16rpx;
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+/* 需求 7：QQ 文件暂未获取（无 url）——虚线边 + 「待获取」徽标（唯一保留的功能性虚线） */
+.nt-file--pending { border-style: dashed; border-color: var(--nt-sd); }
+.nt-file-badge {
+  display: inline-block; margin-left: 10rpx; padding: 1rpx 10rpx; border-radius: 999rpx;
+  font-size: 18rpx; font-weight: 700; line-height: 1.6;
+  background: var(--nt-sd-tint); color: var(--nt-sd-ink);
+}
+.nt-file-ico {
+  flex: none; width: 72rpx; height: 72rpx; border-radius: 12rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20rpx; font-weight: 800;
+}
+.nt-file-ico--pdf  { background: var(--nt-rose-tint);   color: var(--nt-rose-ink); }
+.nt-file-ico--xls  { background: var(--nt-cy-tint);     color: var(--nt-cy-ink); }
+.nt-file-ico--doc  { background: var(--nt-bl-tint);     color: var(--nt-bl-ink); }
+.nt-file-ico--ppt  { background: var(--nt-sd-tint);     color: var(--nt-sd-ink); }
+.nt-file-ico--img  { background: var(--nt-violet-tint); color: var(--nt-violet-ink); }
+.nt-file-ico--file { background: var(--nt-grey-tint);   color: var(--nt-grey-ink); }
+.nt-file-bd { flex: 1; min-width: 0; }
+.nt-file-n { font-size: 26rpx; font-weight: 600; color: var(--nt-ink); line-height: 1.45; word-break: break-all; }
+.nt-file-m { margin-top: 4rpx; font-size: 21rpx; color: var(--nt-ink-2); }
+.nt-file-acts { flex: none; display: flex; flex-direction: column; gap: 8rpx; }
+.nt-file-count {
+  flex: none; padding: 4rpx 12rpx; border-radius: 999rpx;
+  font-size: 19rpx; font-weight: 600; color: var(--nt-ink-2);
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+
+/* 压缩包内部文件清单（archive） */
+.nt-archive {
+  margin: 10rpx 0 2rpx; padding: 12rpx 16rpx;
+  border-radius: 14rpx; background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+.nt-archive-sum {
+  font-size: 20rpx; line-height: 1.5; color: var(--nt-ink-2);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; word-break: break-all;
+}
+.nt-archive-row {
+  display: flex; align-items: center; gap: 12rpx;
+  min-height: 80rpx; padding: 8rpx 0; box-sizing: border-box;
+  border-top: 1rpx solid var(--nt-line);
+}
+.nt-archive-sum + .nt-archive-row { margin-top: 6rpx; }
+.nt-archive-badge {
+  flex: none; min-width: 56rpx; padding: 2rpx 8rpx; border-radius: 8rpx;
+  font-size: 18rpx; font-weight: 700; line-height: 1.5; text-align: center;
+  color: var(--nt-ink-2); background: var(--nt-card);
+}
+.nt-archive-name {
+  flex: 1; min-width: 0; font-size: 23rpx; color: var(--nt-ink);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.nt-archive-size { flex: none; font-size: 19rpx; color: var(--nt-ink-2); white-space: nowrap; }
+.nt-archive-act {
+  flex: none; min-width: 64rpx; text-align: right;
+  font-size: 21rpx; font-weight: 600; color: var(--nt-cy-ink);
+}
+.nt-archive-act--off { color: var(--nt-ink-2); font-weight: 400; }
+
+/* 按钮（实心=睡莲青深；ghost=细线；off=灰底） */
+.nt-btn {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  min-height: 60rpx; padding: 0 22rpx; border-radius: 999rpx;
+  font-size: 23rpx; font-weight: 600;
+  background: var(--nt-cy-deep); color: var(--nt-on-cy);
+}
+.nt-btn--sm { min-height: 52rpx; padding: 0 18rpx; font-size: 21rpx; }
+.nt-btn--ghost { background: transparent; color: var(--nt-ink-2); border: 1rpx solid var(--nt-line-strong); }
+.nt-btn--off { background: var(--nt-grey-tint); color: var(--nt-ink-2); }
+
+/* 收集表 / 链接 / 小程序 / 公众号行 */
+.nt-linkrow {
+  display: flex; align-items: center; gap: 14rpx; padding: 16rpx; border-radius: 16rpx;
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+.nt-link-ico {
+  flex: none; width: 64rpx; height: 64rpx; border-radius: 12rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22rpx; font-weight: 800;
+  background: var(--nt-cy-tint); color: var(--nt-cy-ink);
+}
+.nt-link-ico--art { font-size: 17rpx; background: var(--nt-violet-tint); color: var(--nt-violet-ink); }
+.nt-link-bd { flex: 1; min-width: 0; }
+.nt-link-n { font-size: 26rpx; font-weight: 600; color: var(--nt-ink); line-height: 1.45; }
+.nt-link-m { margin-top: 4rpx; font-size: 21rpx; color: var(--nt-ink-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* 聊天记录 / 合并消息 */
+.nt-merged {
+  padding: 16rpx; border-radius: 16rpx;
+  background: var(--nt-card-soft); border: 1rpx solid var(--nt-line);
+}
+.nt-merged-hd { display: flex; align-items: center; font-size: 25rpx; font-weight: 600; color: var(--nt-ink); }
+.nt-merged-n { margin-left: auto; font-size: 20rpx; color: var(--nt-ink-2); }
+.nt-merged-row { margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid var(--nt-line); }
+.nt-merged-meta { display: flex; align-items: center; gap: 8rpx; font-size: 20rpx; }
+.nt-merged-text { margin-top: 6rpx; font-size: 24rpx; line-height: 1.6; color: var(--nt-ink-2); white-space: pre-wrap; }
+
+/* 原文摘录 */
+.nt-quotes { margin-top: 14rpx; display: flex; flex-direction: column; gap: 12rpx; }
+.nt-quote {
+  padding: 14rpx 16rpx; border-left: 4rpx solid var(--nt-cy);
+  border-radius: 0 12rpx 12rpx 0;
+  background: var(--nt-card-soft);
+}
+.nt-quote-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx; }
+.nt-quote-type { font-size: 19rpx; font-weight: 700; color: var(--nt-cy-ink); }
+.nt-quote-t { margin-top: 8rpx; font-size: 24rpx; line-height: 1.65; color: var(--nt-ink-2); white-space: pre-wrap; }
+
+/* 组成 chips */
+.nt-compose { display: flex; flex-wrap: wrap; gap: 8rpx; margin-top: 14rpx; }
+.nt-cchip {
+  font-size: 20rpx; color: var(--nt-ink-2);
+  padding: 4rpx 12rpx; border-radius: 999rpx;
+  background: transparent; border: 1rpx solid var(--nt-line);
+}
+.nt-cchip-n { font-weight: 800; color: var(--nt-cy-ink); margin-right: 4rpx; }
+
+/* 底部操作 */
+.nt-ft {
+  display: flex; align-items: center; gap: 10rpx;
+  margin-top: 16rpx; padding-top: 12rpx;
+  border-top: 1rpx solid var(--nt-line);
+}
+.nt-done {
+  display: flex; align-items: center; gap: 10rpx; min-height: 60rpx; padding: 0 20rpx;
+  border-radius: 999rpx; font-size: 22rpx; font-weight: 600;
+  color: var(--nt-ink-2); background: var(--nt-grey-tint);
+}
+.nt-done-b { width: 22rpx; height: 22rpx; border-radius: 6rpx; border: 2rpx solid var(--nt-ink-3); }
+.nt-done.on { background: var(--nt-cy-tint); color: var(--nt-cy-ink); }
+.nt-done.on .nt-done-b { background: var(--nt-cy-deep); border-color: var(--nt-cy-deep); }
+/* 提醒按钮 / 已设提醒胶囊 */
+.nt-remind {
+  display: flex; align-items: center; gap: 8rpx; min-height: 60rpx; padding: 0 20rpx;
+  border-radius: 999rpx; font-size: 22rpx; font-weight: 600;
+  color: var(--nt-ink-2); background: transparent;
+  border: 1rpx solid var(--nt-line-strong);
+}
+.nt-remind.on { color: var(--nt-bl-ink); background: var(--nt-bl-tint); border-color: transparent; }
+.nt-remind-b { flex: none; width: 14rpx; height: 14rpx; border-radius: 50%; background: var(--nt-bl); }
+.nt-remind-for {
+  margin-bottom: 18rpx; font-size: 24rpx; line-height: 1.5; color: var(--nt-ink-2);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.nt-remind-hint { font-size: 23rpx; line-height: 1.55; color: var(--nt-ink-2); margin: 4rpx 0 20rpx; }
+
+.nt-fold {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60rpx; padding: 0 24rpx; border-radius: 999rpx;
+  font-size: 22rpx; font-weight: 600;
+  color: var(--nt-cy-ink); background: var(--nt-cy-tint);
+}
+
+/* 契约 2026-11-14 §2.2：「资料 / 无时间」栏（常驻显示、默认展开；与已过期区同款 M3 折叠头，点按区 84rpx ≈ 42px） */
+.nt-info { margin-top: 8rpx; }
+.nt-info-hd {
+  display: flex; align-items: center; gap: 12rpx; min-height: 84rpx; padding: 0 6rpx;
+  border-top: 1rpx solid var(--nt-line);
+}
+.nt-info-t { font-size: 24rpx; font-weight: 700; color: var(--nt-ink-2); }
+.nt-info-n { font-size: 20rpx; color: var(--nt-ink-2); }
+.nt-info-chev { font-size: 20rpx; color: var(--nt-ink-2); }
+.nt-info .nt-card-wrap { margin-top: 20rpx; margin-bottom: 20rpx; }
+
+/* 契约 2026-11-14 §2.2：「长期通知」筛选 = 长期安排清单（标题 / 周期 / 下次时间 / 进行中） */
+.nt-lt-row {
+  padding: 22rpx 24rpx; margin-bottom: 18rpx;
+  border-radius: 28rpx; background: var(--nt-card); border: 1rpx solid var(--nt-line);
+}
+.nt-lt-row-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx; }
+.nt-lt-state {
+  flex: none; font-size: 20rpx; font-weight: 700; padding: 4rpx 12rpx; border-radius: 999rpx;
+  background: var(--nt-cy-tint); color: var(--nt-cy-ink);
+}
+.nt-lt-title { margin-top: 12rpx; font-size: 29rpx; font-weight: 600; line-height: 1.5; color: var(--nt-ink); }
+.nt-lt-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx 16rpx; margin-top: 10rpx; }
+.nt-lt-cycle { font-size: 22rpx; color: var(--nt-ink-2); }
+.nt-lt-next { font-size: 22rpx; font-weight: 600; color: var(--nt-bl-ink); }
+
+/* 已过期区块 */
+.nt-expired { margin-top: 8rpx; }
+.nt-exp-hd {
+  display: flex; align-items: center; gap: 12rpx; min-height: 84rpx; padding: 0 6rpx;
+  border-top: 1rpx solid var(--nt-line);
+}
+.nt-exp-t { font-size: 24rpx; font-weight: 700; color: var(--nt-ink-2); }
+.nt-exp-n { font-size: 20rpx; color: var(--nt-ink-2); }
+.nt-exp-chev { font-size: 20rpx; color: var(--nt-ink-2); }
+
+/* 原始消息弹层 */
+.nt-raw-meta { font-size: 21rpx; color: var(--nt-ink-2); margin-bottom: 10rpx; }
+.nt-raw-block { padding: 16rpx 0; border-top: 1rpx solid var(--nt-line); }
+.nt-raw-block:first-of-type { border-top: 0; padding-top: 0; }
+.nt-raw-hd { display: flex; align-items: center; gap: 8rpx; margin-bottom: 8rpx; }
+.nt-raw-type { font-size: 20rpx; font-weight: 700; color: var(--nt-cy-ink); }
+.nt-raw-text { font-size: 25rpx; line-height: 1.75; color: var(--nt-ink); white-space: pre-wrap; word-break: break-word; }
+
+/* 长期安排徽标 */
+.nt-recur-badge {
+  flex: none; font-size: 20rpx; font-weight: 700; padding: 4rpx 12rpx; border-radius: 999rpx;
+  background: var(--nt-bl-tint); color: var(--nt-bl-ink);
+}
+
+/* 管理员：已更新 / 已隐藏 / 编辑 / 删除 */
+.nt-updated-tag {
+  flex: none; font-size: 19rpx; font-weight: 700; padding: 3rpx 10rpx; border-radius: 8rpx;
+  background: var(--nt-bl-tint); color: var(--nt-bl-ink);
+}
+.nt-hidden-tag {
+  flex: none; font-size: 19rpx; font-weight: 700; padding: 3rpx 10rpx; border-radius: 8rpx;
+  background: var(--nt-grey-tint); color: var(--nt-ink-2);
+}
+.nt-admin-btn {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60rpx; padding: 0 18rpx; border-radius: 999rpx;
+  font-size: 21rpx; font-weight: 600; color: var(--nt-ink-2);
+  border: 1rpx solid var(--nt-line-strong);
+}
+.nt-admin-btn--danger { color: var(--nt-rose-ink); border-color: var(--nt-rose); }
+.nt-edit-area { min-height: 120rpx; }
+
+/* ===== 弹层内复用的全局 M3 组件：页面内小修（不影响其它页面） =====
+ * `.m3-btn--filled` 全站是白字 on #5E8F87（3.65:1，AA 不达标）→ 通知页内改用深睡莲青（5.09:1）。
+ * `.m3-li__trail` 是日期/时间选择器的「›」装饰箭头，底色为 field__ctrl 灰，改用主墨色保证可读。 */
+.nt-page .m3-btn--filled { background: var(--nt-cy-deep); color: var(--nt-on-cy); }
+.nt-page .m3-li__trail { color: var(--nt-ink); }
+
+/* ===== 通知展开 / 收起高度过渡（克制 .26–.28s，保留原行为） ===== */
+.nt-detail { overflow: hidden; }
+.nt-detail--open { animation: ntDetailOpen .28s cubic-bezier(.2,.8,.3,1); }
+.nt-detail--close { animation: ntDetailClose .26s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes ntDetailOpen {
+  from { max-height: 0; opacity: 0; transform: translateY(-8rpx); }
+  to   { max-height: 4000rpx; opacity: 1; transform: translateY(0); }
+}
+@keyframes ntDetailClose {
+  from { max-height: 4000rpx; opacity: 1; transform: translateY(0); }
+  to   { max-height: 0; opacity: 0; transform: translateY(-6rpx); }
+}
+
+/* 需求 13：系统「减少动效」时关闭所有装饰动画/过渡（不影响点击与滚动） */
+@media (prefers-reduced-motion: reduce) {
+  .nt-detail--open, .nt-detail--close { animation: none; }
+  .nt-card-wrap.enter { animation: none; }
+}

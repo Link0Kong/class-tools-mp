@@ -1,0 +1,262 @@
+{
+  "apis": [
+    {
+      "name": "getNoticeBriefing",
+      "description": "查询班级通知简报：待处理、24 小时内截止、7 天内截止、已过期条数，以及最紧迫的一条通知。用于用户问『有什么新通知』『有没有要处理的通知』。已标记已处理的通知不计入待处理。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "pending": { "type": "number", "description": "待处理通知数（未过期、可操作、未标记已处理）" },
+          "urgent24h": { "type": "number", "description": "24 小时内截止的待处理通知数" },
+          "week": { "type": "number", "description": "7 天内截止的待处理通知数" },
+          "expired": { "type": "number", "description": "已过期（自动归档）通知数" },
+          "next": {
+            "type": "object",
+            "description": "最紧迫的待处理通知，没有待处理时为 null",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "statusText": { "type": "string" },
+              "deadlineText": { "type": "string" }
+            }
+          },
+          "total": { "type": "number" },
+          "done": { "type": "number", "description": "已标记已处理的通知数" },
+          "offline": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/notice-brief-card/index", "pagePath": "/pages/nt/nt" }
+      }
+    },
+    {
+      "name": "listNotices",
+      "description": "查询班级通知列表。按状态（待处理/已过期/已处理/全部）、分类、关键词筛选，返回标题、状态、真实截止时间、摘要、附件名称与图片数量。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "expired", "done", "all"],
+            "description": "筛选状态：pending=待处理（默认，已处理与已过期都排除）、expired=已过期、done=已标记已处理、all=全部（含已过期）。用户没说明时用 pending。"
+          },
+          "category": {
+            "type": "string",
+            "description": "分类精确筛选，例如『教务』『团务』『考试』『缴费』『活动』『班级事务』『通知』。可以从 listNotices 返回的 items[].category 取实际值；用户未指定分类时不要填写。"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "关键词，模糊匹配标题、摘要、要点与原文，例如『期中考试』『报名』。用户未指定关键词时不要填写。"
+          },
+          "limit": {
+            "type": "number",
+            "description": "返回条数上限，1–50 的整数，不传默认 20。用户要求『全部』时最多用 50。"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "通知唯一标识，getNoticeDetail / setNoticeDone / setNoticePinned 的 noticeId 只能取自本字段" },
+                "title": { "type": "string" },
+                "category": { "type": "string" },
+                "statusText": { "type": "string", "description": "状态文案，如『剩 2 小时』『已截止 · 自动完成』『无时间』『已处理』" },
+                "statusKey": { "type": "string" },
+                "expired": { "type": "boolean" },
+                "done": { "type": "boolean" },
+                "pinned": { "type": "boolean" },
+                "alert": { "type": "boolean" },
+                "deadlineText": { "type": "string", "description": "真实截止时间 YYYY-MM-DD HH:mm（已含最后一次延期），无真实截止时为空" },
+                "eventText": { "type": "string", "description": "活动/事件时间文案，可能是空" },
+                "summary": { "type": "string", "description": "AI 摘要（约 120 字）" },
+                "files": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "size": { "type": "string" },
+                      "type": { "type": "string" },
+                      "hasUrl": { "type": "boolean" }
+                    }
+                  }
+                },
+                "images": { "type": "number", "description": "图片数量（不返回图片内容）" },
+                "source": { "type": "string" },
+                "timeText": { "type": "string" },
+                "manual": { "type": "boolean" }
+              }
+            }
+          },
+          "total": { "type": "number" },
+          "status": { "type": "string" },
+          "offline": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/notice-card/index", "pagePath": "/pages/nt/nt" }
+      }
+    },
+    {
+      "name": "getNoticeDetail",
+      "description": "查询单条班级通知的详情：状态与真实截止时间、AI 摘要、要点、6 项字段拆分、附件/表单/链接等详情项、原始消息摘录、发送者与 OCR 标记。noticeId 必须取自 listNotices 返回的 items[].id。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "noticeId": {
+            "type": "string",
+            "description": "通知唯一标识，取自上游接口 listNotices 返回的 items[].id 原值。不得从用户自然语言推断或编造；上下文没有有效 id 时先调用 listNotices。"
+          }
+        },
+        "required": ["noticeId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "detail": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "category": { "type": "string" },
+              "statusText": { "type": "string" },
+              "expired": { "type": "boolean" },
+              "done": { "type": "boolean" },
+              "pinned": { "type": "boolean" },
+              "deadlineText": { "type": "string" },
+              "eventText": { "type": "string" },
+              "summary": { "type": "string" },
+              "points": { "type": "array", "items": { "type": "string" }, "description": "要点，每条不超过 80 字" },
+              "fields": { "type": "object", "description": "字段拆分：时间/地点/对象/内容/报名/截止/要求/联系方式/补充" },
+              "items": {
+                "type": "array",
+                "description": "详情项：file/form/link/mini/article/merged，只给名称与元信息",
+                "items": { "type": "object" }
+              },
+              "raw": {
+                "type": "array",
+                "description": "原始消息摘录（每段不超过 500 字）",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": { "type": "string" },
+                    "fromName": { "type": "string" },
+                    "fromBadge": { "type": "string" },
+                    "time": { "type": "string" },
+                    "text": { "type": "string" }
+                  }
+                }
+              },
+              "sender": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "role": { "type": "string" },
+                  "badge": { "type": "string" },
+                  "source": { "type": "string" },
+                  "group": { "type": "string" }
+                }
+              },
+              "ocr": {
+                "type": "object",
+                "properties": {
+                  "flagged": { "type": "boolean", "description": "是否含 OCR 识别内容" },
+                  "count": { "type": "number" }
+                }
+              },
+              "files": { "type": "array", "items": { "type": "object" } },
+              "images": { "type": "number" },
+              "source": { "type": "string" },
+              "timeText": { "type": "string" }
+            }
+          },
+          "offline": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/notice-detail-card/index", "pagePath": "/pages/nt/nt" }
+      }
+    },
+    {
+      "name": "setNoticeDone",
+      "description": "把通知标记为已处理或恢复为待处理。状态写入云端 marks（kind=ntdone），与通知页、网页端互通；已处理的通知不计入待处理简报。可撤销，无需 confirmed。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "noticeId": {
+            "type": "string",
+            "description": "通知唯一标识，取自 listNotices 返回的 items[].id 原值；不得编造。"
+          },
+          "done": {
+            "type": "boolean",
+            "description": "true=标记已处理；false=恢复为待处理。用户说『看过了/处理完了』为 true。"
+          }
+        },
+        "required": ["noticeId", "done"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "noticeId": { "type": "string" },
+          "done": { "type": "boolean" },
+          "pending": { "type": "boolean", "description": "true 表示仅本机生效，云端未同步" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/notice-card/index", "pagePath": "/pages/nt/nt" }
+      }
+    },
+    {
+      "name": "setNoticePinned",
+      "description": "置顶或取消置顶一条通知。状态写入云端 marks（kind=nt），与通知页互通。可撤销，无需 confirmed。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "noticeId": {
+            "type": "string",
+            "description": "通知唯一标识，取自 listNotices 返回的 items[].id 原值；不得编造。"
+          },
+          "pinned": {
+            "type": "boolean",
+            "description": "true=置顶；false=取消置顶。"
+          }
+        },
+        "required": ["noticeId", "pinned"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "noticeId": { "type": "string" },
+          "pinned": { "type": "boolean" },
+          "pending": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/notice-card/index", "pagePath": "/pages/nt/nt" }
+      }
+    }
+  ],
+  "components": [
+    { "path": "components/notice-card/index", "relatedPage": "/pages/nt/nt" },
+    { "path": "components/notice-brief-card/index", "relatedPage": "/pages/nt/nt" },
+    { "path": "components/notice-detail-card/index", "relatedPage": "/pages/nt/nt" }
+  ]
+}

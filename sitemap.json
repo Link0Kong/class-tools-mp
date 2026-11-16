@@ -1,0 +1,9 @@
+{
+  "desc": "关于 sitemap.json 的配置，参见官方文档",
+  "rules": [
+    {
+      "action": "disallow",
+      "page": "*"
+    }
+  ]
+}

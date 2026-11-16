@@ -1,0 +1,253 @@
+{
+  "apis": [
+    {
+      "name": "calculateFitness",
+      "description": "按大学生体测国标计算单项得分与总分（七项：BMI、肺活量、50 米、坐位体前屈、立定跳远、引体/仰卧起坐、1000/800 米）。缺项按缺项计分，并返回等级与逐项得分。",
+      "_meta": { "ui": { "componentPath": "components/fitness-card/index", "pagePath": "/pages/ft/ft" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sex": { "type": "string", "enum": ["m", "f"], "description": "性别：m=男、f=女。必填。" },
+          "grade": { "type": "string", "enum": ["12", "34"], "description": "年级：12=大一/大二、34=大三/大四。必填。" },
+          "height": { "type": "number", "description": "身高，单位 cm，例如 175。用户没提供就不要传。" },
+          "weight": { "type": "number", "description": "体重，单位 kg，例如 68.5。用户没提供就不要传。" },
+          "vitalCapacity": { "type": "number", "description": "肺活量，单位 mL，例如 4200。" },
+          "run50": { "type": "number", "description": "50 米跑成绩，单位秒，例如 7.2。" },
+          "sitReach": { "type": "number", "description": "坐位体前屈，单位 cm，可为负数（如 -3.5）。" },
+          "standingJump": { "type": "number", "description": "立定跳远，单位 cm，例如 240。" },
+          "pullUp": { "type": "number", "description": "引体向上次数，仅男生（sex=m）使用。" },
+          "sitUp": { "type": "number", "description": "1 分钟仰卧起坐次数，仅女生（sex=f）使用。" },
+          "run1000": { "type": ["number", "string"], "description": "男生 1000 米跑成绩：可传秒数（如 250）或「分'秒」文本（如 4'10\"）。仅 sex=m 使用。" },
+          "run800": { "type": ["number", "string"], "description": "女生 800 米跑成绩：可传秒数（如 235）或「分'秒」文本（如 3'55\"）。仅 sex=f 使用。" }
+        },
+        "required": ["sex", "grade"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "score": { "type": "number" },
+          "bonus": { "type": "number" },
+          "total": { "type": "number" },
+          "totalText": { "type": "string" },
+          "level": { "type": "string" },
+          "bmi": { "type": "number" },
+          "bmiText": { "type": "string" },
+          "miss": { "type": "number" },
+          "wtDone": { "type": "number" },
+          "sex": { "type": "string" },
+          "grade": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "label": { "type": "string" },
+                "value": { "type": "string" },
+                "unit": { "type": "string" },
+                "weight": { "type": "number" },
+                "score": { "type": "number" },
+                "bonus": { "type": "number" },
+                "level": { "type": "string" }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getFitnessStandards",
+      "description": "查询大学生体测国标评分表：按性别、年级返回每项 20 档分数（100 分至 10 分）对应的成绩标准。用户问「多少分要跑多快」「引体几个满分」时使用。",
+      "_meta": { "ui": { "componentPath": "components/fitness-standard-card/index", "pagePath": "/pages/fttable/fttable" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sex": { "type": "string", "enum": ["m", "f"], "description": "性别：m=男、f=女。必填。" },
+          "grade": { "type": "string", "enum": ["12", "34"], "description": "年级：12=大一/大二、34=大三/大四。必填。" },
+          "item": { "type": "string", "enum": ["vc", "r50", "sit", "jump", "pull", "dur"], "description": "只看某一项：vc=肺活量，r50=50 米跑，sit=坐位体前屈，jump=立定跳远，pull=引体/仰卧起坐，dur=1000/800 米跑。不传则返回全部 6 项。" }
+        },
+        "required": ["sex", "grade"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sex": { "type": "string" },
+          "grade": { "type": "string" },
+          "sexText": { "type": "string" },
+          "gradeText": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "label": { "type": "string" },
+                "unit": { "type": "string" },
+                "rows": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "score": { "type": "number" },
+                      "value": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "listFitnessRecords",
+      "description": "读取本机体测历史记录（最多最近 2 条）：名称、日期、性别年级、总分、等级、成绩明细。用户问「我上次体测多少分」「有哪些记录」时使用。",
+      "_meta": { "ui": { "componentPath": "components/fitness-card/index", "pagePath": "/pages/ft/ft" } },
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "recordId": { "type": "string" },
+                "name": { "type": "string" },
+                "dateText": { "type": "string" },
+                "ts": { "type": "number" },
+                "sex": { "type": "string" },
+                "sexText": { "type": "string" },
+                "grade": { "type": "string" },
+                "gradeText": { "type": "string" },
+                "total": { "type": "number" },
+                "level": { "type": "string" },
+                "detail": { "type": "string" }
+              }
+            }
+          },
+          "total": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getFitnessRecord",
+      "description": "读取一条体测历史记录的完整表单与评分明细。recordId 必须取自 listFitnessRecords 或 saveFitnessRecord 的返回，不要编造。",
+      "_meta": { "ui": { "componentPath": "components/fitness-card/index", "pagePath": "/pages/ft/ft" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "recordId": { "type": "string", "description": "体测记录 ID，取自 listFitnessRecords 返回的 items[].recordId 原值。" }
+        },
+        "required": ["recordId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "record": { "type": "object" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "saveFitnessRecord",
+      "description": "保存一条体测记录：写入本机历史（最多保留最近 2 条，同数据补填会合并到原记录）并同步云端。写操作，必须用户确认后传 confirmed=true。",
+      "_meta": { "ui": { "componentPath": "components/fitness-card/index", "pagePath": "/pages/ft/ft" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sex": { "type": "string", "enum": ["m", "f"], "description": "性别：m=男、f=女。必填。" },
+          "grade": { "type": "string", "enum": ["12", "34"], "description": "年级：12=大一/大二、34=大三/大四。必填。" },
+          "height": { "type": "number", "description": "身高，cm。" },
+          "weight": { "type": "number", "description": "体重，kg。" },
+          "vitalCapacity": { "type": "number", "description": "肺活量，mL。" },
+          "run50": { "type": "number", "description": "50 米跑，秒。" },
+          "sitReach": { "type": "number", "description": "坐位体前屈，cm（可负）。" },
+          "standingJump": { "type": "number", "description": "立定跳远，cm。" },
+          "pullUp": { "type": "number", "description": "引体向上次数（男生）。" },
+          "sitUp": { "type": "number", "description": "1 分钟仰卧起坐次数（女生）。" },
+          "run1000": { "type": ["number", "string"], "description": "男生 1000 米成绩，秒数或「分'秒」文本。" },
+          "run800": { "type": ["number", "string"], "description": "女生 800 米成绩，秒数或「分'秒」文本。" },
+          "name": { "type": "string", "description": "自定义记录名（可选，≤24 字），例如「期中体测」「补测」。不传则自动命名。 " },
+          "confirmed": { "type": "boolean", "description": "用户明确同意保存后传 true；否则返回 need-confirm。" }
+        },
+        "required": ["sex", "grade", "confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "recordId": { "type": "string" },
+          "name": { "type": "string" },
+          "total": { "type": "number" },
+          "level": { "type": "string" },
+          "merged": { "type": "boolean" },
+          "synced": { "type": "boolean" },
+          "dropped": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "renameFitnessRecord",
+      "description": "给一条体测历史记录改名（例如改为「期中体测」）。recordId 取自 listFitnessRecords，name 为用户给出的新名称。",
+      "_meta": { "ui": { "componentPath": "components/fitness-card/index", "pagePath": "/pages/ft/ft" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "recordId": { "type": "string", "description": "体测记录 ID，取自 listFitnessRecords 返回的 items[].recordId 原值。" },
+          "name": { "type": "string", "description": "新记录名称，1–24 字，例如「期中体测」「补测」。不能为空。" }
+        },
+        "required": ["recordId", "name"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "recordId": { "type": "string" },
+          "name": { "type": "string" },
+          "synced": { "type": "boolean" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "deleteFitnessRecord",
+      "description": "删除一条体测历史记录：本机移除并把云端记录归档。破坏性操作，必须用户确认后传 confirmed=true。",
+      "_meta": { "ui": { "componentPath": "components/fitness-card/index", "pagePath": "/pages/ft/ft" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "recordId": { "type": "string", "description": "体测记录 ID，取自 listFitnessRecords 返回的 items[].recordId 原值。" },
+          "confirmed": { "type": "boolean", "description": "用户明确同意删除后传 true；否则返回 need-confirm。" }
+        },
+        "required": ["recordId", "confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "recordId": { "type": "string" },
+          "name": { "type": "string" },
+          "archived": { "type": "boolean" },
+          "remaining": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "components": [
+    { "path": "components/fitness-card/index", "relatedPage": "/pages/ft/ft" },
+    { "path": "components/fitness-standard-card/index", "relatedPage": "/pages/fttable/fttable" }
+  ]
+}

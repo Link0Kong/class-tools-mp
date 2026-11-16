@@ -1,0 +1,60 @@
+<view class="nd-card">
+  <view class="nd-hd">
+    <text class="nd-cat">{{detail.category}}</text>
+    <text class="nd-status {{detail.expired ? 'nd-status-exp' : ''}}">{{detail.statusText}}</text>
+  </view>
+  <text class="nd-ttl">{{title}}</text>
+  <view class="nd-meta">
+    <text class="nd-meta-t" wx:if="{{detail.deadlineText}}">截止 {{detail.deadlineText}}</text>
+    <text class="nd-meta-t" wx:elif="{{detail.eventText}}">{{detail.eventText}}</text>
+    <text class="nd-meta-t" wx:else>无时间</text>
+    <text class="nd-meta-t" wx:if="{{detail.source}}">{{detail.source}}</text>
+  </view>
+  <view class="nd-off" wx:if="{{offline}}">网络不可用 · 以下来自本机缓存</view>
+  <text class="nd-sum" wx:if="{{detail.summary}}">{{detail.summary}}</text>
+
+  <view class="nd-block" wx:if="{{points.length}}">
+    <text class="nd-block-t">要点</text>
+    <view class="nd-li" wx:for="{{points}}" wx:key="*this">
+      <text class="nd-dot">·</text>
+      <text class="nd-li-t">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="nd-block" wx:if="{{fields.length}}">
+    <text class="nd-block-t">字段</text>
+    <view class="nd-li" wx:for="{{fields}}" wx:key="k">
+      <text class="nd-f-k">{{item.k}}</text>
+      <text class="nd-f-v">{{item.v}}</text>
+    </view>
+  </view>
+
+  <view class="nd-block" wx:if="{{items.length}}">
+    <text class="nd-block-t">详情项</text>
+    <view class="nd-li" wx:for="{{items}}" wx:key="name">
+      <text class="nd-i-kind">{{item.kindText}}</text>
+      <text class="nd-i-name">{{item.name}}</text>
+      <text class="nd-i-meta" wx:if="{{item.meta}}">{{item.meta}}</text>
+    </view>
+    <text class="nd-more" wx:if="{{detail.images}}">另有 {{detail.images}} 张图片，请在通知页查看</text>
+  </view>
+
+  <view class="nd-block" wx:if="{{raw.length}}">
+    <text class="nd-block-t">原始消息</text>
+    <view class="nd-raw" wx:for="{{raw}}" wx:key="label">
+      <text class="nd-raw-hd">{{item.label}}{{item.meta ? ' · ' + item.meta : ''}}</text>
+      <text class="nd-raw-t">{{item.text}}</text>
+    </view>
+  </view>
+
+  <view class="nd-sender" wx:if="{{senderName || senderRole}}">
+    <text class="nd-sender-t">发送者：{{senderName}}{{senderRole ? '（' + senderRole + '）' : ''}}</text>
+  </view>
+  <text class="nd-ocr" wx:if="{{ocrText}}">{{ocrText}}</text>
+
+  <view class="nd-acts">
+    <view class="nd-btn" wx:if="{{!detail.done && !detail.expired}}" bind:tap="onDoneTap">标记已处理</view>
+    <view class="nd-btn nd-btn-ghost" wx:if="{{detail.done}}" bind:tap="onUndoneTap">恢复待处理</view>
+    <view class="nd-btn nd-btn-ghost" bind:tap="onPinTap">{{detail.pinned ? '取消置顶' : '置顶'}}</view>
+  </view>
+</view>

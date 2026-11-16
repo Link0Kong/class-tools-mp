@@ -1,0 +1,118 @@
+<!-- pages/ppt/ppt.wxml —— 「演示」列表（契约 §8.1 / DESIGN §4.1–4.2）
+     卡片：封面 128×72 + 标题单行 + 元信息「38 页 · 陈子麒」+ 状态胶囊（ready 不显示胶囊）
+     上传：聊天记录选文件 → 可改标题 → 占位卡片就地显示进度 → 自动排队转换
+     空态唯一允许的一行小字：「先把 .pptx 发到聊天」 -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b ppt-page {{themeClass}}">
+
+  <!-- 未完成班级身份 -->
+  <block wx:if="{{state === 'denied'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="📽" title="需要班级身份" text="完成学号 + 姓名验证后即可使用演示。" action-text="返回工具" bind:action="goAll"></empty-state>
+    </view>
+  </block>
+
+  <!-- 首次进入骨架（3 张，仅首次；DESIGN §4.1） -->
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="ppt-head">
+      <text class="ppt-head-t">演示</text>
+    </view>
+    <view class="m3-card m3-card--outlined ppt-sk" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="sk ppt-sk-cover sk-shimmer"></view>
+      <view class="ppt-sk-body">
+        <view class="sk sk-line sk-shimmer" style="width:70%"></view>
+        <view class="sk sk-line sk-shimmer" style="width:40%"></view>
+      </view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 顶部：标题 + 上传主按钮 -->
+    <view class="ppt-head">
+      <view class="grow">
+        <view class="ppt-head-t">演示</view>
+      </view>
+      <view class="ppt-upbtn {{up ? 'ppt-upbtn--off' : ''}}" bindtap="uploadTap" hover-class="ppt-upbtn--tap">上传</view>
+    </view>
+
+    <!-- 转换机心跳（离线只提示不报错，契约 §3.4） -->
+    <view class="ppt-hb" wx:if="{{hb.known}}">
+      <view class="ppt-dot {{hb.online ? 'ppt-dot--ok' : 'ppt-dot--off'}}"></view>
+      <text class="ppt-hb-t">{{hb.text}}</text>
+      <text class="ppt-hb-q" wx:if="{{hb.queued > 0}}">队列 {{hb.queued}}</text>
+    </view>
+
+    <!-- 云端瞬时失败轻提示（保留旧列表） -->
+    <view class="ppt-tip" wx:if="{{listError}}">{{listError}}</view>
+
+    <!-- 卡片列表（v2.0 §12.4.1：点击卡片 = 下载详情；有 files 的显示「兼容版」「PDF」小标签） -->
+    <view class="ppt-list" wx:if="{{rows.length}}">
+      <view class="ppt-card" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}"
+            bindtap="openDeck" bindlongpress="moreTap" hover-class="ppt-card--tap">
+        <!-- 封面 128×72（无封面用暖白占位；webp 必须显式开启否则真机白图） -->
+        <view class="ppt-cover">
+          <image wx:if="{{item.hasCover}}" class="ppt-cover-img" src="{{item.cover}}" mode="aspectFill"
+                 webp="{{true}}" lazy-load data-id="{{item.id}}" binderror="onCoverError"></image>
+          <view wx:else class="ppt-cover-ph">📽</view>
+          <view class="ppt-cover-up" wx:if="{{item.uploading}}">
+            <view class="ppt-cover-up-bar" style="width:{{item.upPct}}%"></view>
+          </view>
+        </view>
+        <!-- 正文 -->
+        <view class="ppt-card-main">
+          <view class="ppt-title">{{item.title}}</view>
+          <view class="ppt-meta">{{item.meta}}</view>
+          <view class="ppt-sub" wx:if="{{item.hasSub}}">{{item.sub}}</view>
+          <view class="ppt-foot">
+            <text wx:if="{{item.hasPill}}" class="ppt-pill ppt-pill--{{item.pillCls}}">{{item.pill}}</text>
+            <text wx:if="{{item.tagCompat}}" class="ppt-tag ppt-tag--compat">兼容版</text>
+            <text wx:if="{{item.tagPdf}}" class="ppt-tag ppt-tag--pdf">PDF</text>
+            <view class="grow"></view>
+            <text wx:if="{{item.retryable}}" class="ppt-act" data-id="{{item.id}}" catchtap="retryTap">重试</text>
+            <view class="ppt-more" wx:if="{{item.mine}}" data-id="{{item.id}}" catchtap="moreTap" hover-class="ppt-more--tap">⋯</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空态（不放插画；唯一允许的一行说明小字） -->
+    <view class="ppt-empty" wx:if="{{empty}}">
+      <view class="ppt-empty-art">📽</view>
+      <view class="ppt-empty-t">还没有演示文件</view>
+      <view class="ppt-empty-btn" bindtap="uploadTap" hover-class="ppt-empty-btn--tap">从聊天选择</view>
+      <view class="ppt-empty-hint">先把 .pptx 发到聊天</view>
+    </view>
+  </block>
+
+  <!-- 上传进度（就地显示；可取消；取消即软删并清理分片） -->
+  <view class="ppt-up" wx:if="{{up}}">
+    <view class="ppt-up-row">
+      <text class="ppt-up-title">{{up.title}}</text>
+      <text class="ppt-up-pct">{{up.text}}</text>
+    </view>
+    <view class="progress ppt-up-prog"><view class="progress__bar" style="width:{{up.pct}}%"></view></view>
+    <view class="ppt-up-row">
+      <text class="ppt-up-sub">{{up.done}}/{{up.total}} 片 · 512KiB/片</text>
+      <text class="ppt-up-cancel" bindtap="cancelTap">取消</text>
+    </view>
+  </view>
+
+  <!-- 标题编辑弹层（默认 = 文件名去扩展名，≤80 字） -->
+  <block wx:if="{{titleOpen}}">
+    <view class="sheet-mask" bindtap="cancelTitle"></view>
+    <view class="sheet ppt-sheet" catchtap="noop">
+      <view class="sheet__grabber"></view>
+      <view class="ppt-sheet-t">演示标题</view>
+      <view class="field">
+        <view class="field__ctrl"><input class="field__input" value="{{titleDraft}}" maxlength="80" placeholder="演示标题" bindinput="onTitleInput" /></view>
+        <view class="field__hint">{{pendingName}} · {{pendingSizeText}}</view>
+      </view>
+      <view class="ppt-sheet-btns">
+        <view class="m3-btn m3-btn--text" bindtap="cancelTitle">取消</view>
+        <view class="grow"></view>
+        <view class="m3-btn m3-btn--filled" bindtap="confirmTitle">开始上传</view>
+      </view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,129 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b pad-action {{themeClass}}">
+
+  <view class="page-head">
+    <view class="t-headline-m">分组</view>
+    <view class="t-body-m muted">第 2 步 · 成员来自抽签序号或班级名单</view>
+  </view>
+
+  <segmented items="{{steps}}" value="s2" bindchange="onStep" />
+
+  <view class="section-gap"></view>
+
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="sk sk-title sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+    <view class="m3-card m3-card--filled enter enter-2"><view class="sk sk-card sk-shimmer"></view></view>
+  </block>
+
+  <block wx:else>
+    <view class="m3-card m3-card--outlined" wx:if="{{state === 'error'}}">
+      <empty-state mode="error" icon="⚠" title="读取失败" text="{{errorText}}" action-text="重试" bind:action="load"></empty-state>
+    </view>
+
+    <block wx:else>
+      <!-- —— 参数卡片 —— -->
+      <view class="m3-card m3-card--elevated enter enter-1">
+        <view class="m3-card__head">
+          <view class="t-title-m">分组参数</view>
+          <view class="pill pill--neutral">第 2 步</view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">成员来源</view>
+          <view class="row wrap">
+            <touchable cls="m3-chip {{source === 'prev' ? 'm3-chip--selected' : ''}}" data-v="prev" bindtap="setSource">上一步抽签（{{prevN}}）</touchable>
+            <touchable cls="m3-chip {{source === 'pick' ? 'm3-chip--selected' : ''}}" data-v="pick" bindtap="setSource">班级名单</touchable>
+          </view>
+        </view>
+
+        <view class="field" wx:if="{{source === 'pick'}}">
+          <view class="field__label">班级名单成员</view>
+          <view class="row between">
+            <view class="col grow">
+              <text class="t-body-m muted">{{selCount ? '已选 ' + selCount + ' 人 · 按座号升序分组' : '未选择 · 点右侧从班级名单选人'}}</text>
+            </view>
+            <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="openPicker">选择名单</touchable>
+          </view>
+          <view wx:if="{{selCount}}" class="sel-wrap">
+            <view class="lp-chip" wx:for="{{selChips}}" wx:key="seat">
+              <text class="lp-chip__seat">{{item.seat}}</text><text class="lp-chip__name">{{item.name}}</text>
+            </view>
+            <view wx:if="{{selMore}}" class="lp-chip lp-chip--more">+{{selMore}}</view>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">分组方式</view>
+          <view class="row wrap">
+            <touchable cls="m3-chip {{mode === 'groups' ? 'm3-chip--selected' : ''}}" data-v="groups" bindtap="setMode">按组数</touchable>
+            <touchable cls="m3-chip {{mode === 'per' ? 'm3-chip--selected' : ''}}" data-v="per" bindtap="setMode">按每组人数</touchable>
+          </view>
+        </view>
+
+        <view class="field">
+          <view class="field__label">{{mode === 'groups' ? '组数' : '每组人数'}}</view>
+          <view class="field__ctrl"><input class="field__input" type="number" value="{{n}}" bindinput="onNum" /></view>
+        </view>
+
+        <view class="field field--row" style="margin-bottom:0">
+          <view class="col grow">
+            <text class="t-body-l">打乱顺序</text>
+            <text class="field__hint">{{shuffle ? '洗牌后轮流分配' : '按原顺序轮流分配'}}</text>
+          </view>
+          <switch checked="{{shuffle}}" color="{{th.primary}}" bindchange="onSwitch" />
+        </view>
+      </view>
+
+      <!-- —— 结果卡片 —— -->
+      <view class="m3-card m3-card--filled enter enter-2">
+        <view class="m3-card__head">
+          <view class="t-title-m">分组结果</view>
+          <view class="pill {{groups.length ? 'pill--primary' : 'pill--neutral'}}">{{groups.length}} 组</view>
+        </view>
+
+        <empty-state wx:if="{{state === 'empty'}}" icon="👥" title="还没有分组结果" text="设置好参数点下面的「开始分组」" action-text="开始分组" bind:action="doGroup"></empty-state>
+
+        <block wx:else>
+          <view class="gcard" wx:for="{{groups}}" wx:key="i">
+            <view class="row between">
+              <view class="t-title-m">第 {{item.i}} 组</view>
+              <view class="pill pill--primary">{{item.size}} 人</view>
+            </view>
+            <view class="gmembers">
+              <view class="gmem" wx:for="{{item.members}}" wx:for-item="m" wx:key="key">
+                <text wx:if="{{m.n != null}}" class="gmem__n">{{m.n}}</text>
+                <text wx:if="{{m.nm}}" class="gmem__name">{{m.nm}}</text>
+              </view>
+            </view>
+          </view>
+          <view wx:if="{{cfg}}" class="row wrap" style="margin-top:20rpx">
+            <text class="pill pill--neutral">{{cfg.source}}</text>
+            <text class="pill pill--neutral">{{cfg.mode}}</text>
+          </view>
+        </block>
+      </view>
+    </block>
+  </block>
+
+  <canvas type="2d" id="card" class="exp-canvas"></canvas>
+
+  <view class="actionbar">
+    <view class="actionbar__inner" style="margin-bottom:16rpx">
+      <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="toDraw">上一步 · 抽签</touchable>
+      <view class="grow"></view>
+      <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="copyText">复制</touchable>
+      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="exportImg">导出图片</touchable>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="doGroup">开始分组</touchable>
+    <touchable cls="m3-btn m3-btn--text m3-btn--block" bindtap="toSum">下一步 · 结果单</touchable>
+  </view>
+
+  <!-- —— 班级名单选择（只来自 class_members，液态气泡）—— -->
+  <roster-picker id="rosterPicker" show="{{picker}}" title="班级名单" selected="{{groupSel}}"
+                 bind:confirm="onRosterConfirm" bind:close="closePicker"></roster-picker>
+</view>

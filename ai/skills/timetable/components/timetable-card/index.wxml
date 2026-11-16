@@ -1,0 +1,27 @@
+<view class="ttcard">
+  <view class="tthead">
+    <text class="tttitle">{{title}}</text>
+    <text class="ttsub" wx:if="{{sub}}">{{sub}}</text>
+  </view>
+
+  <view class="ttrows" wx:if="{{rows.length}}">
+    <view class="ttrow" wx:for="{{rows}}" wx:key="label">
+      <text class="ttk">{{item.label}}</text>
+      <text class="ttv">{{item.value}}</text>
+    </view>
+  </view>
+
+  <view class="ttlist" wx:if="{{list.length}}">
+    <view class="ttitem" wx:for="{{list}}" wx:key="k">
+      <view class="ttmain">
+        <text class="ttname">{{item.main}}</text>
+        <text class="ttstate" wx:if="{{item.stateText}}">{{item.stateText}}</text>
+      </view>
+      <text class="ttmeta" wx:if="{{item.meta}}">{{item.meta}}</text>
+    </view>
+  </view>
+
+  <view class="ttfoot" wx:if="{{foot}}">
+    <text class="ttmuted">{{foot}}</text>
+  </view>
+</view>

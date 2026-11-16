@@ -1,0 +1,140 @@
+/* ai/skills/roll/components/roll-card/index.wxss
+   原子组件 WXSS 约束：仅 class/标签/后代选择器；无动画/过渡；禁止 overflow-y；颜色固定 M3 token。 */
+.rollcard {
+  padding: 24rpx 28rpx;
+  background: #F7F8F8;
+  border-radius: 16rpx;
+}
+
+.rollhead {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 12rpx;
+}
+
+.rolltitle {
+  font-size: 32rpx;
+  line-height: 44rpx;
+  font-weight: 600;
+  color: #1A1C1A;
+}
+
+.rollsub {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  line-height: 34rpx;
+  color: #6E8CA8;
+}
+
+.rollstats {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 16rpx 0;
+}
+
+.rollstat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rollnum {
+  font-size: 40rpx;
+  line-height: 52rpx;
+  font-weight: 600;
+  color: #4E9082;
+}
+
+.rollnum.ab {
+  color: #B98F63;
+}
+
+.rollnum.un {
+  color: #6E8CA8;
+}
+
+.rolllabel {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  color: #6E8CA8;
+}
+
+.rolllist {
+  margin-top: 8rpx;
+}
+
+.rollitem {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid #E3E6E4;
+}
+
+.rollname {
+  font-size: 28rpx;
+  line-height: 40rpx;
+  color: #1A1C1A;
+}
+
+.rollstate {
+  font-size: 22rpx;
+  line-height: 32rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  color: #4E9082;
+  background: #E6EFEC;
+}
+
+.rollfoot {
+  margin-top: 16rpx;
+}
+
+.rollmuted {
+  font-size: 24rpx;
+  line-height: 34rpx;
+  color: #6E8CA8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .rollcard {
+    background: #1F211F;
+  }
+
+  .rolltitle,
+  .rollname {
+    color: #E4E6E3;
+  }
+
+  .rollsub,
+  .rolllabel,
+  .rollmuted {
+    color: #A9B4C0;
+  }
+
+  .rollnum {
+    color: #9BC9BB;
+  }
+
+  .rollnum.ab {
+    color: #D3B48C;
+  }
+
+  .rollnum.un {
+    color: #A9B4C0;
+  }
+
+  .rollitem {
+    border-bottom-color: #353A36;
+  }
+
+  .rollstate {
+    color: #9BC9BB;
+    background: #2B3833;
+  }
+}

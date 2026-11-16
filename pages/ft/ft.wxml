@@ -1,0 +1,155 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b pad-action {{themeClass}}">
+
+  <view class="page-head">
+    <view class="t-headline-m">体测计算器</view>
+    <view class="t-body-m muted">国家学生体质健康标准（大学组）· 标准分 + 加分 → 等级</view>
+  </view>
+
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="sk sk-title sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+    <view class="m3-card m3-card--filled enter enter-2"><view class="sk sk-card sk-shimmer"></view></view>
+  </block>
+
+  <view class="m3-card m3-card--outlined" wx:elif="{{state === 'error'}}">
+    <empty-state icon="⚠" title="读取失败" text="{{errorText}}" action-text="重试" bind:action="load"></empty-state>
+  </view>
+
+  <block wx:else>
+    <!-- —— 表单卡片 —— -->
+    <view class="m3-card m3-card--elevated enter enter-1">
+      <view class="m3-card__head">
+        <view class="t-title-m">基本信息</view>
+        <view class="row">
+          <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="openTable">查看国标表</touchable>
+          <view class="pill pill--neutral">{{sex === 'f' ? '女' : '男'}} · {{grade === '34' ? '大三大四' : '大一大二'}}</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field__label">性别</view>
+        <view class="row wrap">
+          <touchable wx:for="{{sexOpts}}" wx:key="v" cls="m3-chip {{sex === item.v ? 'm3-chip--selected' : ''}}" data-v="{{item.v}}" bindtap="setSex">{{item.n}}</touchable>
+        </view>
+      </view>
+
+      <view class="field" style="margin-bottom:0">
+        <view class="field__label">年级</view>
+        <view class="row wrap">
+          <touchable wx:for="{{grOpts}}" wx:key="v" cls="m3-chip {{grade === item.v ? 'm3-chip--selected' : ''}}" data-v="{{item.v}}" bindtap="setGr">{{item.n}}</touchable>
+        </view>
+      </view>
+    </view>
+
+    <view class="m3-card m3-card--filled enter enter-2">
+      <view class="m3-card__head">
+        <view class="t-title-m">成绩输入</view>
+      </view>
+      <view class="ft-grid">
+        <view class="ft-cell" wx:for="{{fields}}" wx:key="k">
+          <view class="ft-label">{{item.n}}</view>
+          <view class="ft-input-wrap">
+            <input class="ft-input" type="{{item.type}}" data-k="{{item.k}}" value="{{item.v}}" placeholder-class="ph" bindinput="onInput" />
+            <text class="ft-suffix">{{item.u}}</text>
+          </view>
+        </view>
+        <view class="ft-cell ft-cell--wide">
+          <view class="ft-label">长跑<text class="ft-unit">{{sex === 'f' ? '800 米' : '1000 米'}}</text></view>
+          <view class="ft-dur">
+            <view class="ft-input-wrap ft-dur-part">
+              <input class="ft-input" type="number" maxlength="3" data-k="durM" value="{{form.durM}}" placeholder-class="ph" bindinput="onInput" bindblur="onInput" />
+              <text class="ft-suffix">分</text>
+            </view>
+            <text class="ft-colon">:</text>
+            <view class="ft-input-wrap ft-dur-part">
+              <input class="ft-input" type="number" maxlength="2" data-k="durS" value="{{form.durS}}" placeholder-class="ph" bindinput="onInput" bindblur="onInput" />
+              <text class="ft-suffix">秒</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- —— 结果 —— -->
+    <view class="m3-card m3-card--hero enter enter-3" wx:if="{{res && hasData}}">
+      <view class="row between">
+        <view class="col">
+          <view class="row" style="align-items:flex-end">
+            <text class="big-num t-num">{{res.totalText}}</text>
+            <text class="big-unit">分</text>
+          </view>
+          <view class="t-body-m" style="opacity:.85;margin-top:8rpx">标准分 {{res.std}} · 加分 {{res.plus}}<text wx:if="{{res.miss}}"> · 缺项 {{res.miss}}</text></view>
+        </view>
+        <view class="badge badge--{{res.grade === '优秀' ? 'primary' : (res.grade === '良好' ? 'tertiary' : (res.grade === '及格' ? 'tertiary' : 'error'))}}">{{res.grade}}</view>
+      </view>
+      <view class="progress" style="margin-top:28rpx">
+        <view class="progress__bar {{barCls === 'warn' ? 'progress--tertiary' : ''}}" style="width:{{barWidth}}%"></view>
+      </view>
+    </view>
+
+    <view class="m3-card m3-card--filled enter enter-3" wx:if="{{res && hasData}}">
+      <view class="m3-card__head">
+        <view class="t-title-m">各项得分</view>
+      </view>
+      <view class="score-row" wx:for="{{res.rows}}" wx:key="n">
+        <view class="row between">
+          <view class="col grow">
+            <text class="t-body-l">{{item.n}}</text>
+            <text class="t-body-m muted">{{item.sub}} · 权重 {{item.wt}}% · 成绩 {{item.v}}</text>
+          </view>
+          <view class="col" style="align-items:flex-end">
+            <text class="t-title-m {{item.s == null ? 'muted' : ''}}">{{item.s == null ? '–' : item.s}}</text>
+            <text class="pill {{item.s == null ? 'pill--neutral' : (item.s >= 90 ? 'pill--primary' : (item.s >= 60 ? 'pill--tertiary' : 'pill--error'))}}">{{item.s == null ? '缺项' : (item.s >= 90 ? '优秀' : (item.s >= 60 ? '及格' : '不及格'))}}</text>
+          </view>
+        </view>
+        <view class="bar-line">
+          <view class="bar-line__fill" style="width:{{item.s > 0 ? item.s : 0}}%"></view>
+        </view>
+        <view class="row" wx:if="{{item.p}}"><text class="pill pill--primary">加分 +{{item.p}}</text></view>
+      </view>
+    </view>
+
+    <view class="m3-card m3-card--filled" wx:if="{{hist.length}}">
+      <view class="m3-card__head">
+        <view class="t-title-m">历史记录</view>
+        <view class="t-label-m muted">{{hist.length}} 条</view>
+      </view>
+      <view class="ft-hist {{item.cls}}" wx:for="{{hist}}" wx:key="id">
+        <view class="grow">
+          <view class="ft-hist-name">{{item.name}}</view>
+          <view class="ft-hist-top">
+            <text class="mono">{{item.when}}</text>
+            <text class="ft-hist-score">{{item.totalText}} 分</text>
+            <text class="pill pill--neutral">{{item.grade}}</text>
+          </view>
+          <view class="ft-hist-meta">{{item.sexText}} · {{item.grText}}<text wx:if="{{item._sync}}"> · 未同步</text></view>
+          <view class="ft-hist-detail">{{item.detail}}</view>
+        </view>
+        <view class="ft-hist-acts">
+          <view class="ft-hist-act" data-i="{{index}}" bindtap="restoreRec">回填</view>
+          <view class="ft-hist-act" data-i="{{index}}" bindtap="renameRec">改名</view>
+          <view class="ft-hist-act del" data-i="{{index}}" bindtap="delRec">删除</view>
+        </view>
+      </view>
+    </view>
+
+
+  </block>
+
+  <canvas type="2d" id="card" class="exp-canvas"></canvas>
+
+  <view class="actionbar">
+    <view class="actionbar__inner" style="margin-bottom:16rpx">
+      <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="reset">清空</touchable>
+      <view class="grow"></view>
+      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="exportImg">导出图片</touchable>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="saveRec">保存记录</touchable>
+  </view>
+</view>
+

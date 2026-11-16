@@ -1,0 +1,96 @@
+/* fitness-card：体测算分 / 记录（原子组件约束：无动画、无 overflow-y） */
+.ft-card {
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #FFFBFE;
+  color: #1C1B1F;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ft-hd {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.ft-sub {
+  color: #49454F;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.ft-hero {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.ft-total {
+  font-size: 28px;
+  font-weight: 700;
+  color: #34544E;
+}
+.ft-level {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #34544E;
+}
+.ft-bmi {
+  margin-left: 12px;
+  font-size: 12px;
+  color: #79747E;
+}
+.ft-rows {
+  display: flex;
+  flex-direction: column;
+}
+.ft-row {
+  display: flex;
+  padding: 3px 0;
+  border-top: 1px solid #ECE6EA;
+}
+.ft-cell {
+  font-size: 13px;
+}
+.ft-label {
+  flex: 1;
+  color: #49454F;
+}
+.ft-value {
+  width: 84px;
+  color: #1C1B1F;
+}
+.ft-score {
+  width: 64px;
+  text-align: right;
+  color: #34544E;
+  font-weight: 600;
+}
+.ft-empty {
+  color: #79747E;
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ft-card {
+    background: #1C1B1F;
+    color: #E6E1E5;
+  }
+  .ft-sub,
+  .ft-label {
+    color: #CAC4D0;
+  }
+  .ft-total,
+  .ft-level,
+  .ft-score {
+    color: #B7D6CD;
+  }
+  .ft-bmi,
+  .ft-empty {
+    color: #938F99;
+  }
+  .ft-value {
+    color: #E6E1E5;
+  }
+  .ft-row {
+    border-top-color: #2E2B31;
+  }
+}

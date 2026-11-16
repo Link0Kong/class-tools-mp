@@ -1,0 +1,289 @@
+/* pages/pptplay/pptplay.wxss —— 全屏播放器（纯黑舞台；DESIGN §4.3–4.9）
+ * 尺寸用 px（x 1 = 1px，与设计稿 1:1）；rpx 只用于不关键的内边距。
+ * 播放器内部一律中性黑白，不使用品牌色（唯一例外：缩略图当前页描边/音频波形 #4E9082）。 */
+
+page { background: #000; }
+
+.pl-root { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
+
+/* ---------------- 舞台 / 图片层（z 10） ---------------- */
+.pl-stage { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
+.pl-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.pl-imgfail {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 25;
+  padding: 10px 18px; border-radius: 18px; background: rgba(0, 0, 0, .62);
+}
+.pl-imgfail-t { font-size: 13px; color: rgba(255, 255, 255, .9); }
+
+/* ---------------- 媒体热点（z 20）：圆形播放键 ---------------- */
+.pl-hot {
+  position: absolute; z-index: 20; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .45);
+  border: 2px solid rgba(255, 255, 255, .35);
+}
+.pl-hot-ico { font-size: 16px; line-height: 1; color: rgba(255, 255, 255, .92); position: relative; z-index: 2; }
+/* v1.2 §11.3.3：轻微脉冲提示（热点更醒目；失败时不闪） */
+.pl-hot-pulse {
+  position: absolute; left: -2px; top: -2px; right: -2px; bottom: -2px;
+  border-radius: 50%; border: 2px solid rgba(255, 255, 255, .45);
+  animation: plHotPulse 1600ms ease-out infinite;
+}
+@keyframes plHotPulse {
+  0% { transform: scale(1); opacity: .5; }
+  70% { transform: scale(1.32); opacity: 0; }
+  100% { transform: scale(1.32); opacity: 0; }
+}
+.pl-hot--audio { background: rgba(0, 0, 0, .35); }
+.pl-hot--fail { opacity: .5; border-color: rgba(255, 255, 255, .18); background: rgba(0, 0, 0, .3); }
+.pl-hot-badge {
+  position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  margin-top: 4px; font-size: 11px; line-height: 1.2; color: rgba(255, 255, 255, .85);
+  white-space: nowrap;
+}
+
+/* ---------------- v1.2 原样播放（视频模式；契约 §11.3.2 / §11.4） ---------------- */
+.pl-vroot { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 25; background: #000; }
+.pl-v { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+/* 手势/点击层：点舞台显隐控制条，左右滑切章节；不做 1/3 点击翻页 */
+.pl-vhit { position: absolute; left: 0; top: 0; right: 0; bottom: 0; z-index: 32; background: transparent; }
+/* 初始加载 / 缓冲中（40–55MB 直链流播必须给缓冲态） */
+.pl-vload {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 34; display: flex; flex-direction: column; align-items: center;
+}
+.pl-vspin {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, .22); border-top-color: rgba(255, 255, 255, .9);
+  animation: plSpin 900ms linear infinite;
+}
+@keyframes plSpin { to { transform: rotate(360deg); } }
+.pl-vload-t { margin-top: 12px; font-size: 12px; color: rgba(255, 255, 255, .75); }
+/* 下载降级进度（§11.4） */
+.pl-vdl {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 35; width: 240px; max-width: 70%;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 18px; border-radius: 14px; background: rgba(18, 20, 20, .82);
+}
+.pl-vdl-t { font-size: 13px; color: rgba(255, 255, 255, .9); margin-bottom: 10px; }
+.pl-vdl-bar { width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.pl-vdl-bar-i { height: 100%; background: #fff; transition: width 200ms linear; }
+/* 暂停大播放键（autoplay 被拒 / 暂停） */
+.pl-vbig {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 34; width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(0, 0, 0, .52); border: 2px solid rgba(255, 255, 255, .35);
+  display: flex; align-items: center; justify-content: center;
+}
+.pl-vbig-ico { font-size: 26px; color: #fff; margin-left: 4px; }
+/* 短提示（续播 / 降级原因） */
+.pl-vhint {
+  position: absolute; left: 50%; top: 54px; transform: translateX(-50%);
+  z-index: 36; padding: 8px 16px; border-radius: 16px;
+  background: rgba(0, 0, 0, .66); color: rgba(255, 255, 255, .92); font-size: 13px; white-space: nowrap;
+}
+/* 原样播放控制条（3s 自动隐藏；点舞台显隐） */
+.pl-vctrl {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  width: calc(100% - 24px); max-width: 760px; z-index: 41;
+  padding: 8px 10px 10px; border-radius: 14px; box-sizing: border-box;
+  background: rgba(18, 20, 20, .82);
+  opacity: 0; pointer-events: none; transition: opacity 200ms ease-out;
+}
+.pl-vctrl--on { opacity: 1; pointer-events: auto; }
+.pl-vbar { position: relative; height: 22px; margin: 0 2px 4px; display: flex; flex-direction: column; justify-content: center; }
+.pl-vbar-bg { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: rgba(255, 255, 255, .18); }
+.pl-vbar-fill { position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: rgba(255, 255, 255, .9); }
+.pl-vtick { position: absolute; top: 50%; width: 2px; height: 10px; margin-top: -5px; margin-left: -1px; background: rgba(255, 255, 255, .5); border-radius: 1px; }
+.pl-vrow { display: flex; flex-direction: row; align-items: center; }
+.pl-vrow--chips { margin-top: 4px; }
+.pl-vbtn { width: 44px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+.pl-vbtn--play { font-size: 20px; }
+.pl-vtime { font-size: 13px; color: rgba(255, 255, 255, .92); font-variant-numeric: tabular-nums; margin-left: 4px; white-space: nowrap; flex: none; }
+.pl-vpage { font-size: 12px; color: rgba(255, 255, 255, .55); margin-left: 8px; white-space: nowrap; flex: none; }
+.pl-vchip {
+  height: 30px; padding: 0 10px; margin-left: 6px; border-radius: 15px;
+  background: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .92);
+  font-size: 12px; display: flex; align-items: center; flex: none;
+}
+
+/* ---------------- 顶部（z 40）：文件名 3s 淡出 + 原样/分步胶囊 + 关闭 + 2px 进度条 ---------------- */
+.pl-top {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 40;
+  pointer-events: none;
+}
+.pl-title {
+  display: block; padding: 0 120px 0 56px;
+  font-size: 14px; color: rgba(255, 255, 255, .7);
+  opacity: 0; transition: opacity 300ms ease-out;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.pl-title--on { opacity: 1; }
+/* 原样/分步胶囊（§11.3.1 显眼的模式切换；顶栏常驻、避开微信原生胶囊与状态栏） */
+.pl-modeseg {
+  position: absolute; right: 104px; top: 4px;
+  display: flex; flex-direction: row; padding: 2px; border-radius: 14px;
+  background: rgba(0, 0, 0, .45); pointer-events: auto;
+}
+.pl-modeseg-i {
+  min-width: 44px; height: 26px; padding: 0 8px; border-radius: 12px;
+  font-size: 12px; color: rgba(255, 255, 255, .6);
+  display: flex; align-items: center; justify-content: center;
+}
+.pl-modeseg-i--on { background: rgba(255, 255, 255, .92); color: #111; }
+/* 关闭：左上（避开右上微信原生胶囊与状态栏；样式与视频控制条一致） */
+.pl-topx {
+  position: absolute; left: 4px; top: 2px;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: rgba(255, 255, 255, .8); pointer-events: auto;
+}
+.pl-progress {
+  position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: rgba(255, 255, 255, .18);
+}
+.pl-progress-bar { height: 100%; background: rgba(255, 255, 255, .9); transition: width 160ms linear; }
+
+/* ---------------- 控制条（z 41）：底部居中、自动隐藏 ---------------- */
+.pl-ctrl {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  width: calc(100% - 32px); max-width: 720px;
+  min-height: 48px; box-sizing: border-box;
+  display: flex; flex-direction: row; align-items: center;
+  padding: 0 6px; border-radius: 14px;
+  background: rgba(18, 20, 20, .82);   /* backdrop-filter 不支持时用纯色 .82（DESIGN §5.4 降级） */
+  opacity: 0; pointer-events: none;
+  transition: opacity 200ms ease-out;
+  z-index: 41;
+}
+.pl-ctrl--on { opacity: 1; pointer-events: auto; }
+.pl-btn { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 26px; line-height: 1; color: #fff; }
+.pl-pos { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 64px; padding: 0 4px; }
+.pl-pos-t { font-size: 15px; color: rgba(255, 255, 255, .92); font-variant-numeric: tabular-nums; }
+.pl-dots { display: flex; flex-direction: row; margin-top: 3px; }
+.pl-dot { width: 6px; height: 6px; border-radius: 3px; margin: 0 2px; background: rgba(255, 255, 255, .35); }
+.pl-dot--on { background: #fff; }
+.pl-sep { width: 1px; height: 20px; flex: none; margin: 0 4px; background: rgba(255, 255, 255, .12); }
+.pl-ico { width: 36px; height: 36px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 16px; color: rgba(255, 255, 255, .9); }
+.pl-ico--more { font-size: 20px; }
+.pl-audio { display: flex; flex-direction: row; align-items: flex-end; height: 12px; margin-left: 2px; }
+.pl-audio-bar { width: 2px; height: 12px; margin-right: 2px; background: #4E9082; animation: plAudio 900ms ease-in-out infinite; }
+.pl-audio-bar:nth-child(2) { animation-delay: 150ms; }
+.pl-audio-bar:nth-child(3) { animation-delay: 300ms; }
+@keyframes plAudio { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+
+/* ---------------- 媒体层（z 30）：视频独立全屏 ---------------- */
+.pl-media { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 30; background: #000; }
+.pl-video { width: 100%; height: 100%; }
+.pl-media-close {
+  position: absolute; z-index: 31;
+  left: calc(env(safe-area-inset-left) + 12px); top: calc(env(safe-area-inset-top) + 12px);
+  width: 40px; height: 40px; border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .55); color: #fff; font-size: 18px;
+}
+
+/* ---------------- 黑屏（z 60） ---------------- */
+.pl-black { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; }
+.pl-black-hint { font-size: 12px; color: rgba(255, 255, 255, .4); }
+
+/* ---------------- 抽屉（z 50/51） ---------------- */
+.pl-mask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 50; background: rgba(0, 0, 0, .45); }
+.pl-drawer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 51;
+  background: rgba(14, 16, 16, .97);   /* 不透明底：投屏时不被误认成演示内容（DESIGN §4.6） */
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: plSheetUp 240ms cubic-bezier(.2, 0, 0, 1);
+}
+.pl-drawer--thumb { height: 62vh; }
+.pl-drawer--notes { height: 50vh; }
+@keyframes plSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.pl-grabber { width: 36px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .25); margin: 8px auto 0; }
+.pl-drawer-hd { display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 8px 16px; }
+.pl-drawer-t { font-size: 14px; color: rgba(255, 255, 255, .85); }
+.pl-drawer-x { width: 32px; height: 32px; text-align: center; line-height: 32px; font-size: 16px; color: rgba(255, 255, 255, .7); }
+.pl-thumbs { width: 100%; height: calc(62vh - 76px); white-space: nowrap; padding: 0 16px; box-sizing: border-box; }
+.pl-thumb {
+  position: relative; display: inline-block; vertical-align: top;
+  width: 104px; height: 58px; margin-right: 10px; border-radius: 6px; overflow: hidden;
+  border: 2px solid transparent; background: #111;
+}
+.pl-thumb--cur { border-color: #4E9082; }
+.pl-thumb-img { width: 100%; height: 100%; display: block; }
+.pl-thumb-n {
+  position: absolute; right: 4px; bottom: 2px;
+  font-size: 11px; color: #fff; background: rgba(0, 0, 0, .35);
+  padding: 0 4px; border-radius: 3px;
+}
+/* 该页多步时：缩略图下方短线标当前步（当前步 #4E9082，其余 .25） */
+.pl-thumb-dots {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  display: flex; flex-direction: row;
+}
+.pl-thumb-step { flex: 1; height: 2px; margin-right: 1px; background: rgba(255, 255, 255, .25); }
+.pl-thumb-step:last-child { margin-right: 0; }
+.pl-thumb-step--on { background: #4E9082; }
+.pl-notes { width: 100%; height: calc(50vh - 84px); padding: 0 20px 20px; box-sizing: border-box; }
+.pl-notes-t { display: block; font-size: 16px; line-height: 1.7; color: rgba(255, 255, 255, .92); white-space: pre-wrap; word-break: break-word; }
+.pl-notes-empty { font-size: 13px; color: rgba(255, 255, 255, .45); }
+
+/* ---------------- 错误 / 未验证身份（z 70） ---------------- */
+.pl-error {
+  position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 70; background: #000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.pl-error-t { font-size: 14px; color: rgba(255, 255, 255, .75); margin-bottom: 16px; }
+.pl-error-btn {
+  height: 40px; padding: 0 28px; border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, .14); color: #fff; font-size: 14px;
+}
+
+/* ---------------- 页切换动效（契约 §7 / DESIGN §4.11）
+ * 动画类按 a/b 两份交替使用：同名 keyframes 两个名字，保证同元素连续切换时能重新触发。
+ * 动效只作用于入场层（旧图垫在下面，画面不黑）。 */
+@keyframes plFadeA { from { opacity: 0; } to { opacity: 1; } }
+@keyframes plFadeB { from { opacity: 0; } to { opacity: 1; } }
+.pl-an-fade-a { animation: plFadeA 320ms ease-out both; }
+.pl-an-fade-b { animation: plFadeB 320ms ease-out both; }
+
+@keyframes plPushA { from { opacity: .55; transform: translateX(8%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes plPushB { from { opacity: .55; transform: translateX(8%); } to { opacity: 1; transform: translateX(0); } }
+.pl-an-push-a { animation: plPushA 360ms ease-out both; }
+.pl-an-push-b { animation: plPushB 360ms ease-out both; }
+
+@keyframes plWipeA { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes plWipeB { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.pl-an-wipe-a { animation: plWipeA 380ms ease-out both; }
+.pl-an-wipe-b { animation: plWipeB 380ms ease-out both; }
+
+@keyframes plZoomA { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: scale(1); } }
+@keyframes plZoomB { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: scale(1); } }
+.pl-an-zoom-a { animation: plZoomA 300ms ease-out both; }
+.pl-an-zoom-b { animation: plZoomB 300ms ease-out both; }
+
+@keyframes plCoverA { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes plCoverB { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.pl-an-cover-a { animation: plCoverA 340ms ease-out both; }
+.pl-an-cover-b { animation: plCoverB 340ms ease-out both; }
+
+/* 同页切步：极短淡入 ≤160ms（步图已含视频海报帧，不需要 poster） */
+@keyframes plStepA { from { opacity: .4; } to { opacity: 1; } }
+@keyframes plStepB { from { opacity: .4; } to { opacity: 1; } }
+.pl-an-step-a { animation: plStepA 120ms linear both; }
+.pl-an-step-b { animation: plStepB 120ms linear both; }
+
+/* 系统「减少动效」/ 低端机：装饰动效全部关闭（不影响翻页功能） */
+@media (prefers-reduced-motion: reduce) {
+  .pl-an-fade-a, .pl-an-fade-b, .pl-an-push-a, .pl-an-push-b,
+  .pl-an-wipe-a, .pl-an-wipe-b, .pl-an-zoom-a, .pl-an-zoom-b,
+  .pl-an-cover-a, .pl-an-cover-b, .pl-an-step-a, .pl-an-step-b { animation: none !important; }
+  .pl-ctrl, .pl-title, .pl-progress-bar, .pl-drawer { transition: none !important; animation: none !important; }
+  .pl-audio-bar { animation: none !important; }
+  .pl-hot-pulse { animation: none !important; opacity: .35; }
+  .pl-vspin { animation: none !important; }
+  .pl-vctrl, .pl-vdl-bar-i { transition: none !important; }
+}

@@ -1,0 +1,364 @@
+/* pages/ug/ug.wxss —— 使用说明（v2.0.0 卡片化）
+ *
+ * 契约 2026-11-12：卡面 = hero 场景图 + 标题 + 一句话作用 + 3 条步骤 + 1 条提示；
+ * hero 配图全部用 view 形状 + WXSS 绘制（11 类 scene），不新增图片资源、不用外部字体/网络图片。
+ * 颜色只用 app.wxss 的 M3 token（var(--md-*)）与由此派生的 --ug-* 变量，浅色/暗色自动适配。
+ * 点按区域：分类 chips / 总览按钮 / 上一张 / 下一张 / 总览条目 均 ≥ 80rpx（≈40px）。
+ */
+
+/* ===================== 页面骨架 ===================== */
+.ug-page { padding-bottom: calc(12rpx + env(safe-area-inset-bottom)); }
+
+/* 顶栏内一行：副标题提示 + 分类胶囊 + 页码 + 总览（不再重复页面大标题） */
+.ug-head {
+  display: flex; flex-direction: row; align-items: center;
+  min-height: 84rpx; padding: 0;
+}
+.ug-hint {
+  flex: 0 1 auto; min-width: 0; margin-right: auto;
+  font-size: 26rpx; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.ug-cat-pill {
+  flex: none; margin-left: 12rpx;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 56rpx; padding: 0 26rpx; box-sizing: border-box;
+  border-radius: 999rpx; background: var(--md-primary-container);
+  color: var(--md-on-primary-container); font-size: 24rpx; font-weight: 500;
+}
+.ug-page-num {
+  flex: none; margin: 0 12rpx 0 14rpx;
+  font-size: 26rpx; color: var(--md-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+.ug-ov-btn {
+  flex: none;
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  min-height: 84rpx; padding: 0 30rpx; box-sizing: border-box;
+  border-radius: 999rpx; background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container); font-size: 26rpx; font-weight: 500;
+}
+.ug-ov-btn--tap { opacity: .8; }
+
+/* 分类快捷标签 */
+.ug-chips { width: 100%; white-space: nowrap; margin-bottom: 2rpx; }
+.ug-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 80rpx; padding: 0 30rpx; margin: 4rpx 14rpx 4rpx 0; box-sizing: border-box;
+  border-radius: 999rpx; border: 2rpx solid var(--md-outline-variant);
+  color: var(--md-on-surface-variant); font-size: 26rpx; background: transparent;
+}
+.ug-chip--on {
+  background: var(--md-secondary-container); color: var(--md-on-secondary-container);
+  border-color: transparent; font-weight: 500;
+}
+
+/* swiper：高度由 JS 实测卡片最大高度后 setData（clamp 屏幕可用高度） */
+.ug-swiper { width: 100%; margin-top: 6rpx; }
+.ug-slide { height: 100%; box-sizing: border-box; }
+.ug-slide-scroll { height: 100%; }
+
+/* ===================== 卡片 ===================== */
+/* 撑满一屏时（cardH>0）卡片是 flex 列：hero 弹性增长但不超过 36%，tip 沉到卡底；
+   内容装不下（cardH=0）时按内容高度渲染，由卡内 scroll-view 承担滚动。 */
+.ug-card {
+  margin: 0 6rpx; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--md-surface-container-low);
+  border-radius: 32rpx;
+  box-shadow: var(--md-elev-1);
+}
+.ug-hero {
+  position: relative; flex: 1 1 auto; min-height: 220rpx; max-height: 36%;
+  overflow: hidden;
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  background: var(--ug-hbg, var(--md-surface-container-high));
+}
+.ug-card-body {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 26rpx 30rpx 30rpx;
+}
+.ug-title { font-size: 38rpx; font-weight: 600; line-height: 1.3; color: var(--md-on-surface); }
+.ug-sub { margin-top: 6rpx; font-size: 27rpx; line-height: 1.45; color: var(--md-on-surface-variant); }
+
+.ug-steps { margin-top: 20rpx; }
+.ug-step { display: flex; flex-direction: row; align-items: flex-start; margin-top: 12rpx; }
+.ug-step-n {
+  flex: none; width: 38rpx; height: 38rpx; margin: 2rpx 16rpx 0 0;
+  border-radius: 50%; background: var(--md-primary-container); color: var(--md-on-primary-container);
+  font-size: 22rpx; line-height: 38rpx; text-align: center; font-weight: 600;
+}
+.ug-step-t { flex: 1; min-width: 0; font-size: 27rpx; line-height: 1.45; color: var(--md-on-surface); }
+
+.ug-tip {
+  margin-top: 20rpx;
+  display: flex; flex-direction: row; align-items: flex-start;
+  padding: 16rpx 20rpx; border-radius: 18rpx; background: var(--md-surface-container-high);
+}
+.ug-tip-i { font-size: 24rpx; line-height: 1.5; margin-right: 10rpx; }
+.ug-tip-t { flex: 1; min-width: 0; font-size: 24rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+
+/* ===================== 底部：上一张 / 页码 / 下一张 ===================== */
+.ug-foot {
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+  margin-top: 14rpx;
+}
+.ug-nav {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 92rpx; min-width: 190rpx; padding: 0 30rpx; box-sizing: border-box;
+  border-radius: 999rpx; background: var(--md-surface-container-high);
+  color: var(--md-on-surface); font-size: 27rpx;
+}
+.ug-nav--off { opacity: .35; }
+.ug-nav--tap { opacity: .8; }
+.ug-count {
+  font-size: 26rpx; color: var(--md-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+.ugver {
+  margin-top: 12rpx; text-align: center;
+  font-size: 22rpx; color: var(--md-on-surface-variant); opacity: .8;
+}
+
+/* ===================== 一键总览（遮罩弹层） ===================== */
+.ug-ov {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 300;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  background: rgba(0, 0, 0, .45);
+  animation: ugFade 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+.ug-ov-panel {
+  width: 100%; max-height: 84vh; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding: 20rpx 0 calc(24rpx + env(safe-area-inset-bottom));
+  background: var(--md-surface-container-low);
+  border-radius: 40rpx 40rpx 0 0;
+  animation: ugUp 260ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+.ug-ov-head {
+  display: flex; flex-direction: row; align-items: center;
+  padding: 8rpx var(--md-page-pad) 12rpx;
+}
+.ug-ov-title { font-size: 32rpx; font-weight: 600; color: var(--md-on-surface); }
+.ug-ov-x {
+  margin-left: auto; width: 88rpx; height: 88rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; line-height: 1; color: var(--md-on-surface-variant);
+}
+.ug-ov-body { height: calc(84vh - 150rpx); padding: 0 var(--md-page-pad); box-sizing: border-box; }
+.ug-ov-cat { padding: 18rpx 0 8rpx; font-size: 23rpx; font-weight: 500; color: var(--md-on-surface-variant); }
+.ug-ov-li {
+  display: flex; flex-direction: row; align-items: center;
+  min-height: 108rpx; padding: 12rpx 18rpx 12rpx 16rpx; margin-bottom: 10rpx; box-sizing: border-box;
+  border-radius: 26rpx; background: var(--md-surface-container-high);
+}
+.ug-ov-li--tap { opacity: .8; }
+.ug-ov-ico {
+  flex: none; width: 72rpx; height: 72rpx; margin-right: 18rpx;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 22rpx; font-size: 34rpx;
+  background: var(--ug-hbg, var(--md-surface-container-lowest));
+}
+.ug-ov-txt { flex: 1; min-width: 0; }
+.ug-ov-t { font-size: 28rpx; font-weight: 500; line-height: 1.35; color: var(--md-on-surface); }
+.ug-ov-s {
+  margin-top: 4rpx; font-size: 23rpx; line-height: 1.4; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.ug-ov-arr { margin-left: 14rpx; font-size: 36rpx; line-height: 1; color: var(--md-on-surface-variant); }
+
+@keyframes ugFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ugUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ===================== 色调（hero 渐变主色 → 本端 M3 token 映射） ===================== */
+.ug-tone-mint {
+  --ug-hbg: var(--md-primary-container);
+  --ug-hfg: var(--md-primary);
+  --ug-hfg2: var(--md-tertiary);
+}
+.ug-tone-blue {
+  --ug-hbg: var(--md-secondary-container);
+  --ug-hfg: var(--md-secondary);
+  --ug-hfg2: var(--md-primary);
+}
+.ug-tone-sand {
+  --ug-hbg: var(--md-tertiary-container);
+  --ug-hfg: var(--md-tertiary);
+  --ug-hfg2: var(--md-primary);
+}
+.ug-tone-rose {
+  --ug-hbg: var(--md-error-container);
+  --ug-hfg: var(--md-error);
+  --ug-hfg2: var(--md-secondary);
+}
+.ug-tone-violet {
+  --ug-hbg: var(--md-surface-container-high);
+  --ug-hfg: var(--md-secondary);
+  --ug-hfg2: var(--md-primary);
+}
+
+/* ===================== 场景配图（11 类 scene，纯 view 形状） ===================== */
+.ug-s { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.ug-sc {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+}
+
+/* picks：三颗号码球 + 虚线洗牌箭头 */
+.ug-ball {
+  position: absolute; width: 92rpx; height: 92rpx; box-sizing: border-box;
+  border-radius: 50%; border: 4rpx solid var(--ug-hfg);
+  background: var(--md-surface-container-lowest); color: var(--ug-hfg);
+  font-size: 26rpx; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.ug-ball--1 { left: 92rpx; top: 38rpx; }
+.ug-ball--2 { left: 300rpx; top: 108rpx; }
+.ug-ball--3 { left: 508rpx; top: 34rpx; }
+.ug-dash { position: absolute; width: 120rpx; height: 0; border-top: 4rpx dashed var(--ug-hfg); opacity: .5; }
+.ug-dash--1 { left: 186rpx; top: 104rpx; transform: rotate(20deg); }
+.ug-dash--2 { left: 402rpx; top: 100rpx; transform: rotate(-22deg); }
+
+/* steps：3 个编号圆点由连线串起 + 终点小旗 */
+.ug-spot {
+  flex: none; width: 58rpx; height: 58rpx; box-sizing: border-box;
+  border-radius: 50%; border: 4rpx solid var(--ug-hfg);
+  background: var(--md-surface-container-lowest); color: var(--ug-hfg);
+  font-size: 24rpx; line-height: 50rpx; text-align: center;
+}
+.ug-track { flex: none; width: 76rpx; height: 4rpx; background: var(--ug-hfg); opacity: .35; }
+.ug-flag {
+  flex: none; width: 0; height: 0; margin-left: 18rpx;
+  border-left: 36rpx solid var(--ug-hfg);
+  border-top: 22rpx solid transparent;
+  border-bottom: 22rpx solid transparent;
+}
+
+/* grid：4×3 宫格，一格高亮 */
+.ug-grid { display: flex; flex-direction: row; flex-wrap: wrap; width: 288rpx; }
+.ug-cell { width: 60rpx; height: 44rpx; margin: 6rpx; border-radius: 10rpx; background: var(--ug-hfg); opacity: .18; }
+.ug-cell--on { opacity: .85; }
+
+/* list：3 行列表，一行带勾 */
+.ug-list { width: 420rpx; display: flex; flex-direction: column; }
+.ug-row { display: flex; flex-direction: row; align-items: center; height: 54rpx; }
+.ug-row-dot { flex: none; width: 20rpx; height: 20rpx; margin-right: 18rpx; border-radius: 50%; background: var(--ug-hfg); opacity: .4; }
+.ug-row-dot--on { opacity: 1; }
+.ug-row-bar { flex: 1; min-width: 0; height: 18rpx; border-radius: 9rpx; background: var(--ug-hfg); opacity: .2; }
+.ug-row-bar--short { flex: none; width: 240rpx; }
+.ug-row-chk { margin-left: 14rpx; font-size: 30rpx; line-height: 1; color: var(--ug-hfg); }
+
+/* chart：柱状 + 折线（电量 / 趋势） */
+.ug-chart { position: relative; width: 480rpx; height: 186rpx; }
+.ug-bars {
+  position: absolute; left: 40rpx; bottom: 10rpx; height: 160rpx;
+  display: flex; flex-direction: row; align-items: flex-end;
+}
+.ug-bar { width: 40rpx; margin-right: 18rpx; border-radius: 8rpx 8rpx 0 0; background: var(--ug-hfg); opacity: .28; }
+.ug-bar--1 { height: 44rpx; }
+.ug-bar--2 { height: 78rpx; }
+.ug-bar--3 { height: 58rpx; }
+.ug-bar--4 { height: 110rpx; }
+.ug-bar--5 { height: 144rpx; opacity: .8; }
+.ug-tline {
+  position: absolute; left: 118rpx; top: 76rpx; width: 250rpx; height: 0;
+  border-top: 4rpx solid var(--ug-hfg2); opacity: .85; transform: rotate(-16deg);
+}
+.ug-tdot { position: absolute; width: 14rpx; height: 14rpx; border-radius: 50%; background: var(--ug-hfg2); }
+.ug-tdot--1 { left: 152rpx; top: 112rpx; }
+.ug-tdot--2 { left: 252rpx; top: 90rpx; }
+.ug-tdot--3 { left: 352rpx; top: 68rpx; }
+
+/* people：4 个圆形头像 + 姓名条，两个高亮 */
+.ug-people { display: flex; flex-direction: row; align-items: flex-start; }
+.ug-person { width: 96rpx; margin: 0 12rpx; display: flex; flex-direction: column; align-items: center; }
+.ug-ava { width: 76rpx; height: 76rpx; border-radius: 50%; background: var(--ug-hfg); opacity: .22; }
+.ug-person--on .ug-ava { opacity: .8; }
+.ug-nm { margin-top: 14rpx; width: 60rpx; height: 14rpx; border-radius: 7rpx; background: var(--ug-hfg); opacity: .2; }
+.ug-person--on .ug-nm { opacity: .6; }
+
+/* transfer：手机 ↔ 云 ↔ 电脑，双向箭头 */
+.ug-tr { display: flex; flex-direction: row; align-items: center; }
+.ug-dev {
+  position: relative; flex: none; width: 76rpx; height: 124rpx; box-sizing: border-box;
+  border: 4rpx solid var(--ug-hfg); border-radius: 16rpx;
+}
+.ug-dev-scr { position: absolute; left: 11rpx; top: 18rpx; width: 46rpx; height: 70rpx; border-radius: 6rpx; background: var(--ug-hfg); opacity: .2; }
+.ug-dev--pc { width: 122rpx; height: 84rpx; margin-top: -6rpx; }
+.ug-dev--pc .ug-dev-scr { left: 11rpx; top: 12rpx; width: 92rpx; height: 54rpx; }
+.ug-pc-base { position: absolute; left: 36rpx; bottom: -16rpx; width: 50rpx; height: 6rpx; border-radius: 3rpx; background: var(--ug-hfg); opacity: .5; }
+.ug-arrow { flex: none; width: 56rpx; text-align: center; font-size: 34rpx; line-height: 1; color: var(--ug-hfg); }
+.ug-cloud { position: relative; flex: none; width: 112rpx; height: 68rpx; margin-top: 8rpx; }
+.ug-cloud-a { position: absolute; left: 8rpx; top: 10rpx; width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--ug-hfg); opacity: .3; }
+.ug-cloud-b { position: absolute; left: 42rpx; top: 0; width: 58rpx; height: 58rpx; border-radius: 50%; background: var(--ug-hfg); opacity: .3; }
+.ug-cloud-base { position: absolute; left: 4rpx; bottom: 0; width: 104rpx; height: 38rpx; border-radius: 20rpx; background: var(--ug-hfg); opacity: .3; }
+
+/* ballot：3 条不同长度的选项条 + 勾 */
+.ug-ballot { width: 470rpx; display: flex; flex-direction: column; }
+.ug-opt { display: flex; flex-direction: row; align-items: center; margin: 10rpx 0; }
+.ug-opt-box {
+  flex: none; width: 46rpx; height: 46rpx; box-sizing: border-box;
+  border: 4rpx solid var(--ug-hfg); border-radius: 8rpx;
+  color: var(--md-surface-container-lowest); font-size: 28rpx; line-height: 38rpx; text-align: center;
+}
+.ug-opt-box--on { background: var(--ug-hfg); border-color: var(--ug-hfg); }
+.ug-opt-bar { margin-left: 18rpx; height: 40rpx; border-radius: 10rpx; background: var(--ug-hfg); opacity: .2; }
+
+/* droplet：大水滴 + 用量刻度条 */
+.ug-droplet { display: flex; flex-direction: row; align-items: center; }
+.ug-drop {
+  position: relative; flex: none; width: 118rpx; height: 118rpx; margin-right: 44rpx;
+  border-radius: 0 50% 50% 50%; background: var(--ug-hfg); opacity: .85;
+  transform: rotate(45deg);
+}
+.ug-drop-in {
+  position: absolute; left: 22rpx; top: 28rpx; width: 26rpx; height: 34rpx;
+  border-radius: 50%; background: var(--md-surface-container-lowest); opacity: .55;
+  transform: rotate(-45deg);
+}
+.ug-scale { flex: none; width: 280rpx; display: flex; flex-direction: column; }
+.ug-tick { height: 14rpx; margin: 7rpx 0; border-radius: 7rpx; background: var(--ug-hfg); opacity: .22; }
+.ug-tick--on { opacity: .75; }
+.ug-tick--short { width: 70%; }
+
+/* shield：盾牌 + 对勾 + 锁点 */
+.ug-shield { position: relative; width: 180rpx; height: 200rpx; display: flex; flex-direction: column; align-items: center; }
+.ug-shield-top { width: 150rpx; height: 106rpx; border-radius: 22rpx 22rpx 0 0; background: var(--ug-hfg); }
+.ug-shield-bot {
+  width: 0; height: 0; margin-top: -2rpx;
+  border-left: 75rpx solid transparent;
+  border-right: 75rpx solid transparent;
+  border-top: 88rpx solid var(--ug-hfg);
+}
+.ug-shield-chk {
+  position: absolute; left: 50%; top: 18rpx; margin-left: -13rpx;
+  width: 26rpx; height: 50rpx;
+  border-right: 9rpx solid var(--md-surface-container-lowest);
+  border-bottom: 9rpx solid var(--md-surface-container-lowest);
+  transform: rotate(45deg);
+}
+.ug-shield-lock {
+  position: absolute; left: 50%; top: 122rpx; margin-left: -13rpx;
+  width: 26rpx; height: 22rpx; border-radius: 5rpx;
+  background: var(--md-surface-container-lowest);
+}
+.ug-shield-shackle {
+  position: absolute; left: 7rpx; top: -10rpx; width: 12rpx; height: 14rpx; box-sizing: border-box;
+  border: 3rpx solid var(--md-surface-container-lowest); border-bottom: none;
+  border-radius: 7rpx 7rpx 0 0;
+}
+
+/* slides：层叠幻灯片 + 播放三角 */
+.ug-slides { position: relative; width: 420rpx; height: 200rpx; }
+.ug-sl { position: absolute; width: 250rpx; height: 150rpx; box-sizing: border-box; border-radius: 14rpx; background: var(--ug-hfg); }
+.ug-sl--3 { left: 34rpx; top: 10rpx; opacity: .16; transform: rotate(-10deg); }
+.ug-sl--2 { left: 72rpx; top: 18rpx; opacity: .28; transform: rotate(-4deg); }
+.ug-sl--1 { left: 112rpx; top: 28rpx; opacity: .8; }
+.ug-play {
+  position: absolute; left: 104rpx; top: 50rpx; width: 0; height: 0;
+  border-left: 40rpx solid var(--md-surface-container-lowest);
+  border-top: 26rpx solid transparent;
+  border-bottom: 26rpx solid transparent;
+}
+

@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "诊断",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "touchable": "/components/touchable/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

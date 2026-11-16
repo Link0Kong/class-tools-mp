@@ -1,0 +1,47 @@
+/* pages/me/me.wxss —— 我的：身份卡 / 我的数据 / 云同步 / 数据与隐私 / 帮助
+ * 只写本页样式；颜色一律取 app.wxss 的 M3 变量（var(--md-*)），暗色自动切换。
+ */
+.me-page { padding-top: var(--md-space-4); }
+
+/* —— 骨架屏 —— */
+.me-sk { display: flex; flex-direction: row; align-items: center; gap: 24rpx;
+  padding: 32rpx; border-radius: var(--md-shape-lg); background: var(--md-surface-container-high); }
+
+/* —— 身份卡（v1.3.3：不显示头像 / 学号，只留姓名 + 角色徽章）—— */
+.me-name { color: var(--md-on-surface); }
+.me-pills { margin-top: 20rpx; }
+
+/* —— 我的数据（2 × 2 个人指标）—— */
+.me-card { margin-bottom: var(--md-space-5); }
+.me-metrics { display: flex; flex-direction: row; flex-wrap: wrap; }
+.me-metric { width: 50%; box-sizing: border-box; padding: 12rpx 0; }
+
+/* —— 云同步 —— */
+.me-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between;
+  gap: 16rpx; min-height: 64rpx; }
+.me-row__val { flex: 1; min-width: 0; text-align: right; }
+.me-sync { margin-top: var(--md-space-4); }
+
+/* —— 数据与隐私 / 帮助 —— */
+.me-priv { padding: 4rpx 0 0; }
+.me-priv__title { margin-bottom: 8rpx; }
+.me-priv__line { font-size: 26rpx; line-height: 1.55; color: var(--md-on-surface-variant); }
+.me-li-flush { padding-left: 0; padding-right: 0; }
+
+/* —— 退出身份 —— */
+.me-logout { margin-top: var(--md-space-6); color: var(--md-error); border-color: var(--md-error); }
+.me-logout-note { text-align: center; margin: var(--md-space-2) 0 0; }
+
+/* 小程序备案号（我的页底部；可点复制） */
+.icp-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--md-space-3);
+  text-align: center;
+  word-break: break-all;
+}
+
+/* 外观：当前选中项（✓）用主色，未选中留空 —— 行高沿用 m3-li 的 112rpx 点按区 */
+.me-appearance-mark { min-width: 40rpx; text-align: right; font-size: 30rpx; font-weight: 700; color: var(--md-primary); }

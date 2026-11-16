@@ -1,0 +1,320 @@
+{
+  "apis": [
+    {
+      "name": "getRollRoster",
+      "description": "查询当前点名名单：选中的座号与姓名、人数、名单来源（班级名单 / 沿用抽签参与名单）及到·假统计。用户问「点名名单有哪些人」「点名名单几个人」时调用，无需入参。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": { "type": "number", "description": "座号" },
+                "name": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "number" },
+          "source": { "type": "string", "description": "draw=沿用抽签名单；class=来自班级名单；空字符串=名单为空" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "present": { "type": "number" },
+              "absent": { "type": "number" },
+              "unmarked": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "namesText": { "type": "string", "description": "「座号 姓名」多行文本" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "setRollRoster",
+      "description": "设置点名名单。三种方式：传 seats 座号数组（座号来自班级名单）；source=draw 沿用抽签页已选参与名单；source=class 使用全班班级名单；source=current 只读取当前名单不改动。写本机并按姓名保留已有到/假记录。用户说「点名名单用抽签的人」「点名用全班」「把 1、2、7 号加入点名名单」时调用。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "seats": {
+            "type": "array",
+            "items": { "type": "number" },
+            "description": "点名名单座号数组（正整数，去重升序），如 [1,2,7]。传空数组表示清空名单。不传则用 source 决定"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["current", "draw", "class"],
+            "description": "current=保持当前名单；draw=沿用抽签页参与名单；class=全班班级名单。与 seats 同时传时以 seats 为准"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": { "type": "number" },
+                "name": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "number" },
+          "source": { "type": "string" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "present": { "type": "number" },
+              "absent": { "type": "number" },
+              "unmarked": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "ignored": { "type": "number", "description": "不在班级名单里被忽略的座号数" },
+          "preserved": { "type": "number", "description": "按姓名保留的到/假记录数" },
+          "namesText": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "markRollStatus",
+      "description": "标记单个座号为到（present）或假（absent）。用户说「3 号到了」「12 号请假」时调用。座号必须来自 getRollRoster 返回的名单，不要编造。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "seat": {
+            "type": "number",
+            "description": "座号（正整数）。取值来源：getRollRoster 返回的 seats[].seat"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["present", "absent"],
+            "description": "present=到；absent=假（请假）"
+          }
+        },
+        "required": ["seat", "status"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "seat": { "type": "number" },
+          "name": { "type": "string" },
+          "status": { "type": "string" },
+          "statusText": { "type": "string" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "present": { "type": "number" },
+              "absent": { "type": "number" },
+              "unmarked": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "markAllRoll",
+      "description": "把点名名单里所有人批量标记为到（present）或假（absent）。这是修改全班点名状态的批量写操作：必须先向用户确认，用户确认后再传 confirmed=true 执行；未传 confirmed=true 时只返回待确认提示、不会执行。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["present", "absent"],
+            "description": "present=全部到；absent=全部假"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "是否已向用户确认并获同意。首次调用不传或传 false，确认后再次调用传 true"
+          }
+        },
+        "required": ["status"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "status": { "type": "string" },
+          "statusText": { "type": "string" },
+          "count": { "type": "number" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "present": { "type": "number" },
+              "absent": { "type": "number" },
+              "unmarked": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "resetRoll",
+      "description": "重置本轮点名：清空所有到/假记录（点名名单保留）。这是破坏性写操作：必须先向用户确认，用户确认后再传 confirmed=true 执行；未传 confirmed=true 时只返回待确认提示、不会执行。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "description": "是否已向用户确认并获同意。首次调用不传或传 false，确认后再次调用传 true"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "cleared": { "type": "number", "description": "清空的到/假记录数" },
+          "count": { "type": "number", "description": "保留的点名名单人数" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "present": { "type": "number" },
+              "absent": { "type": "number" },
+              "unmarked": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getRollSummary",
+      "description": "查询点名统计：已到/请假/未点人数与每个人当前状态。用户问「点了多少人」「谁还没点到」「点名结果」时调用，无需入参。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "number" },
+          "present": { "type": "number" },
+          "absent": { "type": "number" },
+          "unmarked": { "type": "number" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": { "type": "number" },
+                "name": { "type": "string" },
+                "status": { "type": "string", "description": "present/absent/unmarked" },
+                "statusText": { "type": "string", "description": "已到/请假/未点" }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "useDrawRoster",
+      "description": "把抽签页已选的参与名单沿用为点名名单（等价 setRollRoster 的 source=draw）。用户说「用抽签的人点名」时调用。抽签页还没选名单时返回错误并引导先去抽签页选择，不执行。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/roll-card/index",
+          "pagePath": "/pages/roll/roll"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": { "type": "number" },
+                "name": { "type": "string" }
+              }
+            }
+          },
+          "count": { "type": "number" },
+          "source": { "type": "string" },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "present": { "type": "number" },
+              "absent": { "type": "number" },
+              "unmarked": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "preserved": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "components": [
+    {
+      "path": "components/roll-card/index",
+      "relatedPage": "/pages/roll/roll"
+    }
+  ]
+}

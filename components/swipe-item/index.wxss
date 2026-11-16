@@ -1,0 +1,10 @@
+.sw { position: relative; overflow: hidden; border-radius: 32rpx; margin-bottom: 16rpx; }
+.sw__acts { position: absolute; right: 0; top: 0; bottom: 16rpx; display: flex; flex-direction: row; }
+.sw__act { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 28rpx; font-weight: 500;
+  color: #FFFFFF; background: var(--md-secondary, #7D9EBB); }
+.sw__act--primary { background: var(--md-primary, #5E8F87); }
+.sw__act--error { background: var(--md-error, #B87870); }
+.sw__act--neutral { background: var(--md-surface-container-highest, #E0D9C9); color: var(--md-on-surface, #303A35); }
+.sw__act--hover { opacity: .85; }
+.sw__body { position: relative; background: var(--md-surface, #F4F0E6);
+  transition: transform 300ms cubic-bezier(0.2,0,0,1); }

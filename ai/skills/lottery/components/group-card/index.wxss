@@ -1,0 +1,61 @@
+/* group-card：分组结果（原子组件约束：无动画、无 overflow-y） */
+.gp-card {
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #FFFBFE;
+  color: #1C1B1F;
+  font-size: 14px;
+  line-height: 20px;
+}
+.gp-hd {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.gp-sub {
+  color: #49454F;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.gp-list {
+  display: flex;
+  flex-direction: column;
+}
+.gp-row {
+  margin-top: 6px;
+}
+.gp-idx {
+  color: #34544E;
+  font-size: 13px;
+  font-weight: 600;
+}
+.gp-mem {
+  color: #49454F;
+  font-size: 13px;
+  word-break: break-all;
+}
+.gp-more,
+.gp-empty {
+  color: #79747E;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .gp-card {
+    background: #1C1B1F;
+    color: #E6E1E5;
+  }
+  .gp-sub,
+  .gp-mem {
+    color: #CAC4D0;
+  }
+  .gp-idx {
+    color: #B7D6CD;
+  }
+  .gp-more,
+  .gp-empty {
+    color: #938F99;
+  }
+}

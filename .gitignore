@@ -1,0 +1,24 @@
+# 微信开发者工具本机配置 / 日志
+project.private.config.json
+.vscode/
+debug.log
+*.log
+
+# 签名与密钥（绝不入库）
+*.keystore
+*.jks
+*.p12
+*.pfx
+
+# 依赖与构建缓存
+node_modules/
+miniprogram_npm/
+cloudfunctions/**/node_modules/
+
+# 云函数历史备份（需要时另存）
+cloudfunctions/_backup/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini

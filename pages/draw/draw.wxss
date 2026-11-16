@@ -1,0 +1,29 @@
+.page-head { padding: 40rpx 0 20rpx; }
+.result-list { margin-top: 20rpx; }
+.idx-badge { width: 76rpx; height: 76rpx; border-radius: 999rpx; background: var(--md-primary-container); color: var(--md-on-primary-container);
+  display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 600; margin-right: 24rpx; flex: none; }
+.sel-wrap { display: flex; flex-wrap: wrap; align-items: center; margin-top: 18rpx; }
+.ph { color: var(--md-on-surface-variant); }
+.exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
+
+/* —— 存证状态行（契约 web/draw/CONTRACT.md §3.2）—— */
+.proof-line { display: flex; align-items: center; flex-wrap: wrap; margin-top: 14rpx; }
+.proof-line__text { font-size: 24rpx; color: var(--md-on-surface-variant); }
+.proof-line__link { margin-left: 16rpx; font-size: 24rpx; font-weight: 600; color: var(--md-primary); padding: 6rpx 0; }
+.proof-line--ok .proof-line__text { color: var(--md-primary); }
+.proof-line--pending .proof-line__text { color: var(--md-on-surface-variant); }
+.proof-line--fail .proof-line__text { color: var(--md-error); }
+
+/* —— 名称映射弹层（textarea + 计数 + 清空/取消/保存；点按区 ≥40px）—— */
+.nm-sheet { display: flex; flex-direction: column; padding-bottom: calc(var(--md-space-4) + env(safe-area-inset-bottom)); }
+.nm-hd { display: flex; align-items: center; justify-content: space-between; }
+.nm-t { font-size: 36rpx; font-weight: 600; color: var(--md-on-surface); }
+.nm-x { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; color: var(--md-on-surface-variant); }
+.nm-hint { margin: 4rpx 0 12rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.nm-text { box-sizing: border-box; width: 100%; min-height: 260rpx; max-height: 520rpx; padding: 20rpx 24rpx;
+  border-radius: var(--md-shape-sm); background: var(--md-surface-container-high);
+  font-size: 28rpx; line-height: 1.5; color: var(--md-on-surface); }
+.nm-count { margin-top: 12rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.nm-ft { display: flex; align-items: center; margin-top: 20rpx; padding-top: 16rpx;
+  border-top: 1rpx solid var(--md-outline-variant); }

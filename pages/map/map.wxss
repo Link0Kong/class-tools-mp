@@ -1,0 +1,22 @@
+.mp{display:flex;flex-direction:column;height:100vh;background:#F3F5EC;overflow:hidden}
+.mbar{display:flex;gap:8rpx;padding:12rpx 20rpx;background:#F7F8F8;flex:none}
+.msearch{flex:1;height:72rpx;line-height:72rpx;padding:0 24rpx;background:#fff;border:1rpx solid #E1E7DF;border-radius:16rpx;font-size:26rpx;color:#23302E}
+.mbtn{height:72rpx;line-height:72rpx;padding:0 26rpx;border-radius:16rpx;background:#4E9082;color:#fff;font-size:25rpx;font-weight:600}
+.mstage{position:relative;flex:1;min-height:0;margin:0 20rpx 12rpx;border-radius:20rpx;overflow:hidden;background:#EFF2E4;border:1rpx solid #E1E7DF}
+.mcanvas{display:block;width:100%;height:100%}
+.mtools{display:flex;align-items:center;gap:8rpx;padding:0 20rpx 10rpx;flex:none;background:#F3F5EC}
+.mtool{height:54rpx;line-height:54rpx;padding:0 16rpx;border-radius:12rpx;background:rgba(255,255,255,.92);border:1rpx solid #DCE6DE;color:#4E9082;font-size:21rpx;font-weight:600}
+.mhintline{margin-left:auto;font-size:20rpx;color:#7C8A86}
+.mreset{display:none;height:54rpx;line-height:54rpx;padding:0 18rpx;border-radius:12rpx;background:rgba(255,255,255,.92);border:1rpx solid #DCE6DE;color:#4E9082;font-size:22rpx}
+.mloading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:25rpx;color:#7C8A86;background:rgba(255,255,255,.9);padding:14rpx 22rpx;border-radius:14rpx}
+.msheet{flex:none;margin:0 20rpx 20rpx;background:#fff;border:1rpx solid #E1E7DF;border-radius:22rpx;padding:20rpx 22rpx;box-shadow:0 10rpx 30rpx rgba(35,48,46,.10)}
+.mshead{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
+.msname{display:block;font-size:34rpx;font-weight:700;color:#23302E}
+.msmeta{display:block;margin-top:4rpx;font-size:22rpx;color:#8C9A97}
+.msclose{flex:none;font-size:23rpx;color:#8C9A97;padding:6rpx 4rpx}
+.msroute{margin-top:14rpx;padding-top:12rpx;border-top:1rpx solid #EEF1EA}
+.msr1{display:block;font-size:23rpx;font-weight:700;color:#4E9082}
+.msr2{display:block;margin-top:5rpx;font-size:22rpx;line-height:1.55;color:#5A6A67}
+.msactions{display:flex;gap:12rpx;margin-top:16rpx}
+.msbtn{flex:1;height:70rpx;line-height:70rpx;text-align:center;border-radius:14rpx;border:1rpx solid #E1E7DF;background:#fff;color:#23302E;font-size:25rpx}
+.msbtn.primary{background:#4E9082;border-color:#4E9082;color:#fff}

@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "default",
+  "usingComponents": {
+    "touchable": "/components/touchable/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

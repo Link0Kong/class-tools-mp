@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "抽签记录",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "empty-state": "/components/empty-state/index"
+  }
+}

@@ -1,0 +1,240 @@
+{
+  "apis": [
+    {
+      "name": "getDrawConfig",
+      "description": "读取抽签当前配置与状态：范围、抽取个数、是否允许重复、排除序号、排序方式、可用池大小、参与名单人数，以及是否已有抽签/分组结果。做任何抽签操作前先调用本接口确认现状。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "range": { "type": "object", "properties": { "start": { "type": "number" }, "end": { "type": "number" } } },
+          "count": { "type": "number" },
+          "allowDuplicate": { "type": "boolean" },
+          "excludeText": { "type": "string" },
+          "sort": { "type": "string" },
+          "poolSize": { "type": "number" },
+          "rosterCount": { "type": "number" },
+          "rosterSeats": { "type": "array", "items": { "type": "number" } },
+          "hasDrawResult": { "type": "boolean" },
+          "hasGroupResult": { "type": "boolean" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "runDraw",
+      "description": "执行一次抽签。按范围生成序号、去掉排除项、按参与名单过滤出抽签池后抽取 count 个；不重复时洗牌取前 N 个，允许重复时每次从池中随机取。结果立即写入本机工作流，页面可直接看到。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "start": { "type": "number", "description": "抽签起始序号（含）。例如「1 到 50 号」传 1。省略则沿用当前配置（默认 1）。" },
+          "end": { "type": "number", "description": "抽签结束序号（含）。例如「1 到 50 号」传 50。省略则沿用当前配置（默认 70）。" },
+          "count": { "type": "number", "description": "抽取个数，正整数。例如「抽 10 个」传 10；用户没说个数时先问用户。" },
+          "allowDuplicate": { "type": "boolean", "description": "是否允许重复抽到同一序号，默认 false（不重复）。用户说「可以重复」时传 true。" },
+          "exclude": { "type": "string", "description": "要排除的序号，支持逗号与区间，如 \"3,5-8\"。用户没说要排除时不要传。" },
+          "sort": { "type": "string", "enum": ["draw", "num", "desc"], "description": "结果排序：draw=按抽取顺序（默认），num=按序号升序，desc=从大到小。" },
+          "rosterSeats": { "type": ["array", "string"], "items": { "type": "number" }, "description": "参与名单座号数组，座号取自 getDrawConfig 返回的 rosterSeats 或用户明确指定的座号；传字符串 \"current\" 或省略 = 沿用本机已选参与名单。传空数组 = 不限定名单、只抽序号。" },
+          "confirmed": { "type": "boolean", "description": "只在本机已有抽签结果、需要覆盖旧结果时使用：用户明确同意覆盖后传 true。首次抽签不需要。" }
+        },
+        "required": ["count"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
+          "poolSize": { "type": "number" },
+          "cfg": { "type": "object", "properties": { "range": { "type": "string" }, "rangeF": { "type": "string" }, "count": { "type": "string" }, "dup": { "type": "string" }, "excl": { "type": "string" }, "sort": { "type": "string" }, "pool": { "type": "string" }, "sel": { "type": "string" }, "selF": { "type": "string" } } },
+          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
+          "drawnAt": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "refillDraw",
+      "description": "把当前抽签结果补抽到目标总个数。前置：已有抽签结果。属于修改已有结果的操作，必须用户确认后传 confirmed=true。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "count": { "type": "number", "description": "补抽后的目标总个数，正整数（大于当前结果个数才会补抽）。" },
+          "confirmed": { "type": "boolean", "description": "用户明确同意补抽后传 true；否则返回 need-confirm，不要静默执行。" }
+        },
+        "required": ["count", "confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "added": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
+          "items": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
+          "poolSize": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "removeDrawResult",
+      "description": "从当前抽签结果中剔除一个已抽中的序号，并按「自动补抽」设置自动补一个。前置：已有抽签结果。属于破坏性操作，必须用户确认后传 confirmed=true。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "number": { "type": "number", "description": "要剔除的序号（当前抽签结果中已抽中的序号，不是下标）。取自 getDrawResult 返回 items[].number。" },
+          "confirmed": { "type": "boolean", "description": "用户明确同意剔除后传 true；否则返回 need-confirm。" }
+        },
+        "required": ["number", "confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
+          "removed": { "type": "array", "items": { "type": "number" } },
+          "removedNumber": { "type": "number" },
+          "added": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getDrawResult",
+      "description": "读取当前抽签结果：是否存在、结果序号与姓名、已剔除序号、结果配置与三步进度。用户想看抽签结果时用本接口，不要重新抽签。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "exists": { "type": "boolean" },
+          "items": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
+          "removed": { "type": "array", "items": { "type": "number" } },
+          "cfg": { "type": "object", "properties": { "range": { "type": "string" }, "rangeF": { "type": "string" }, "count": { "type": "string" }, "dup": { "type": "string" }, "excl": { "type": "string" }, "sort": { "type": "string" }, "pool": { "type": "string" }, "sel": { "type": "string" }, "selF": { "type": "string" } } },
+          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "resetDraw",
+      "description": "重置抽签：清空本次抽签结果、分组结果与剔除记录。破坏性操作，必须用户确认后传 confirmed=true。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "confirmed": { "type": "boolean", "description": "用户明确同意重置后传 true；否则返回 need-confirm。" }
+        },
+        "required": ["confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "cleared": { "type": "object", "properties": { "draw": { "type": "boolean" }, "group": { "type": "boolean" } } },
+          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "runGroup",
+      "description": "把上一步抽签序号或班级名单已选座号分成若干组。按组数或按每组人数两种方式，可打乱后随机分配。结果立即写入本机工作流，页面可直接看到。",
+      "_meta": { "ui": { "componentPath": "components/group-card/index", "pagePath": "/pages/group/group" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mode": { "type": "string", "enum": ["groups", "size"], "description": "分组方式：groups=按组数（value 为组数），size=按每组人数（value 为每组人数）。" },
+          "value": { "type": "number", "description": "组数或每组人数，正整数。按组数时不少于 2 且不超过人数；按每组人数时至少 1。" },
+          "source": { "type": "string", "enum": ["prev", "roster"], "description": "成员来源：prev=上一步抽签序号（默认），roster=班级名单已选座号。" },
+          "shuffle": { "type": "boolean", "description": "是否打乱后随机分配，默认 false（按原顺序轮流分配）。" },
+          "rosterSeats": { "type": ["array", "string"], "items": { "type": "number" }, "description": "source=roster 时的参与座号数组；传 \"current\" 或省略 = 沿用本机已选分组名单。" },
+          "confirmed": { "type": "boolean", "description": "只在本机已有分组结果、需要覆盖旧结果时使用：用户明确同意后传 true。" }
+        },
+        "required": ["mode", "value"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "groups": { "type": "array", "items": { "type": "object", "properties": { "index": { "type": "number" }, "members": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } } } } },
+          "mode": { "type": "string" },
+          "value": { "type": "number" },
+          "groupCount": { "type": "number" },
+          "total": { "type": "number" },
+          "shuffle": { "type": "boolean" },
+          "cfg": { "type": "object" },
+          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getGroupResult",
+      "description": "读取当前分组结果：是否存在、各组序号与姓名、成员来源、分组方式与参数。用户想看分组结果时用本接口，不要重新分组。",
+      "_meta": { "ui": { "componentPath": "components/group-card/index", "pagePath": "/pages/group/group" } },
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "exists": { "type": "boolean" },
+          "groups": { "type": "array", "items": { "type": "object", "properties": { "index": { "type": "number" }, "members": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } } } } },
+          "source": { "type": "string" },
+          "mode": { "type": "string" },
+          "value": { "type": "number" },
+          "shuffle": { "type": "boolean" },
+          "cfg": { "type": "object" },
+          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "resetGroup",
+      "description": "重置分组：只清空本次分组结果，保留抽签结果。破坏性操作，必须用户确认后传 confirmed=true。",
+      "_meta": { "ui": { "componentPath": "components/group-card/index", "pagePath": "/pages/group/group" } },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "confirmed": { "type": "boolean", "description": "用户明确同意重置后传 true；否则返回 need-confirm。" }
+        },
+        "required": ["confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getResultSummary",
+      "description": "生成抽签+分组结果单的纯文本与结构化摘要，可直接读给用户或复制。抽签与分组都为空时返回空结果说明，不要编造内容。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/sum/sum" } },
+      "inputSchema": { "type": "object", "properties": {}, "required": [] },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "draw": { "type": "object" },
+          "group": { "type": "object" },
+          "text": { "type": "string" },
+          "sub": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "components": [
+    { "path": "components/lottery-card/index", "relatedPage": "/pages/draw/draw" },
+    { "path": "components/group-card/index", "relatedPage": "/pages/group/group" }
+  ]
+}

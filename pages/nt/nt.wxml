@@ -1,0 +1,425 @@
+<!-- 通知卡片模板（主列表 / 已过期列表共用）
+     card = mapGroup 产出的轻量卡片对象；附件本体留在页面 _raw，点击时再转临时文件 -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<template name="ntCard">
+  <view class="nt-card {{card.expired ? 'nt-card--expired' : ''}} {{card.done ? 'nt-card--done' : ''}}" id="card-{{card.domId}}">
+    <!-- 头部：分类 / OCR / 状态（统一「<时间> <动作>」，长期安排 =「长期安排 · label」）/ 已隐藏 / 已更新 / 原始消息 -->
+    <view class="nt-hd">
+      <text class="nt-cat nt-cat--{{card.catCls}}">{{card.cat}}</text>
+      <!-- 契约 2026-11-14 §2.3：期次卡头部 = 分类徽标 +「长期安排」徽标 + 状态胶囊「本次 M月D日（周X）HH:MM」 -->
+      <text wx:if="{{card.isOcc}}" class="nt-recur-badge">长期安排</text>
+      <text wx:if="{{card.isOcr}}" class="nt-ocr">OCR</text>
+      <text class="nt-status nt-status--{{card.statusCls}}">{{card.statusLabel}}</text>
+      <text wx:if="{{card.hidden}}" class="nt-hidden-tag">已隐藏</text>
+      <text wx:if="{{card.updated}}" class="nt-updated-tag">已更新</text>
+      <view class="grow"></view>
+      <view wx:if="{{card.hasRaw}}" class="nt-raw-btn" data-gid="{{card.id}}" catchtap="openRaw">原始消息</view>
+    </view>
+
+    <view class="nt-title">{{card.title}}</view>
+
+    <view class="nt-sub">
+      <view wx:if="{{card.source}}" class="nt-src nt-src--{{card.sourceKind}}">
+        <view class="nt-src-dot"></view>
+        <text>{{card.source}}</text>
+      </view>
+      <text wx:if="{{card.pubBadge}}" class="nt-role">{{card.pubBadge}}</text>
+      <text wx:if="{{card.senderName}}" class="nt-who">{{card.senderName}}</text>
+    </view>
+
+    <!-- 需求 9：长期安排 —— 状态 chip 已含「长期安排 · label」，这里只显示本地计算的「下次」时间 -->
+    <view wx:if="{{card.recurring && card.nextText}}" class="nt-recur">
+      <text class="nt-recur-next">{{card.nextText}}</text>
+    </view>
+
+    <!-- AI 摘要 + 要点 -->
+    <view wx:if="{{card.summary}}" class="nt-ai">
+      <view class="nt-ai-hd"><text class="nt-ai-tag">AI</text><text>摘要</text></view>
+      <view class="nt-ai-sum">{{card.summary}}</view>
+      <view wx:if="{{card.points.length}}" class="nt-points">
+        <text wx:for="{{card.points}}" wx:key="*this" class="nt-point">{{item}}</text>
+      </view>
+    </view>
+
+    <!-- 收起状态：一行详情摘要 -->
+    <view wx:if="{{!card.expanded && card.hasDetail}}" class="nt-more">{{card.moreText}}</view>
+
+    <!-- 展开：字段拆分 / 图片 / 附件与链接时间线 / 原文摘录 / 组成
+         需求 13：展开/收起走高度过渡（.28s/.26s cubic-bezier(.2,.8,.3,1)）；收起时先播放动画再移除 -->
+    <block wx:if="{{card.expanded || card.closing}}">
+      <view class="nt-detail {{card.expanded ? 'nt-detail--open' : 'nt-detail--close'}}">
+      <view wx:if="{{card.segs.length}}" class="nt-seg-grid">
+        <view wx:for="{{card.segs}}" wx:for-item="sg" wx:key="type" class="nt-seg nt-seg--{{sg.cls}}">
+          <text class="nt-seg-k">{{sg.type}}</text>
+          <text class="nt-seg-t">{{sg.text}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{card.imgs.length}}" class="nt-img-grid">
+        <view wx:for="{{card.imgs}}" wx:for-item="im" wx:key="path" class="nt-img-cell" data-gid="{{card.id}}" catchtap="previewImgs">
+          <image class="nt-img" src="{{im.path}}" mode="aspectFill"></image>
+          <text wx:if="{{im.caption}}" class="nt-img-cap">{{im.caption}}</text>
+        </view>
+      </view>
+      <view wx:elif="{{card.imgCount}}" class="nt-imgs-loading">图片加载中…</view>
+
+      <view wx:for="{{card.items}}" wx:for-item="it" wx:key="key" class="nt-item nt-item--{{it.kind}}">
+        <!-- 附件 -->
+        <block wx:if="{{it.kind === 'file'}}">
+          <view class="nt-file {{it.pending ? 'nt-file--pending' : ''}}" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="fileTap">
+            <view class="nt-file-ico nt-file-ico--{{it.extKind}}">{{it.extText}}</view>
+            <view class="nt-file-bd">
+              <view class="nt-file-n">{{it.name}}<text wx:if="{{it.pending}}" class="nt-file-badge">待获取</text></view>
+              <view class="nt-file-m">{{it.meta}}<text wx:if="{{it.pending}}"> · 点击查看获取方式</text></view>
+            </view>
+            <view class="nt-file-acts">
+              <view wx:if="{{it.hasUrl}}" class="nt-btn nt-btn--sm nt-btn--ghost" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="previewFile">预览</view>
+              <view wx:if="{{it.hasUrl}}" class="nt-btn nt-btn--sm" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="downloadFile">下载</view>
+              <view wx:elif="{{it.archiveOk}}" class="nt-file-count">已识别 {{it.archiveCount}} 个文件</view>
+              <view wx:else class="nt-btn nt-btn--sm nt-btn--ghost" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="filePending">待获取</view>
+            </view>
+          </view>
+          <!-- 压缩包内文件（默认展开；仅清单的文件不可点） -->
+          <view class="nt-archive" wx:if="{{it.archiveOk}}">
+            <view class="nt-archive-sum" wx:if="{{it.archiveSummary}}">{{it.archiveSummary}}</view>
+            <view class="nt-archive-row" wx:for="{{it.archiveFiles}}" wx:for-item="af" wx:for-index="ai" wx:key="name"
+                  data-gid="{{card.id}}" data-i="{{it.i}}" data-ai="{{ai}}" catchtap="previewArchiveFile">
+              <view class="nt-archive-badge">{{af.extText}}</view>
+              <view class="nt-archive-name">{{af.name}}</view>
+              <text class="nt-archive-size">{{af.size}}</text>
+              <text class="nt-archive-act {{af.hasUrl ? '' : 'nt-archive-act--off'}}">{{af.hasUrl ? '预览' : '仅清单'}}</text>
+            </view>
+          </view>
+        </block>
+
+        <!-- 收集表 -->
+        <block wx:elif="{{it.kind === 'form'}}">
+          <view class="nt-linkrow">
+            <view class="nt-link-ico">表</view>
+            <view class="nt-link-bd">
+              <view class="nt-link-n">{{it.name}}</view>
+              <view class="nt-link-m">{{it.statusText}}{{it.closeText ? ' · 截止 ' + it.closeText : ''}}</view>
+            </view>
+            <view wx:if="{{it.hasUrl}}" class="nt-btn nt-btn--sm" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="openUrlItem">打开</view>
+            <view wx:else class="nt-btn nt-btn--sm nt-btn--off">QQ 表单</view>
+          </view>
+        </block>
+
+        <!-- 链接 -->
+        <block wx:elif="{{it.kind === 'link'}}">
+          <view class="nt-linkrow">
+            <view class="nt-link-ico">链</view>
+            <view class="nt-link-bd">
+              <view class="nt-link-n">{{it.name}}</view>
+              <view class="nt-link-m">{{it.host || it.note || '外部链接'}}</view>
+            </view>
+            <view wx:if="{{it.hasUrl}}" class="nt-btn nt-btn--sm" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="openUrlItem">打开</view>
+          </view>
+        </block>
+
+        <!-- 小程序 -->
+        <block wx:elif="{{it.kind === 'mini'}}">
+          <view class="nt-linkrow">
+            <view class="nt-link-ico">程</view>
+            <view class="nt-link-bd">
+              <view class="nt-link-n">{{it.name}}</view>
+              <view class="nt-link-m">{{it.note || '微信小程序'}}</view>
+            </view>
+            <view class="nt-btn nt-btn--sm" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="openUrlItem">复制链接</view>
+          </view>
+        </block>
+
+        <!-- 公众号文章 -->
+        <block wx:elif="{{it.kind === 'article'}}">
+          <view class="nt-linkrow">
+            <view class="nt-link-ico nt-link-ico--art">公众号</view>
+            <view class="nt-link-bd">
+              <view class="nt-link-n">{{it.name}}</view>
+              <view class="nt-link-m">{{it.account || '微信公众号文章'}}</view>
+            </view>
+            <view wx:if="{{it.hasUrl}}" class="nt-btn nt-btn--sm" data-gid="{{card.id}}" data-i="{{it.i}}" catchtap="openUrlItem">复制链接</view>
+          </view>
+        </block>
+
+        <!-- 聊天记录 -->
+        <block wx:elif="{{it.kind === 'merged'}}">
+          <view class="nt-merged">
+            <view class="nt-merged-hd"><text>{{it.name}}</text><text class="nt-merged-n">{{it.count}} 条</text></view>
+            <view wx:for="{{it.messages}}" wx:for-item="m" wx:key="key" class="nt-merged-row">
+              <view class="nt-merged-meta">
+                <text wx:if="{{m.fromBadge}}" class="nt-role">{{m.fromBadge}}</text>
+                <text wx:if="{{m.fromName}}" class="nt-who">{{m.fromName}}</text>
+                <text wx:if="{{m.time}}" class="nt-raw-time">{{m.time}}</text>
+              </view>
+              <view class="nt-merged-text">{{m.text}}</view>
+            </view>
+          </view>
+        </block>
+      </view>
+
+      <view wx:if="{{card.quotes.length}}" class="nt-quotes">
+        <view wx:for="{{card.quotes}}" wx:for-item="q" wx:key="key" class="nt-quote">
+          <view class="nt-quote-hd">
+            <text class="nt-quote-type">{{q.label}}</text>
+            <text wx:if="{{q.fromBadge}}" class="nt-role">{{q.fromBadge}}</text>
+            <text wx:if="{{q.fromName}}" class="nt-who">{{q.fromName}}</text>
+            <text wx:if="{{q.time}}" class="nt-raw-time">{{q.time}}</text>
+          </view>
+          <view class="nt-quote-t">{{q.text}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{card.compose.length}}" class="nt-compose">
+        <text wx:for="{{card.compose}}" wx:for-item="cc" wx:key="label" class="nt-cchip"><text class="nt-cchip-n">{{cc.n}}</text>{{cc.label}}</text>
+      </view>
+      </view>
+    </block>
+
+    <!-- 底部：本次已处理（期次）/ 标记已处理 / 提醒 / 管理员编辑删除 / 收起展开 -->
+    <view class="nt-ft">
+      <!-- 契约 2026-11-14 §2.3：期次卡操作区 = 「本次已处理」（done 后该期卡片立即消失，下一期不受影响） -->
+      <view wx:if="{{card.isOcc}}" class="nt-done {{card.done ? 'on' : ''}}" data-gid="{{card.id}}" catchtap="toggleDone">
+        <text class="nt-done-b"></text>{{card.done ? '本期已处理' : '本次已处理'}}
+      </view>
+      <view wx:elif="{{card.canDone}}" class="nt-done {{card.done ? 'on' : ''}}" data-gid="{{card.id}}" catchtap="toggleDone">
+        <text class="nt-done-b"></text>{{card.done ? '已处理' : '标记已处理'}}
+      </view>
+      <view wx:if="{{card.canRemind}}" class="nt-remind {{card.reminded ? 'on' : ''}}" data-gid="{{card.id}}" catchtap="onRemindTap">
+        <text wx:if="{{card.reminded}}" class="nt-remind-b"></text>{{card.remindLabel}}
+      </view>
+      <view class="grow"></view>
+      <!-- 需求 12：管理员编辑 / 软删除 / 恢复 -->
+      <block wx:if="{{card.admin}}">
+        <view wx:if="{{!card.hidden}}" class="nt-admin-btn" data-gid="{{card.id}}" catchtap="openEdit">编辑</view>
+        <view wx:if="{{!card.hidden}}" class="nt-admin-btn nt-admin-btn--danger" data-gid="{{card.id}}" catchtap="adminDelete">删除</view>
+        <view wx:else class="nt-admin-btn" data-gid="{{card.id}}" catchtap="adminRestore">恢复</view>
+      </block>
+      <view class="nt-fold" data-gid="{{card.id}}" catchtap="toggleDetail">{{card.expanded ? '收起' : '展开'}}</view>
+    </view>
+  </view>
+</template>
+
+<view class="page pad-b nt-page {{themeClass}}">
+
+  <!-- ===== 简报 ===== -->
+  <view class="nt-brief enter enter-1">
+    <view class="nt-brief-hd">
+      <text class="nt-eyebrow">待处理简报</text>
+      <text class="nt-brief-chip">{{stats.pending ? stats.pending + ' 项待处理' : '无待处理'}}</text>
+      <text class="nt-date">{{briefDate}}</text>
+    </view>
+    <!-- 契约 2026-11-14 §2.1：顶部 5 张可点数据卡（待处理 / 24h 截止 / 7 天内 / 长期通知 / 最新发布）
+         点击筛选、再点已激活卡取消（恢复「全部」）；与下方 chips 互斥。手机 360px 下 3+2 两行、无横向溢出。 -->
+    <view class="nt-dcards">
+      <view class="nt-dcard {{cardKey === 'pending' ? 'on' : ''}}" data-k="pending" bindtap="pickCard">
+        <text class="nt-dcard-n">{{stats.pending}}</text><text class="nt-dcard-l">待处理</text>
+      </view>
+      <view class="nt-dcard {{cardKey === 'urgent' ? 'on' : ''}}" data-k="urgent" bindtap="pickCard">
+        <text class="nt-dcard-n nt-urgent">{{stats.urgent}}</text><text class="nt-dcard-l">24h 截止</text>
+      </view>
+      <view class="nt-dcard {{cardKey === 'week' ? 'on' : ''}}" data-k="week" bindtap="pickCard">
+        <text class="nt-dcard-n nt-week">{{stats.week}}</text><text class="nt-dcard-l">7 天内</text>
+      </view>
+      <view class="nt-dcard nt-dcard--half {{cardKey === 'longterm' ? 'on' : ''}}" data-k="longterm" bindtap="pickCard">
+        <text class="nt-dcard-n nt-dcard-n--bl">{{stats.longterm}}</text><text class="nt-dcard-l">长期通知</text>
+      </view>
+      <view class="nt-dcard nt-dcard--half {{cardKey === 'latest' ? 'on' : ''}}" data-k="latest" bindtap="pickCard">
+        <text class="nt-dcard-n nt-dcard-n--t">{{stats.latestText}}</text><text class="nt-dcard-l">最新发布</text>
+      </view>
+    </view>
+    <view wx:if="{{briefNext.length}}" class="nt-next">
+      <view wx:for="{{briefNext}}" wx:key="id" class="nt-next-row {{item.alert ? 'nt-next-row--alert' : ''}}" data-gid="{{item.id}}" bindtap="jumpTo">
+        <text class="nt-next-t">{{item.title}}</text>
+        <text class="nt-next-m">{{item.meta}}</text>
+      </view>
+    </view>
+    <view class="nt-brief-ft">
+      <text class="nt-sync">{{syncText}}<text wx:if="{{ntStatusText}}" class="nt-substate"> · {{ntStatusText}}</text></text>
+      <view class="nt-brief-acts">
+        <view class="nt-btn nt-btn--sm nt-btn--ghost {{subBusy ? 'nt-btn--busy' : ''}}" bindtap="subscribeNextNotice">{{subBusy ? '授权中…' : (ntSubOn ? '再次开启' : '新通知提醒')}}</view>
+        <view class="nt-btn nt-btn--sm nt-btn--ghost" bindtap="refresh">刷新</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 筛选（chips；与顶部 5 卡互斥） ===== -->
+  <view class="nt-filters">
+    <view class="nt-chips">
+      <view class="nt-chip {{filter === 'all' && !cardKey ? 'on' : ''}}" data-f="all" bindtap="pickFilter">全部</view>
+      <view class="nt-chip {{filter === 'active' && !cardKey ? 'on' : ''}}" data-f="active" bindtap="pickFilter">待处理</view>
+      <view class="nt-chip {{filter === 'expired' ? 'on' : ''}}" data-f="expired" bindtap="pickFilter">已截止</view>
+      <view wx:if="{{isAdmin}}" class="nt-chip {{filter === 'hidden' ? 'on' : ''}}" data-f="hidden" bindtap="pickFilter">已隐藏{{hasHidden ? ' ' + hasHidden : ''}}</view>
+    </view>
+    <view class="nt-chips nt-cats">
+      <view wx:for="{{cats}}" wx:key="*this" class="nt-chip nt-chip--sm {{cat === item ? 'on' : ''}}" data-c="{{item}}" bindtap="pickCat">{{item === '全部' ? '全部分类' : item}}</view>
+    </view>
+  </view>
+
+  <!-- ===== 状态 ===== -->
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="sk sk-title sk-shimmer"></view>
+      <view class="sk sk-line sk-shimmer"></view>
+      <view class="sk sk-card sk-shimmer" style="margin-top:16rpx"></view>
+    </view>
+    <view class="m3-card m3-card--filled">
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+  </block>
+
+  <view wx:elif="{{state === 'error'}}" class="m3-card m3-card--outlined">
+    <empty-state icon="⚠" title="读取通知失败" text="{{errorText}}" action-text="重试" bind:action="refresh"></empty-state>
+  </view>
+
+  <block wx:else>
+    <view class="nt-list-hd">
+      <text class="nt-list-n">{{listCount}} 组</text>
+      <text wx:if="{{cardKey === 'latest'}}" class="nt-list-hint">按发布时间倒序</text>
+      <text wx:elif="{{filter === 'longterm'}}" class="nt-list-hint">仅进行中的长期安排</text>
+      <text wx:elif="{{filter === 'active'}}" class="nt-list-hint">未过期默认展开</text>
+    </view>
+
+    <!-- ===== 长期通知筛选：长期安排清单（契约 §2.2：标题 / 周期 label / 下次 M月D日（周X）HH:MM / 进行中） ===== -->
+    <block wx:if="{{filter === 'longterm'}}">
+      <view wx:for="{{longtermCards}}" wx:key="id" class="nt-lt-row enter">
+        <view class="nt-lt-row-hd">
+          <text class="nt-cat nt-cat--{{item.catCls}}">{{item.cat}}</text>
+          <text class="nt-recur-badge">长期安排</text>
+          <view class="grow"></view>
+          <text class="nt-lt-state">进行中</text>
+        </view>
+        <view class="nt-lt-title">{{item.title}}</view>
+        <view class="nt-lt-meta">
+          <text class="nt-lt-cycle">{{item.recurLabel}}</text>
+          <text wx:if="{{item.nextCnText}}" class="nt-lt-next">{{item.nextCnText}}</text>
+        </view>
+      </view>
+      <view wx:if="{{!longtermCards.length}}" class="m3-card m3-card--filled">
+        <empty-state icon="🗓" title="{{emptyTitle}}" text="{{emptyText}}" />
+      </view>
+    </block>
+
+    <block wx:else>
+      <!-- ===== 主列表（含期次卡；最新发布=全部未隐藏通知倒序） ===== -->
+      <view wx:for="{{cards}}" wx:key="id" class="nt-card-wrap enter">
+        <template is="ntCard" data="{{card: item}}" />
+      </view>
+
+      <view wx:if="{{!cards.length && filter !== 'all'}}" class="m3-card m3-card--filled">
+        <empty-state icon="📣" title="{{emptyTitle}}" text="{{emptyText}}" />
+      </view>
+
+      <!-- ===== 资料 / 无时间栏（契约 §1.2/§2.2：常驻显示、默认展开、可折叠；分类筛选生效） ===== -->
+      <view wx:if="{{filter === 'all' && infoCount}}" class="nt-info">
+        <view class="nt-info-hd" bindtap="toggleInfo">
+          <text class="nt-info-t">资料 / 无时间</text>
+          <text class="nt-info-n">· {{infoCount}} 条</text>
+          <view class="grow"></view>
+          <text class="nt-info-chev">{{showInfo ? '▴ 收起' : '▾ 展开'}}</text>
+        </view>
+        <block wx:if="{{showInfo}}">
+          <view wx:for="{{infoCards}}" wx:key="id" class="nt-card-wrap">
+            <template is="ntCard" data="{{card: item}}" />
+          </view>
+        </block>
+      </view>
+
+      <!-- 全部视图且无任何内容 → 空态 -->
+      <view wx:if="{{filter === 'all' && !cards.length && !infoCount && !expiredCount}}" class="m3-card m3-card--filled">
+        <empty-state icon="📣" title="{{emptyTitle}}" text="{{emptyText}}" />
+      </view>
+
+      <!-- ===== 已过期（默认折叠；含「长期安排已结束」） ===== -->
+      <view wx:if="{{showExpiredWrap && expiredCount}}" class="nt-expired">
+        <view class="nt-exp-hd" bindtap="toggleExpired">
+          <text class="nt-exp-t">已过期</text>
+          <text class="nt-exp-n">{{expiredCount}} 组</text>
+          <view class="grow"></view>
+          <text class="nt-exp-chev">{{showExpired ? '▴ 收起' : '▾ 展开'}}</text>
+        </view>
+        <block wx:if="{{showExpired}}">
+          <view wx:for="{{expiredCards}}" wx:key="id" class="nt-card-wrap">
+            <template is="ntCard" data="{{card: item}}" />
+          </view>
+        </block>
+      </view>
+    </block>
+  </block>
+
+  <!-- ===== 原始消息 ===== -->
+  <bottom-sheet show="{{rawSheet}}" title="{{rawTitle}}" bind:close="closeRaw">
+    <view wx:if="{{rawMeta}}" class="nt-raw-meta">{{rawMeta}}</view>
+    <view wx:for="{{rawBlocks}}" wx:key="index" class="nt-raw-block">
+      <view class="nt-raw-hd">
+        <text class="nt-raw-type">{{item.type}}</text>
+        <text wx:if="{{item.fromBadge}}" class="nt-role">{{item.fromBadge}}</text>
+        <text wx:if="{{item.fromName}}" class="nt-who">{{item.fromName}}</text>
+        <text wx:if="{{item.time}}" class="nt-raw-time">{{item.time}}</text>
+      </view>
+      <text class="nt-raw-text">{{item.text}}</text>
+    </view>
+  </bottom-sheet>
+
+  <!-- ===== 自定义提醒时间（date/time picker，复用 hw 页交互） ===== -->
+  <bottom-sheet show="{{remindSheet}}" title="自定义提醒时间" bind:close="closeRemind">
+    <view wx:if="{{remindForTitle}}" class="nt-remind-for">{{remindForTitle}}</view>
+    <view class="field">
+      <view class="field__label">提醒日期</view>
+      <picker mode="date" value="{{remindDate}}" start="{{remindStart}}" end="{{remindEnd}}" bindchange="onRemindDate">
+        <view class="field__ctrl"><text class="field__text">{{remindDate || '选择日期'}}</text><text class="m3-li__trail chev"></text></view>
+      </picker>
+    </view>
+    <view class="field">
+      <view class="field__label">提醒时间</view>
+      <picker mode="time" value="{{remindClock}}" bindchange="onRemindClock">
+        <view class="field__ctrl"><text class="field__text">{{remindClock || '选择时间'}}</text><text class="m3-li__trail chev"></text></view>
+      </picker>
+    </view>
+    <view wx:if="{{remindHint}}" class="nt-remind-hint">{{remindHint}}</view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:8rpx" bindtap="confirmRemind">设置提醒</touchable>
+  </bottom-sheet>
+
+  <!-- ===== 需求 12：管理员编辑通知（字段白名单 title/cat/summary/deadline/eventAt/timeLabel） ===== -->
+  <bottom-sheet show="{{editSheet}}" title="编辑通知" bind:close="closeEdit">
+    <view class="field">
+      <view class="field__label">标题</view>
+      <view class="field__ctrl">
+        <input class="field__input" value="{{editTitle}}" data-k="title" bindinput="onEditField" maxlength="80" placeholder="通知标题" placeholder-class="ph" />
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">分类</view>
+      <view class="field__ctrl">
+        <input class="field__input" value="{{editCat}}" data-k="cat" bindinput="onEditField" maxlength="12" placeholder="如 教务 / 团务 / 活动" placeholder-class="ph" />
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">摘要</view>
+      <view class="field__ctrl field__ctrl--area">
+        <textarea class="field__input nt-edit-area" value="{{editSummary}}" data-k="summary" bindinput="onEditField" maxlength="300" auto-height placeholder="一句话摘要" placeholder-class="ph"></textarea>
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">截止时间（ISO，留空 = 清除）</view>
+      <view class="field__ctrl">
+        <input class="field__input" value="{{editDeadline}}" data-k="deadline" bindinput="onEditField" maxlength="40" placeholder="2026-11-07T18:00:00+08:00" placeholder-class="ph" />
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">活动时间（ISO，留空 = 清除）</view>
+      <view class="field__ctrl">
+        <input class="field__input" value="{{editEventAt}}" data-k="eventAt" bindinput="onEditField" maxlength="40" placeholder="2026-11-07T12:00:00+08:00" placeholder-class="ph" />
+      </view>
+    </view>
+    <view class="field">
+      <view class="field__label">时间文案</view>
+      <view class="field__ctrl">
+        <input class="field__input" value="{{editTimeLabel}}" data-k="timeLabel" bindinput="onEditField" maxlength="40" placeholder="报名 11-07 12:00" placeholder-class="ph" />
+      </view>
+    </view>
+    <view class="nt-remind-hint">保存后立即对所有人生效（云端 override_json）；清空某字段会回落到原通知内容。</view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:8rpx" bindtap="saveEdit">保存</touchable>
+  </bottom-sheet>
+
+</view>

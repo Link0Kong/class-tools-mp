@@ -1,0 +1,132 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b data-page {{themeClass}}">
+
+  <!-- —— 骨架 / 错误态 —— -->
+  <block wx:if="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled data-sk">
+      <view class="sk sk-line sk-shimmer" style="width:220rpx;margin-bottom:0"></view>
+      <view class="sk sk-line sk-shimmer" style="width:320rpx;margin:16rpx 0 0"></view>
+    </view>
+  </block>
+  <view class="m3-card m3-card--outlined" wx:elif="{{state === 'error'}}">
+    <empty-state icon="⚠" title="读取失败" text="{{errorText}}" action-text="重试" bind:action="refresh"></empty-state>
+  </view>
+
+  <block wx:else>
+    <!-- —— 身份摘要（姓名 + 角色，不显示学号）—— -->
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="t-title-l">{{identity ? identity.name : '未验证身份'}}</view>
+      <view class="row wrap data-pills" wx:if="{{identity}}">
+        <text class="pill pill--primary">身份已验证</text>
+        <text wx:if="{{identity.role}}" class="pill pill--tertiary">{{identity.role}}</text>
+        <text wx:if="{{identity.badge && identity.badge !== identity.role}}" class="pill pill--neutral">{{identity.badge}}</text>
+        <text wx:if="{{identity.isAdmin}}" class="pill pill--neutral">管理员</text>
+      </view>
+      <view class="data-sub data-gap">页面不显示学号；学号只用于云端身份校验与数据归属。版本 {{version || '—'}}</view>
+    </view>
+
+    <!-- —— 云同步开关 / 状态 —— -->
+    <view class="sec-title"><text class="t-label-l muted">云同步</text></view>
+    <view class="m3-card m3-card--outlined enter enter-2">
+      <view class="data-row">
+        <view class="grow">
+          <view class="t-body-l">云同步</view>
+          <view class="data-sub">{{cloudReady ? (cloudOff ? '仅本机：不拉取、不推送云端数据' : '开启：按账号与网页端双向同步') : '未连接云端（离线可用）'}}</view>
+        </view>
+        <switch checked="{{!cloudOff}}" disabled="{{!cloudReady || syncing}}" color="{{th.primary}}" bindchange="toggleCloud" />
+      </view>
+      <view class="divider"></view>
+      <view class="data-row"><text class="t-body-m">状态</text><text class="data-v t-label-m muted">{{syncText}}</text></view>
+      <view class="data-row"><text class="t-body-m">上次同步</text><text class="data-v t-label-m muted">{{lastSyncText}}</text></view>
+      <view class="data-row" wx:if="{{hold}}"><text class="t-body-m">云端副本</text><text class="data-v t-label-m muted">已清除 · 再次修改设置时重新同步</text></view>
+      <view class="data-row" wx:if="{{pendCount > 0}}"><text class="t-body-m">待补发</text><text class="data-v t-label-m muted t-num">{{pendCount}} 项</text></view>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--block data-btn {{syncing ? 'm3-btn--disabled' : ''}}" disabled="{{syncing}}" bindtap="doSync">{{syncing ? '同步中…' : '立即同步'}}</touchable>
+    </view>
+
+    <!-- —— 同步范围（与实际实现一致：marks ntdone + userdata v6 全部 section）—— -->
+    <view class="sec-title"><text class="t-label-l muted">同步范围</text></view>
+    <view class="m3-card m3-card--outlined enter enter-3">
+      <view class="data-chips">
+        <text wx:for="{{scope}}" wx:key="*this" class="pill pill--neutral data-chip">{{item}}</text>
+      </view>
+      <view class="data-sub data-gap">网页与小程序同一账号下互通；云端数据只有本人 token 可读。身份 token 与班级名单缓存只在本机。</view>
+    </view>
+
+    <!-- —— 本机数据概览 —— -->
+    <view class="sec-title"><text class="t-label-l muted">本机数据</text></view>
+    <view class="m3-card m3-card--outlined enter enter-4">
+      <view class="data-row"><text class="t-body-m">本机存储</text><text class="data-v t-label-m muted">{{storage.keys}} 项 · 约 {{storage.kb}} KB</text></view>
+      <view class="divider"></view>
+      <view class="data-grid">
+        <view class="data-cell"><view class="stat__value t-num">{{counts.hwDone}}</view><view class="stat__label">已完成作业</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.ntDone}}</view><view class="stat__label">已处理通知</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.ntPin}}</view><view class="stat__label">置顶通知</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.fitRecs}}</view><view class="stat__label">体测记录</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.rosterSel}}</view><view class="stat__label">抽签名单</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.groupSel}}</view><view class="stat__label">分组名单</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.rollSel}}</view><view class="stat__label">点名名单</view></view>
+        <view class="data-cell"><view class="stat__value t-num">{{counts.pending}}</view><view class="stat__label">待补发</view></view>
+      </view>
+      <view class="data-sub">作业 / 通知列表按班级共享；上表是本机缓存的个人数据条数。</view>
+    </view>
+
+    <!-- —— 云端数据（不可删除项如实说明）—— -->
+    <view class="sec-title"><text class="t-label-l muted">云端数据</text></view>
+    <view class="m3-card m3-card--outlined enter enter-5">
+      <view class="data-row"><text class="t-body-m">个人数据</text><text class="data-v t-label-m muted">userdata / marks / fitrecs（仅本人可读）</text></view>
+      <view class="data-row"><text class="t-body-m">访问统计</text><text class="data-v t-label-m muted">按账号的访问记录，管理员可见；无法删除</text></view>
+      <view class="data-row"><text class="t-body-m">反馈</text><text class="data-v t-label-m muted">提交内容，管理员可见；无法删除</text></view>
+      <view class="data-sub data-gap">云端没有删除权限：清除只能把个人数据覆盖为空 / 勾选置否 / 体测归档；访问统计与反馈保持可读。</view>
+    </view>
+
+    <!-- —— 操作 —— -->
+    <view class="sec-title"><text class="t-label-l muted">操作</text></view>
+    <view class="m3-card m3-card--outlined enter enter-6">
+      <touchable cls="m3-li m3-li--flush" bindtap="exportData">
+        <view class="m3-li__lead m3-li__lead--primary">导</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">导出我的数据</view>
+          <view class="m3-li__sub">复制 JSON 到剪贴板 · 不含 token 与名单原文</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+      <view class="divider"></view>
+      <touchable cls="m3-li m3-li--flush" bindtap="clearCloud">
+        <view class="m3-li__lead m3-li__lead--tertiary">云</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">清除云端我的数据</view>
+          <view class="m3-li__sub">覆盖为空 / 勾选置否 / 体测归档 · 访问统计与反馈无法删</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+      <view class="divider"></view>
+      <touchable cls="m3-li m3-li--flush" bindtap="clearLocal">
+        <view class="m3-li__lead">清</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">清除本机数据</view>
+          <view class="m3-li__sub">保留身份 · 云端副本不受影响</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+    </view>
+
+    <!-- —— 隐私说明（静态文本，克制分点）—— -->
+    <view class="sec-title"><text class="t-label-l muted">隐私说明</text></view>
+    <view class="m3-card m3-card--outlined enter enter-6">
+      <view class="data-li"><text class="data-li__k">收集</text><text class="data-li__v">姓名 / 角色 / 徽章 / 管理员标识（身份校验）；作业完成、通知已处理 / 置顶、工具栏顺序、体测录入与历史、抽签 / 分组参数与名单、点名名单与到·假、隐藏项、课表与提醒偏好、昵称、关注宿舍（仅规范楼栋 + 房间号，用于电费页本人查看）、反馈内容。</text></view>
+      <view class="data-li"><text class="data-li__k">不采集</text><text class="data-li__v">证件信息、位置、通讯录、相册；不显示学号。</text></view>
+      <view class="data-li"><text class="data-li__k">用途</text><text class="data-li__v">仅用于本班级工具功能与跨端（网页 / 小程序）同步，不做广告或其它用途。</text></view>
+      <view class="data-li"><text class="data-li__k">存储</text><text class="data-li__v">本机微信存储 + 腾讯云 CloudBase PostgreSQL；云端数据只有本人 token 可读（RLS）。</text></view>
+      <view class="data-li"><text class="data-li__k">订阅</text><text class="data-li__v">通知提醒需微信授权订阅消息；openid 仅用于发送提醒、仅云函数使用。</text></view>
+      <view class="data-li"><text class="data-li__k">保留</text><text class="data-li__v">身份 token 有效期约 30 天（到期重新验证）；云端个人数据随「清除」动作覆盖 / 置否 / 归档。</text></view>
+      <view class="data-li"><text class="data-li__k">共享</text><text class="data-li__v">不向任何第三方共享或出售；访问统计仅管理员可见，诊断对已认证同学可见；关注宿舍只在电费页本人可见，不导出、不对外分享。</text></view>
+      <view class="data-li"><text class="data-li__k">反馈</text><text class="data-li__v">问题或建议请到「反馈建议」提交，管理员处理。</text></view>
+      <view class="data-gap">
+        <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="goFeedback">去「反馈建议」</touchable>
+      </view>
+    </view>
+
+    <view class="footer-note">班级工具 · 数据与隐私</view>
+  </block>
+</view>

@@ -1,0 +1,8 @@
+<view class="seg {{compact ? 'seg--compact' : ''}}">
+  <view class="seg__thumb" style="left:{{idx * cell}}%;width:{{cell}}%"></view>
+  <view class="seg__it {{item.id === value ? 'seg__it--on' : ''}}" wx:for="{{items}}" wx:key="id"
+        data-id="{{item.id}}" data-i="{{index}}" bindtap="onTap" hover-class="seg__it--hover" hover-stay-time="80">
+    <text class="seg__ck" wx:if="{{item.done}}">✓</text>
+    <text class="seg__lb">{{item.label}}</text>
+  </view>
+</view>

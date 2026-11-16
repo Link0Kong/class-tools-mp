@@ -1,0 +1,6 @@
+<view class="tch {{cls}}">
+  <view class="tch__press" style="background:{{pressed ? pressBg : 'transparent'}}"></view>
+  <slot></slot>
+  <view class="tch__rip" wx:for="{{rips}}" wx:key="id"
+        style="left:{{item.x}}px;top:{{item.y}}px;width:{{item.d}}px;height:{{item.d}}px"></view>
+</view>

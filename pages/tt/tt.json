@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "课表",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "bottom-sheet": "/components/bottom-sheet/index"
+  }
+}

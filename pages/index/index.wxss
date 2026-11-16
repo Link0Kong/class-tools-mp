@@ -1,0 +1,164 @@
+/* pages/index/index.wxss —— 工作台（v1.3.3：今日课程 + 待办 + 常用工具；无头像） */
+
+/* —— 顶部问候 —— */
+.wb-head { display: flex; flex-direction: row; align-items: center; padding: 28rpx 0 12rpx; }
+.wb-hello { font-size: 44rpx; font-weight: 600; line-height: 1.25; color: var(--md-on-surface); }
+.wb-name { margin-left: 10rpx; color: var(--md-primary); }
+.wb-sub { margin-top: 8rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+
+/* —— 卡片头 —— */
+.wb-eyebrow { font-size: 24rpx; font-weight: 600; letter-spacing: 2rpx; color: var(--md-on-surface-variant); }
+.wb-card-hd { display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
+.wb-more {
+  font-size: 26rpx; color: var(--md-primary); font-weight: 500;
+  padding: 12rpx 16rpx; margin: -12rpx -8rpx -12rpx 0; border-radius: 999rpx;
+}
+.wb-more--tap { background: var(--md-primary-container); }
+.wb-error { margin-top: 24rpx; }
+
+/* —— 今日课程 —— */
+.wb-cls { display: flex; flex-direction: row; align-items: center; padding: 18rpx 0; }
+.wb-cls + .wb-cls { border-top: 1rpx solid var(--md-outline-variant); }
+.wb-cls-time {
+  flex: none; width: 104rpx; font-size: 28rpx; font-weight: 600;
+  color: var(--md-primary); font-variant-numeric: tabular-nums;
+}
+.wb-cls-name { font-size: 30rpx; font-weight: 500; color: var(--md-on-surface); }
+.wb-cls-meta { margin-top: 4rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.wb-cls-pill { flex: none; margin-left: 12rpx; height: 48rpx; padding: 0 18rpx; font-size: 22rpx; }
+.wb-note { margin-top: 14rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+
+/* —— 空态（没课 / 未同步）—— */
+.wb-empty { padding: 20rpx 0 12rpx; }
+.wb-empty-t { display: block; font-size: 32rpx; font-weight: 600; color: var(--md-on-surface); }
+.wb-empty-s { display: block; margin-top: 8rpx; font-size: 26rpx; color: var(--md-on-surface-variant); }
+.wb-empty-btn { margin-top: 24rpx; }
+
+/* —— 关注宿舍电费卡（v2.0.0） —— */
+.wb-power { padding: 20rpx 28rpx 22rpx; transition: background var(--md-dur-short) var(--md-ease-standard); }
+.wb-power-hd { display: flex; align-items: center; justify-content: space-between; }
+.wb-power-main { display: flex; align-items: center; margin-top: 10rpx; min-width: 0; }
+.wb-power-label {
+  font-size: 30rpx; font-weight: 600; color: var(--md-on-surface); line-height: 1.3;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.wb-power-sub {
+  margin-top: 4rpx; font-size: 22rpx; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.wb-power-right { flex: none; display: flex; flex-direction: column; align-items: flex-end; margin-left: 16rpx; }
+.wb-power-q { display: flex; align-items: baseline; }
+.wb-power-num {
+  font-size: 44rpx; font-weight: 800; line-height: 1; color: var(--md-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+.wb-power-u { margin-left: 6rpx; font-size: 22rpx; font-weight: 600; color: var(--md-on-surface-variant); }
+.wb-power-pill { margin-top: 8rpx; height: 44rpx; padding: 0 18rpx; font-size: 21rpx; }
+.wb-power-empty { margin-top: 10rpx; }
+.wb-power-empty-t { display: block; font-size: 26rpx; color: var(--md-on-surface); }
+.wb-power-empty-s { display: block; margin-top: 4rpx; font-size: 23rpx; color: var(--md-primary); font-weight: 600; }
+
+/* —— 待办卡 —— */
+.wb-task {
+  display: flex; flex-direction: row; align-items: center;
+  padding: 24rpx 28rpx;
+  transition: background var(--md-dur-short) var(--md-ease-standard);
+}
+.wb-task--tap { background: var(--md-surface-container-high); }
+.wb-task-ico {
+  flex: none; width: 76rpx; height: 76rpx; margin-right: 24rpx;
+  border-radius: 999rpx; display: flex; align-items: center; justify-content: center;
+  font-size: 34rpx; color: #FFFFFF;
+}
+.wb-task-ico--tertiary { background: var(--md-tertiary); }
+.wb-task-ico--primary { background: var(--md-primary); }
+.wb-task-t { font-size: 30rpx; font-weight: 600; color: var(--md-on-surface); }
+.wb-task-n { margin-left: 10rpx; font-size: 30rpx; font-weight: 700; color: var(--md-primary); }
+/* 2026-11-11 需求 11：应用内「新通知」角标（低成本指示，点开通知页后清除） */
+.wb-task-new {
+  margin-left: 10rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  font-size: 19rpx; font-weight: 700; vertical-align: middle;
+  background: var(--md-error-container); color: var(--md-on-error-container);
+}
+.wb-task-s {
+  margin-top: 4rpx; font-size: 26rpx; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+
+/* —— 常用工具（一行 4 个）—— */
+.wb-all {
+  font-size: 26rpx; font-weight: 500; color: var(--md-on-surface-variant);
+  padding: 10rpx 20rpx; border-radius: 999rpx; background: var(--md-surface-container-high);
+}
+.wb-all--tap { color: var(--md-primary); }
+.wb-quick { display: flex; flex-direction: row; }
+.wb-q { flex: 1; min-width: 0; }
+.wb-q + .wb-q { margin-left: 14rpx; }
+.wb-q__in {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24rpx 8rpx 22rpx; border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low);
+  transition: background var(--md-dur-short) var(--md-ease-standard);
+}
+.wb-q-ico {
+  width: 80rpx; height: 80rpx; border-radius: 999rpx;
+  background: var(--md-secondary);
+  display: flex; align-items: center; justify-content: center;
+}
+/* 工具图标是白色字形 PNG，必须放在彩底圆 chip 上才可见（与「工具」页 .ico-chip 一致） */
+.wb-q-ico--primary   { background: var(--md-primary); }
+.wb-q-ico--secondary { background: var(--md-secondary); }
+.wb-q-ico--tertiary  { background: var(--md-tertiary); }
+.wb-q-img { width: 48rpx; height: 48rpx; display: block; }
+.wb-q-name {
+  margin-top: 12rpx; max-width: 100%;
+  font-size: 24rpx; color: var(--md-on-surface);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+/* 尚未勾选常用工具：引导去「工具」页勾选（2026-11-06 起首页工具 = 用户主动勾选） */
+.wb-quick-empty {
+  display: flex; flex-direction: row; align-items: center;
+  padding: 26rpx 28rpx; box-sizing: border-box;
+  border-radius: var(--md-shape-lg);
+  border: 1rpx dashed var(--md-outline-variant);
+  background: var(--md-surface-container-low);
+}
+.wb-quick-empty--tap { background: var(--md-surface-container-high); }
+.wb-quick-empty-t { font-size: 28rpx; font-weight: 500; color: var(--md-on-surface); }
+.wb-quick-empty-s { margin-top: 6rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.wb-quick-empty-a { flex: none; margin-left: 16rpx; font-size: 26rpx; font-weight: 500; color: var(--md-primary); }
+
+/* —— 暗色：待办图标 / 工具圆底换 container 角色（深色底避免过亮）—— */
+/* 2026-11-15 外观：暗色映射跟随实际生效主题（.theme-dark 由 utils/appearance.js 注入页面根节点） */
+  .theme-dark .wb-task-ico--tertiary { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+  .theme-dark .wb-task-ico--primary { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+  .theme-dark .wb-q-ico--primary   { background: var(--md-primary-container); }
+  .theme-dark .wb-q-ico--secondary { background: var(--md-secondary-container); }
+  .theme-dark .wb-q-ico--tertiary  { background: var(--md-tertiary-container); }
+
+/* ===================== 需求 11：工作台待办卡轮换 + 常驻轻微浮动 =====================
+ * 轮换：卡内「最新一条」每 5s 上浮淡出（.26s）→ 下浮淡入（.32s）；只更新文案字段（见 index.js）。
+ * 常驻浮动：两张待办卡 6s 循环 ±2rpx，幅度极小、不参与滚动计算；「减少动效」时全部关闭。
+ */
+.wb-rot { display: inline-block; max-width: 100%; will-change: transform, opacity; }
+.wb-rot--out { animation: wbRotOut .26s cubic-bezier(.2,.8,.3,1) both; }
+.wb-rot--in  { animation: wbRotIn .32s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes wbRotOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-10rpx); }
+}
+@keyframes wbRotIn {
+  from { opacity: 0; transform: translateY(12rpx); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wb-task--float { animation: wbFloat 6s ease-in-out infinite; }
+.wb-task--float-a { animation-delay: 0s; }
+.wb-task--float-b { animation-delay: 1.4s; }
+@keyframes wbFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3rpx); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wb-task--float { animation: none; }
+  .wb-rot--out, .wb-rot--in { animation: none; }
+}

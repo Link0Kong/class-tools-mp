@@ -1,0 +1,6 @@
+.appbar { position: sticky; top: 0; z-index: 15; padding: 48rpx 0 24rpx; background: var(--md-surface, #F4F0E6); }
+.appbar__title { font-size: 60rpx; font-weight: 600; line-height: 1.2; color: var(--md-on-surface, #303A35); }
+.appbar__sub { font-size: 28rpx; color: var(--md-on-surface-variant, #5C6860); margin-top: 8rpx; }
+.appbar--collapsed { padding: 24rpx 0; }
+.appbar--collapsed .appbar__title { font-size: 40rpx; }
+.appbar--collapsed .appbar__sub { display: none; }

@@ -1,0 +1,155 @@
+/* pages/diag/diag.wxss —— 管理员诊断页（M3 变量；暗色自动切换） */
+.dg-page { padding-top: 12rpx; }
+
+/* —— 汇总卡 —— */
+.dg-sum { margin-bottom: var(--md-space-4); }
+.dg-sum-main { display: flex; align-items: center; gap: 18rpx; }
+.dg-sum-text { font-size: 34rpx; font-weight: 800; color: var(--md-on-surface); }
+.dg-sum-time { margin-top: 6rpx; font-size: 22rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.dg-refresh { flex: none; }
+.dg-hint { margin-top: 16rpx; font-size: 23rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.dg-hint--err { color: var(--md-error); }
+
+/* —— 状态圆点 —— */
+.dg-dot {
+  flex: none; width: 18rpx; height: 18rpx; border-radius: 50%;
+  background: var(--md-outline); box-shadow: 0 0 0 6rpx rgba(140, 154, 151, .13);
+}
+.dg-dot--ok { background: var(--md-primary); box-shadow: 0 0 0 6rpx rgba(78, 144, 130, .14); }
+.dg-dot--warn { background: var(--md-tertiary); box-shadow: 0 0 0 6rpx rgba(199, 154, 90, .16); }
+.dg-dot--down { background: var(--md-error); box-shadow: 0 0 0 6rpx rgba(192, 96, 90, .15); }
+.dg-dot--offline, .dg-dot--off { background: var(--md-outline); box-shadow: 0 0 0 6rpx rgba(140, 154, 151, .13); }
+.dg-dot--unknown { background: var(--md-outline); }
+
+/* —— 分组卡 —— */
+.dg-group { margin-bottom: var(--md-space-4); }
+.dg-ghd { font-size: 22rpx; font-weight: 800; letter-spacing: 2rpx; color: var(--md-on-surface-variant); }
+.dg-rows { margin-top: 8rpx; }
+.dg-row {
+  display: flex; align-items: flex-start; gap: 16rpx; padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--md-outline-variant);
+}
+.dg-row:last-child { border-bottom: 0; padding-bottom: 2rpx; }
+.dg-row > .dg-dot { width: 14rpx; height: 14rpx; margin-top: 14rpx; box-shadow: none; }
+.dg-main { flex: 1; min-width: 0; }
+.dg-line { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
+.dg-name {
+  font-size: 28rpx; font-weight: 700; color: var(--md-on-surface);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.dg-pill {
+  flex: none; font-size: 19rpx; font-weight: 700; line-height: 1.5;
+  padding: 2rpx 12rpx; border-radius: 999rpx;
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+}
+.dg-pill--ok { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.dg-pill--warn { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+.dg-pill--down { background: var(--md-error-container); color: var(--md-on-error-container); }
+.dg-pill--offline, .dg-pill--off, .dg-pill--unknown { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
+.dg-detail {
+  margin-top: 4rpx; font-size: 22rpx; line-height: 1.45; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+/* 2026-11-11 需求 11：提醒通道诊断卡（lastError 允许换行，便于排查） */
+.dg-notify .dg-detail { white-space: normal; word-break: break-word; }
+.dg-notify-err { color: var(--md-error); }
+.dg-dot--warn { background: var(--md-tertiary); }
+.dg-side { flex: none; font-size: 20rpx; line-height: 1.5; color: var(--md-on-surface-variant); text-align: right; font-variant-numeric: tabular-nums; padding-top: 2rpx; white-space: nowrap; }
+.dg-foot { margin-top: 8rpx; font-size: 21rpx; color: var(--md-on-surface-variant); text-align: center; }
+
+/* ================= 诊断 v2.1（2026-11-09）：AI 结论下挂 + 简化折叠/展开 + 设备信息最小化 ================= */
+.dg-sum-ai { margin-top: 4rpx; font-size: 21rpx; font-weight: 600; color: var(--md-primary); }
+.dg-hd { display: flex; align-items: center; gap: 12rpx; margin-bottom: 6rpx; }
+.dg-hd-t { font-size: 28rpx; font-weight: 800; color: var(--md-on-surface); }
+.dg-hd-s { font-size: 20rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.dg-hd-btn {
+  margin-left: auto; flex: none; font-size: 21rpx; font-weight: 700; color: var(--md-primary);
+  padding: 6rpx 18rpx; border: 2rpx solid var(--md-primary); border-radius: 999rpx;
+}
+.dg-agent, .dg-devc, .dg-others { margin-bottom: var(--md-space-4); }
+.dg-agent-main { display: flex; align-items: center; gap: 18rpx; }
+.dg-devs { margin: 10rpx 0 2rpx; font-size: 24rpx; font-weight: 700; color: var(--md-on-surface); }
+.dg-devs--ok { color: var(--md-primary); }
+.dg-devs--warn { color: var(--md-tertiary); }
+.dg-devs--down { color: var(--md-error); }
+.dg-dev-rep { font-size: 20rpx; font-weight: 400; color: var(--md-on-surface-variant); }
+.dg-dev-ft { display: flex; justify-content: flex-end; margin-top: 10rpx; }
+.dg-empty { font-size: 23rpx; color: var(--md-on-surface-variant); padding: 14rpx 0 2rpx; }
+
+/* —— AI 折叠行：一行 = [severity 点] [标题≤22 字] [⚙] [状态胶囊] [›]；高度 60rpx（≈30px@375，≤36px） —— */
+.dg-ai-row {
+  display: flex; flex-direction: row; align-items: center; gap: 12rpx;
+  box-sizing: border-box; height: 60rpx; max-height: 60rpx; overflow: hidden;
+  padding: 0 14rpx 0 20rpx; margin: 6rpx 0 8rpx 30rpx;
+  border: 1rpx solid var(--md-outline-variant); border-radius: 16rpx;
+  background: var(--md-surface-container-low, #F4F1EA);
+}
+.dg-ai-row--open { border-color: var(--md-primary); }
+.dg-ai-dot { width: 12rpx; height: 12rpx; flex: none; box-shadow: none; }
+.dg-ai-title {
+  flex: 1; min-width: 0; font-size: 23rpx; line-height: 1.2; color: var(--md-on-surface);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.dg-ai-fix { flex: none; font-size: 22rpx; color: var(--md-primary); }
+.dg-ai-pill {
+  flex: none; font-size: 18rpx; font-weight: 700; line-height: 1.5;
+  padding: 1rpx 10rpx; border-radius: 999rpx;
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+}
+.dg-ai-pill--new { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
+.dg-ai-pill--running { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
+.dg-ai-pill--fixed { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.dg-ai-pill--failed { background: var(--md-error-container); color: var(--md-on-error-container); }
+.dg-ai-pill--manual, .dg-ai-pill--ignored, .dg-ai-pill--hint {
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+}
+.dg-ai-caret {
+  flex: none; font-size: 24rpx; line-height: 1; color: var(--md-on-surface-variant);
+  transition: transform .15s ease;
+}
+.dg-ai-caret--open { transform: rotate(90deg); }
+/* 异常行暂无 AI 结论：一行灰字（本机在线=排队中 / 离线=已留存待开机修复） */
+.dg-ai-queue {
+  margin: 0 0 8rpx 30rpx; padding: 0 20rpx; height: 56rpx; line-height: 56rpx;
+  font-size: 21rpx; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+/* —— 展开态：原因 / 建议 / 流程时间线 / 关联修复 —— */
+.dg-ai-body { margin: 2rpx 0 12rpx 30rpx; padding: 12rpx 18rpx 14rpx; border-left: 2rpx solid var(--md-outline-variant); }
+.dg-an-k { margin: 10rpx 0 2rpx; font-size: 20rpx; font-weight: 700; color: var(--md-on-surface-variant); }
+.dg-an-k:first-child { margin-top: 2rpx; }
+.dg-an-v { font-size: 23rpx; line-height: 1.5; color: var(--md-on-surface); word-break: break-word; }
+.dg-flow { margin: 12rpx 0 0; border-left: 2rpx solid var(--md-outline-variant); padding-left: 18rpx; }
+.dg-flow-i { position: relative; padding-bottom: 14rpx; }
+.dg-flow-i:last-child { padding-bottom: 0; }
+.dg-flow-dot { position: absolute; left: -26rpx; top: 6rpx; width: 14rpx; height: 14rpx; border-radius: 50%; background: var(--md-outline); }
+.dg-flow-dot--done { background: var(--md-primary); }
+.dg-flow-dot--run { background: var(--md-tertiary); }
+.dg-flow-dot--fail { background: var(--md-error); }
+.dg-flow-i--run .dg-flow-dot { animation: dgPulse 1.2s ease-in-out infinite; }
+@keyframes dgPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.dg-flow-t { font-size: 22rpx; line-height: 1.45; color: var(--md-on-surface); }
+.dg-flow-st { margin-left: 10rpx; font-size: 19rpx; font-weight: 700; color: var(--md-on-surface-variant); }
+.dg-flow-st--done { color: var(--md-primary); }
+.dg-flow-st--run { color: var(--md-tertiary); }
+.dg-flow-st--fail { color: var(--md-error); }
+.dg-flow-time { margin-top: 2rpx; font-size: 18rpx; color: var(--md-on-surface-variant); }
+.dg-ai-repair { margin-top: 14rpx; padding-top: 10rpx; border-top: 1rpx dashed var(--md-outline-variant); }
+.dg-ai-repair .dg-detail { white-space: normal; word-break: break-word; }
+
+/* —— 「其它诊断」折叠区（默认收起，只显示条数） —— */
+.dg-others-hd { display: flex; flex-direction: row; align-items: center; gap: 12rpx; height: 64rpx; }
+.dg-others-t { font-size: 26rpx; font-weight: 700; color: var(--md-on-surface); }
+.dg-others-n { font-size: 21rpx; color: var(--md-on-surface-variant); }
+.dg-others-hd .dg-ai-caret { margin-left: auto; }
+.dg-others .dg-ai-row { margin-left: 0; }
+.dg-others .dg-ai-body { margin-left: 0; }
+.dg-rt-i { padding: 16rpx 0; border-top: 1rpx solid var(--md-outline-variant); }
+.dg-rt-i:first-of-type { border-top: 0; padding-top: 8rpx; }
+.dg-rt-a { font-size: 25rpx; font-weight: 700; color: var(--md-on-surface); }
+.dg-rt-i .dg-side { margin-left: auto; padding-top: 0; }
+
+/* v2.1 预渲染文本（WXML 嵌套数组限制兜底）：保留换行 */
+.dg-pre{white-space:pre-line;line-height:1.65}
+.dg-flow-t--run{color:#4E9082;font-weight:600}
+

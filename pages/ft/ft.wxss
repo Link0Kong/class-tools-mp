@@ -1,0 +1,56 @@
+.page-head { padding: 40rpx 0 20rpx; }
+.big-num { font-size: 96rpx; font-weight: 600; line-height: 1; }
+.big-unit { font-size: 28rpx; margin-left: 8rpx; margin-bottom: 10rpx; }
+.score-row { padding: 20rpx 0; border-bottom: 1rpx solid var(--md-outline-variant); }
+.bar-line { height: 12rpx; border-radius: 999rpx; background: var(--md-surface-container-high); overflow: hidden; margin: 16rpx 0 8rpx; }
+.bar-line__fill { height: 100%; border-radius: 999rpx; background: var(--md-primary); transition: width 300ms cubic-bezier(0.2,0,0,1); }
+.ph { color: var(--md-on-surface-variant); }
+.exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
+
+/* —— 成绩输入：两列卡片，输入框边界清晰；长跑单独成行 —— */
+.ft-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; margin-top: 8rpx; }
+.ft-cell { min-width: 0; border: 2rpx solid var(--md-outline-variant); border-radius: 20rpx; padding: 16rpx 18rpx; background: var(--md-surface-container-lowest); }
+.ft-cell--wide { grid-column: 1 / -1; }
+.ft-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8rpx; font-size: 26rpx; font-weight: 600; color: var(--md-on-surface); margin-bottom: 10rpx; }
+.ft-unit { font-size: 22rpx; font-weight: 400; color: var(--md-on-surface-variant); }
+.ft-input-wrap { display: flex; align-items: center; gap: 8rpx; min-height: 64rpx; padding: 0 16rpx;
+  background: var(--md-surface-container-high); border: 2rpx solid transparent; border-radius: 12rpx; }
+.ft-input-wrap:focus-within { border-color: var(--md-primary); background: var(--md-surface-container-lowest); }
+.ft-input { flex: 1; min-width: 0; height: 64rpx; font-size: 32rpx; font-weight: 600; color: var(--md-on-surface); }
+.ft-suffix { flex: none; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.ft-dur { display: flex; align-items: center; gap: 12rpx; }
+.ft-dur-part { flex: 1; }
+.ft-colon { flex: none; font-size: 34rpx; font-weight: 700; color: var(--md-on-surface-variant); }
+
+.ft-hist { display: flex; align-items: flex-start; gap: 8rpx; padding: 18rpx 0 18rpx 16rpx; border-top: 1rpx solid var(--md-outline-variant, #E6E9E8); border-left: 6rpx solid #D9E2DF; margin-top: 8rpx; }
+.ft-hist.great { border-left-color: #2E7D5B; background: #F1F8F4; }
+.ft-hist.good { border-left-color: #5E8F87; background: #F3F8F6; }
+.ft-hist.pass { border-left-color: #C6A475; background: #FBF7F0; }
+.ft-hist.fail { border-left-color: #B87870; background: #FDF4F3; }
+.ft-hist-top { display: flex; flex-direction: row; align-items: center; gap: 10rpx; flex-wrap: wrap; }
+.ft-hist-name { font-size: 30rpx; font-weight: 700; line-height: 1.3; color: var(--md-on-surface); margin-bottom: 6rpx; word-break: break-all; }
+.ft-hist .mono { color: var(--md-on-surface); }
+.ft-hist-score { font-size: 32rpx; font-weight: 700; color: var(--md-primary); font-variant-numeric: tabular-nums; }
+.ft-hist-meta { font-size: 23rpx; color: var(--md-on-surface-variant); margin-top: 6rpx; }
+.ft-hist-detail { font-size: 23rpx; line-height: 1.5; color: var(--md-on-surface-variant); margin-top: 8rpx; word-break: break-all; }
+.ft-hist-acts { display: flex; flex-direction: column; flex: none; }
+.ft-hist-act { min-width: 84rpx; padding: 8rpx 0; text-align: center; font-size: 24rpx; font-weight: 600; color: var(--md-primary); }
+.ft-hist-act.del { color: var(--md-error); }
+
+/* 2026-11-15 外观：暗色体测表面/评分色跟随实际生效主题（.theme-dark 由 utils/appearance.js 注入） */
+.theme-dark .ft-cell { background: var(--md-surface-container-low); }
+.theme-dark .ft-input-wrap { background: var(--md-surface-container); }
+.theme-dark .ft-input-wrap:focus-within { background: var(--md-surface-container-lowest); }
+.theme-dark .ft-hist.great { background: #16241D; }
+.theme-dark .ft-hist.good { background: #14201C; }
+.theme-dark .ft-hist.pass { background: #241E15; }
+.theme-dark .ft-hist.fail { background: #2A1716; }
+.theme-dark .ft-hist { border-left-color: var(--md-outline-variant); }
+.theme-dark .ft-hist.great { border-left-color: #6BC49A; }
+.theme-dark .ft-hist.good { border-left-color: #9BC9BB; }
+.theme-dark .ft-hist.pass { border-left-color: #E5C79B; }
+.theme-dark .ft-hist.fail { border-left-color: #F0B4AA; }
+
+/* 2026-11-15 深色 hero 中性化（对齐安卓 v4.55）：大面积 primary-container 在深色下改中性 tonal 底，
+   品牌绿只保留在小面积元素（分数/进度等仍用 --md-primary）。浅色不变。 */
+.theme-dark .m3-card--hero { background: var(--md-surface-container-high); color: var(--md-on-surface); }

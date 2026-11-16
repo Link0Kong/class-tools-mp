@@ -1,0 +1,71 @@
+/* fitness-standard-card：国标评分表（原子组件约束：无动画、无 overflow-y） */
+.fs-card {
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #FFFBFE;
+  color: #1C1B1F;
+  font-size: 14px;
+  line-height: 20px;
+}
+.fs-hd {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.fs-sub {
+  color: #49454F;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.fs-rows {
+  display: flex;
+  flex-direction: column;
+}
+.fs-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  border-top: 1px solid #ECE6EA;
+}
+.fs-cell {
+  font-size: 13px;
+}
+.fs-label {
+  flex: 1;
+  color: #49454F;
+}
+.fs-full {
+  width: 104px;
+  color: #34544E;
+  font-weight: 600;
+}
+.fs-pass {
+  width: 104px;
+  color: #79747E;
+}
+.fs-empty {
+  color: #79747E;
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fs-card {
+    background: #1C1B1F;
+    color: #E6E1E5;
+  }
+  .fs-sub,
+  .fs-label,
+  .fs-pass {
+    color: #CAC4D0;
+  }
+  .fs-full {
+    color: #B7D6CD;
+  }
+  .fs-empty {
+    color: #938F99;
+  }
+  .fs-row {
+    border-top-color: #2E2B31;
+  }
+}

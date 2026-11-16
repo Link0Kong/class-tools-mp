@@ -1,0 +1,241 @@
+<!-- AI 结论折叠行（v2.1）：[severity 点] [标题 ≤22 字] [⚙ 可自动修复] [状态胶囊] [›]
+     点整行展开 cause / suggestion / flow 时间线 / 关联修复；数据由 utils/diag.js groupAnalyses 下挂。 -->
+
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<template name="dgAi">
+  <view class="dg-ai-row {{an.open ? 'dg-ai-row--open' : ''}}" data-aid="{{an.id}}" bindtap="toggleAnalysis">
+    <view class="dg-dot dg-ai-dot dg-dot--{{an.severity}}"></view>
+    <text class="dg-ai-title">{{an.titleShort}}</text>
+    <text wx:if="{{an.fixableMark}}" class="dg-ai-fix">⚙</text>
+    <text wx:if="{{an.deviceHint}}" class="dg-ai-pill dg-ai-pill--hint">{{an.deviceHint}}</text>
+    <text class="dg-ai-pill dg-ai-pill--{{an.statusKey}}">{{an.statusPill}}</text>
+    <text class="dg-ai-caret {{an.open ? 'dg-ai-caret--open' : ''}}">›</text>
+  </view>
+</template>
+
+<view class="page pad-b dg-page {{themeClass}}">
+
+  <!-- 未完成班级身份（唯一门禁：仅要求有效班级 token） -->
+  <block wx:if="{{state === 'denied'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="🩺" title="需要班级身份" text="完成学号 + 姓名验证后即可查看服务与设备诊断。" action-text="返回工具" bind:action="goAll"></empty-state>
+    </view>
+  </block>
+
+  <!-- 加载中 -->
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled dg-sum">
+      <view class="sk sk-line sk-shimmer" style="width:40%;height:30rpx"></view>
+      <view class="sk sk-line sk-shimmer" style="width:26%;margin-top:14rpx"></view>
+    </view>
+    <view class="m3-card m3-card--outlined" wx:for="{{[1,2,3,4]}}" wx:key="*this">
+      <view class="sk sk-line sk-shimmer" style="width:30%;height:24rpx"></view>
+      <view class="sk sk-line sk-shimmer" style="width:80%;margin-top:16rpx"></view>
+      <view class="sk sk-line sk-shimmer" style="width:66%;margin-top:12rpx"></view>
+    </view>
+  </block>
+
+  <!-- 就绪 -->
+  <block wx:else>
+    <!-- 服务健康汇总 + AI 修复统计 -->
+    <view class="m3-card m3-card--elevated dg-sum">
+      <view class="dg-sum-main">
+        <view class="dg-dot dg-dot--{{summary.level}}"></view>
+        <view class="grow">
+          <view class="dg-sum-text">{{summary.text}}</view>
+          <view class="dg-sum-time">最后检测 {{lastTryText}}</view>
+          <view class="dg-sum-ai" wx:if="{{diagStats.show}}">{{diagStats.text}}</view>
+        </view>
+        <touchable cls="m3-btn m3-btn--tonal m3-btn--sm dg-refresh {{busy ? 'm3-btn--disabled' : ''}}"
+                  disabled="{{busy}}" bindtap="refreshTap">{{busy ? '检测中…' : '刷新'}}</touchable>
+      </view>
+      <view wx:if="{{hint}}" class="dg-hint {{hint.cls === 'err' ? 'dg-hint--err' : ''}}">{{hint.text}}</view>
+    </view>
+
+    <!-- 本机诊断代理（AI 分析 / 自动修复 / 课表登录的执行端） -->
+    <view class="m3-card m3-card--outlined dg-agent">
+      <view class="dg-agent-main">
+        <view class="dg-dot {{agent.online ? 'dg-dot--ok' : 'dg-dot--offline'}}"></view>
+        <view class="grow">
+          <view class="dg-line">
+            <text class="dg-name">本机诊断代理</text>
+            <text class="dg-pill {{agent.online ? 'dg-pill--ok' : 'dg-pill--offline'}}">{{agent.text}}</text>
+          </view>
+          <view class="dg-detail">{{agent.seenText}}<text wx:if="{{agent.version}}"> · v{{agent.version}}</text><text wx:if="{{agent.host}}"> · {{agent.host}}</text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 提醒通道诊断（2026-11-11 需求 11）：微信订阅消息 / 新通知扫描的排查入口
+         定时器心跳时间 · 云端 active 订阅数 · 新通知扫描 lastScanAt/sentCount · lastError -->
+    <view wx:if="{{notifyDiag.show}}" class="m3-card m3-card--outlined dg-agent dg-notify">
+      <view class="dg-agent-main">
+        <view class="dg-dot {{notifyDiag.ok ? 'dg-dot--ok' : 'dg-dot--warn'}}"></view>
+        <view class="grow">
+          <view class="dg-line">
+            <text class="dg-name">提醒通道诊断</text>
+            <text class="dg-pill {{notifyDiag.ok ? 'dg-pill--ok' : 'dg-pill--offline'}}">{{notifyDiag.ok ? '正常' : '需排查'}}</text>
+          </view>
+          <view class="dg-detail">定时器心跳：{{notifyDiag.hbText}}</view>
+          <view class="dg-detail" wx:if="{{notifyDiag.activeText}}">{{notifyDiag.activeText}}</view>
+          <view class="dg-detail">{{notifyDiag.scanText}}</view>
+          <view class="dg-detail dg-notify-err" wx:if="{{notifyDiag.errText}}">{{notifyDiag.errText}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 设备诊断（设备信息最小化：无品牌/型号/语言；AI 结论下挂到对应检查行） -->
+    <view class="m3-card m3-card--outlined dg-devc">
+      <view class="dg-hd">
+        <text class="dg-hd-t">设备诊断</text>
+        <text class="dg-hd-s">{{dev.tsText}}</text>
+        <view class="dg-hd-btn" bindtap="recheckDev">重新检测</view>
+      </view>
+      <view class="dg-devs dg-devs--{{dev.summary.level}}">{{dev.summary.text}}<text class="dg-dev-rep" wx:if="{{reportText}}"> · {{reportText}}</text></view>
+      <view class="dg-rows">
+        <block wx:for="{{dev.checks}}" wx:key="id" wx:for-item="ck">
+          <view class="dg-row">
+            <view class="dg-dot dg-dot--{{ck.st}}"></view>
+            <view class="dg-main">
+              <view class="dg-line">
+                <text class="dg-name">{{ck.name}}</text>
+                <text class="dg-pill dg-pill--{{ck.st}}">{{ck.display}}</text>
+              </view>
+              <view class="dg-detail" wx:if="{{ck.detail}}">{{ck.detail}}</view>
+            </view>
+          </view>
+          <block wx:for="{{ck.ai}}" wx:key="id" wx:for-item="an">
+      <template is="dgAi" data="{{an}}" />
+    <view class="dg-ai-body" wx:if="{{an.open}}">
+      <block wx:if="{{an.cause}}">
+        <view class="dg-an-k">原因</view>
+        <view class="dg-an-v">{{an.cause}}</view>
+      </block>
+      <block wx:if="{{an.suggestionsText}}">
+        <view class="dg-an-k">建议</view>
+        <view class="dg-an-v dg-pre">{{an.suggestionsText}}</view>
+      </block>
+      <view class="dg-flow" wx:if="{{an.flowText}}">
+        <view class="dg-flow-t dg-pre {{an.flowRun ? 'dg-flow-t--run' : ''}}">{{an.flowText}}</view>
+      </view>
+      <view class="dg-ai-repair" wx:if="{{an.repair}}">
+        <view class="dg-an-k">关联修复</view>
+        <view class="dg-line">
+          <text class="dg-rt-a">{{an.repair.actionText}}</text>
+          <text class="dg-pill dg-pill--{{an.repair.statusKey === 'fixed' ? 'ok' : (an.repair.statusKey === 'failed' ? 'down' : 'offline')}}">{{an.repair.statusText}}</text>
+        </view>
+        <view class="dg-detail" wx:if="{{an.repair.result}}">{{an.repair.result}}</view>
+        <view class="dg-detail" wx:if="{{an.repair.createdText}}">{{an.repair.createdText}}<text wx:if="{{an.repair.finishedText}}"> → {{an.repair.finishedText}}</text></view>
+      </view>
+    </view>
+    </block>
+          <view class="dg-ai-queue" wx:if="{{!ck.ai.length && ck.queueHint}}">{{ck.queueHint}}</view>
+        </block>
+      </view>
+      <view class="dg-dev-ft" wx:if="{{record.anomalyN}}">
+        <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="reportTap">上报异常</view>
+      </view>
+    </view>
+
+    <!-- 其它诊断：没有关联到健康行/设备检查行的 AI 结论与历史修复（默认收起，只显示条数） -->
+    <view class="m3-card m3-card--outlined dg-others" wx:if="{{others.count}}">
+      <view class="dg-others-hd" bindtap="toggleOthers">
+        <text class="dg-others-t">其它诊断</text>
+        <text class="dg-others-n">{{others.count}}</text>
+        <text class="dg-ai-caret {{others.open ? 'dg-ai-caret--open' : ''}}">›</text>
+      </view>
+      <block wx:if="{{others.open}}">
+        <block wx:for="{{others.items}}" wx:key="id" wx:for-item="an">
+      <template is="dgAi" data="{{an}}" />
+    <view class="dg-ai-body" wx:if="{{an.open}}">
+      <block wx:if="{{an.cause}}">
+        <view class="dg-an-k">原因</view>
+        <view class="dg-an-v">{{an.cause}}</view>
+      </block>
+      <block wx:if="{{an.suggestionsText}}">
+        <view class="dg-an-k">建议</view>
+        <view class="dg-an-v dg-pre">{{an.suggestionsText}}</view>
+      </block>
+      <view class="dg-flow" wx:if="{{an.flowText}}">
+        <view class="dg-flow-t dg-pre {{an.flowRun ? 'dg-flow-t--run' : ''}}">{{an.flowText}}</view>
+      </view>
+      <view class="dg-ai-repair" wx:if="{{an.repair}}">
+        <view class="dg-an-k">关联修复</view>
+        <view class="dg-line">
+          <text class="dg-rt-a">{{an.repair.actionText}}</text>
+          <text class="dg-pill dg-pill--{{an.repair.statusKey === 'fixed' ? 'ok' : (an.repair.statusKey === 'failed' ? 'down' : 'offline')}}">{{an.repair.statusText}}</text>
+        </view>
+        <view class="dg-detail" wx:if="{{an.repair.result}}">{{an.repair.result}}</view>
+        <view class="dg-detail" wx:if="{{an.repair.createdText}}">{{an.repair.createdText}}<text wx:if="{{an.repair.finishedText}}"> → {{an.repair.finishedText}}</text></view>
+      </view>
+    </view>
+    </block>
+        <view class="dg-rt-i" wx:for="{{others.repairs}}" wx:key="id" wx:for-item="rt">
+          <view class="dg-line">
+            <text class="dg-rt-a">{{rt.actionText}}</text>
+            <text class="dg-pill dg-pill--{{rt.statusKey === 'fixed' ? 'ok' : (rt.statusKey === 'failed' ? 'down' : 'offline')}}">{{rt.statusText}}</text>
+            <text class="dg-side">{{rt.timeText}}</text>
+          </view>
+          <view class="dg-detail" wx:if="{{rt.result}}">{{rt.result}}</view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 服务健康 18 行 / 5 组（AI 结论下挂到异常行下方；正常行不出现 AI） -->
+    <view class="m3-card m3-card--outlined dg-group" wx:for="{{groups}}" wx:key="t" wx:for-item="grp">
+      <view class="dg-ghd">{{grp.t}}</view>
+      <view class="dg-rows">
+        <block wx:for="{{grp.items}}" wx:key="id" wx:for-item="it">
+          <view class="dg-row">
+            <view class="dg-dot dg-dot--{{it.st}}"></view>
+            <view class="dg-main">
+              <view class="dg-line">
+                <text class="dg-name">{{it.name}}</text>
+                <text class="dg-pill dg-pill--{{it.st}}">{{it.display}}</text>
+              </view>
+              <view class="dg-detail" wx:if="{{it.detail}}">{{it.detail}}</view>
+            </view>
+            <text class="dg-side" wx:if="{{it.side}}">{{it.side}}</text>
+          </view>
+          <block wx:for="{{it.ai}}" wx:key="id" wx:for-item="an">
+      <template is="dgAi" data="{{an}}" />
+    <view class="dg-ai-body" wx:if="{{an.open}}">
+      <block wx:if="{{an.cause}}">
+        <view class="dg-an-k">原因</view>
+        <view class="dg-an-v">{{an.cause}}</view>
+      </block>
+      <block wx:if="{{an.suggestionsText}}">
+        <view class="dg-an-k">建议</view>
+        <view class="dg-an-v dg-pre">{{an.suggestionsText}}</view>
+      </block>
+      <view class="dg-flow" wx:if="{{an.flowText}}">
+        <view class="dg-flow-t dg-pre {{an.flowRun ? 'dg-flow-t--run' : ''}}">{{an.flowText}}</view>
+      </view>
+      <view class="dg-ai-repair" wx:if="{{an.repair}}">
+        <view class="dg-an-k">关联修复</view>
+        <view class="dg-line">
+          <text class="dg-rt-a">{{an.repair.actionText}}</text>
+          <text class="dg-pill dg-pill--{{an.repair.statusKey === 'fixed' ? 'ok' : (an.repair.statusKey === 'failed' ? 'down' : 'offline')}}">{{an.repair.statusText}}</text>
+        </view>
+        <view class="dg-detail" wx:if="{{an.repair.result}}">{{an.repair.result}}</view>
+        <view class="dg-detail" wx:if="{{an.repair.createdText}}">{{an.repair.createdText}}<text wx:if="{{an.repair.finishedText}}"> → {{an.repair.finishedText}}</text></view>
+      </view>
+    </view>
+    </block>
+          <view class="dg-ai-queue" wx:if="{{!it.ai.length && it.queueHint}}">{{it.queueHint}}</view>
+        </block>
+      </view>
+    </view>
+
+    <view class="dg-foot">服务健康 60 秒 · 诊断与修复 10 秒 · 更新 {{diagAtText}}</view>
+  </block>
+
+</view>
+
+
+
+
+
+
+

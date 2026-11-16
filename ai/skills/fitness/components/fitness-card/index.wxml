@@ -1,0 +1,20 @@
+<view class="ft-card">
+  <view class="ft-hd">{{title}}</view>
+  <view wx:if="{{sub}}" class="ft-sub">{{sub}}</view>
+
+  <view wx:if="{{total}}" class="ft-hero">
+    <view class="ft-total">{{total}}</view>
+    <view class="ft-level">{{level}}</view>
+    <view wx:if="{{bmi}}" class="ft-bmi">{{bmi}}</view>
+  </view>
+
+  <view wx:if="{{rows.length}}" class="ft-rows">
+    <view class="ft-row" wx:for="{{rows}}" wx:key="label">
+      <view class="ft-cell ft-label">{{item.label}}</view>
+      <view class="ft-cell ft-value">{{item.value}}</view>
+      <view class="ft-cell ft-score">{{item.score}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{empty}}" class="ft-empty">还没有体测成绩</view>
+</view>

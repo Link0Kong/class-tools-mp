@@ -1,0 +1,260 @@
+{
+  "apis": [
+    {
+      "name": "listHomework",
+      "description": "查询班级作业列表。按状态（待交/全部/已完成/已过截止）、科目、关键词筛选，返回截止提示与完成状态。作业按截止时间从近到远排序；超过截止三天被自动清除的作业不会返回。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "all", "done", "overdue"],
+            "description": "筛选状态：pending=待交（默认，含已过截止但未到三天清除期的）、all=全部、done=已完成、overdue=已过截止且未完成。用户没说明时用 pending。"
+          },
+          "subject": {
+            "type": "string",
+            "description": "科目/课程名筛选，模糊匹配，例如『数学』『高等数学』。用户未指定科目时不要填写。"
+          },
+          "keyword": {
+            "type": "string",
+            "description": "关键词，模糊匹配作业科目、内容与发布者，例如『实验报告』『第三章』。用户未指定关键词时不要填写。"
+          },
+          "limit": {
+            "type": "number",
+            "description": "返回条数上限，1–50 的整数，不传默认 20。用户要求『全部』时最多用 50。"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "作业唯一标识，后续 getHomeworkDetail / setHomeworkDone / deleteHomework 的 homeworkId 只能取自本字段" },
+                "subject": { "type": "string" },
+                "content120": { "type": "string", "description": "作业内容摘要（约 120 字）" },
+                "dueText": { "type": "string", "description": "截止提示，如『还剩 2 天』『无截止日期』" },
+                "leftText": { "type": "string", "description": "剩余时间文本，如『剩 2 天』『已过期 3 小时』，无截止时为空" },
+                "date": { "type": "string", "description": "截止日期 YYYY-MM-DD，可能为空" },
+                "time": { "type": "string", "description": "截止时间 HH:mm，可能为空（按 00:00 计）" },
+                "done": { "type": "boolean" },
+                "status": { "type": "string", "enum": ["pending", "overdue", "done"] },
+                "author": { "type": "string" },
+                "attachmentCount": { "type": "number" },
+                "createdText": { "type": "string" }
+              }
+            }
+          },
+          "total": { "type": "number" },
+          "offline": { "type": "boolean", "description": "true 表示网络不可用，数据来自本机缓存" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/homework-card/index", "pagePath": "/pages/hw/hw" }
+      }
+    },
+    {
+      "name": "getHomeworkDetail",
+      "description": "查询单条作业详情，返回完整内容、截止时间、完成状态与附件名称/大小/类型（不返回附件内容）。homeworkId 必须取自 listHomework 返回的 items[].id。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "homeworkId": {
+            "type": "string",
+            "description": "作业唯一标识，取自上游接口 listHomework 返回的 items[].id 原值。不得从用户自然语言推断或编造；上下文没有有效 id 时先调用 listHomework。"
+          }
+        },
+        "required": ["homeworkId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "item": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "subject": { "type": "string" },
+              "content": { "type": "string" },
+              "dueText": { "type": "string" },
+              "leftText": { "type": "string" },
+              "dueDateText": { "type": "string" },
+              "done": { "type": "boolean" },
+              "status": { "type": "string" },
+              "author": { "type": "string" },
+              "createdText": { "type": "string" },
+              "pending": { "type": "boolean", "description": "true 表示本机已保存、云端尚未确认" },
+              "canDelete": { "type": "boolean" },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "size": { "type": "number", "description": "字节数" },
+                    "sizeText": { "type": "string" },
+                    "type": { "type": "string", "description": "MIME 类型" },
+                    "isImage": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "offline": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/homework-card/index", "pagePath": "/pages/hw/hw" }
+      }
+    },
+    {
+      "name": "getHomeworkSummary",
+      "description": "查询作业概览：待交、已完成、已过截止的条数，以及最近到期的一条作业（科目与剩余时间）。用于用户问『还有多少作业没做』『最近有什么作业要交』。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "pending": { "type": "number", "description": "未完成作业数（含已过截止但未到三天清除期的）" },
+          "done": { "type": "number" },
+          "overdue": { "type": "number", "description": "已过截止且未完成的条数" },
+          "next": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "subject": { "type": "string" },
+              "leftText": { "type": "string" }
+            }
+          },
+          "offline": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/homework-card/index", "pagePath": "/pages/hw/hw" }
+      }
+    },
+    {
+      "name": "setHomeworkDone",
+      "description": "把一条作业标记为已完成或取消完成。状态写入云端 marks（kind=hw），与作业板、网页端勾选状态同步。可撤销，无需 confirmed。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "homeworkId": {
+            "type": "string",
+            "description": "作业唯一标识，取自 listHomework 返回的 items[].id 原值；不得编造。"
+          },
+          "done": {
+            "type": "boolean",
+            "description": "true=标记完成；false=取消完成标记。用户说『做完了/交了』为 true，说『还没做/取消勾选』为 false。"
+          }
+        },
+        "required": ["homeworkId", "done"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "homeworkId": { "type": "string" },
+          "subject": { "type": "string" },
+          "done": { "type": "boolean" },
+          "pending": { "type": "boolean", "description": "true 表示仅本机生效，云端未同步（联网后自动补发）" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/homework-card/index", "pagePath": "/pages/hw/hw" }
+      }
+    },
+    {
+      "name": "publishHomework",
+      "description": "发布一条班级作业给全班同学。写操作：必须先向用户确认，确认后调用并传 confirmed=true。发布后写入云端 homework 表，全班可见。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "科目/课程名，例如『数学』『大学英语』。最多 40 字；用户没说时可留空字符串。"
+          },
+          "content": {
+            "type": "string",
+            "description": "作业内容/要求，必须由用户明确给出，最多 2000 字。不要自行编造作业内容。"
+          },
+          "dueDate": {
+            "type": "string",
+            "description": "截止日期，格式 YYYY-MM-DD，例如『2026-11-08』。用户没说截止时间时不要填写（表示无截止日期）。"
+          },
+          "dueTime": {
+            "type": "string",
+            "description": "截止时间，格式 HH:mm，例如『18:00』。只能与 dueDate 同时使用；不传按当天 00:00 计算。"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "是否已获得用户确认。首次调用必须为 false/不传，向用户确认后再传 true；绝不静默执行。"
+          }
+        },
+        "required": ["content", "confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "homeworkId": { "type": "string" },
+          "subject": { "type": "string" },
+          "dueText": { "type": "string" },
+          "pending": { "type": "boolean", "description": "true 表示已存本机但未同步云端" },
+          "pendingReason": { "type": "string" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/homework-card/index", "pagePath": "/pages/hw/hw" }
+      }
+    },
+    {
+      "name": "deleteHomework",
+      "description": "删除一条班级作业（全班不再可见）。只有发布者本人或管理员可以删除；其他人只能在自己的列表隐藏。写操作：必须先向用户确认，确认后调用并传 confirmed=true。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "homeworkId": {
+            "type": "string",
+            "description": "要删除的作业 id，取自 listHomework 返回的 items[].id 原值；不得编造。"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "description": "是否已获得用户确认。首次调用必须为 false/不传；用户确认后再传 true。"
+          }
+        },
+        "required": ["homeworkId", "confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "title" },
+          "title": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "homeworkId": { "type": "string" },
+          "deleted": { "type": "boolean" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/homework-card/index", "pagePath": "/pages/hw/hw" }
+      }
+    }
+  ],
+  "components": [
+    {
+      "path": "components/homework-card/index",
+      "relatedPage": "/pages/hw/hw"
+    }
+  ]
+}

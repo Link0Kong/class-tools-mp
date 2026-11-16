@@ -1,0 +1,148 @@
+<!-- pages/pptdl/pptdl.wxml —— 下载中心 · 单 deck 下载详情（契约 §12.4.1 / §12.4.3）
+     点击列表卡片进入本页（不再默认进播放器）；三行下载：兼容版 PPTX / PDF / 原始文件；
+     下载 = wx.downloadFile（进度/可取消）→ wx.openDocument；转发 = wx.shareFileMessage（不可用降级复制链接）；
+     兼容提示（外链媒体/字体）橙色逐条；旧 deck（无 files）= 兼容版未生成 + 在线预览 + 重新处理。 -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b dl-page {{themeClass}}">
+
+  <!-- 未完成班级身份 -->
+  <block wx:if="{{state === 'denied'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="📥" title="需要班级身份" text="完成学号 + 姓名验证后即可下载演示。" action-text="返回工具" bind:action="goAll"></empty-state>
+    </view>
+  </block>
+
+  <!-- 加载骨架（仅首次） -->
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="m3-card m3-card--outlined dl-sk">
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+      <view class="sk sk-line sk-shimmer" style="width:36%;margin-top:16rpx"></view>
+    </view>
+    <view class="m3-card m3-card--outlined dl-sk" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="sk sk-line sk-shimmer" style="width:46%"></view>
+      <view class="sk sk-line sk-shimmer" style="width:26%;margin-top:14rpx"></view>
+    </view>
+  </block>
+
+  <!-- 错误 / 未完成 -->
+  <block wx:elif="{{state === 'error'}}">
+    <view class="m3-card m3-card--outlined dl-empty">
+      <view class="dl-empty-t">{{errorText}}</view>
+      <view class="dl-btn dl-btn--outline" bindtap="retryLoad">重试</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 头部：封面 + 标题 + 元信息 + 状态 -->
+    <view class="dl-head">
+      <view class="dl-cover">
+        <image wx:if="{{d.cover}}" class="dl-cover-img" src="{{d.cover}}" mode="aspectFill" webp="{{true}}" lazy-load></image>
+        <view wx:else class="dl-cover-ph">📥</view>
+      </view>
+      <view class="dl-head-main">
+        <view class="dl-title">{{d.title}}</view>
+        <view class="dl-meta">{{d.meta}}</view>
+        <view class="dl-state" wx:if="{{d.statusText}}">{{d.statusText}}</view>
+      </view>
+    </view>
+
+    <!-- 未就绪：只显示状态，不显示下载 -->
+    <view class="m3-card m3-card--outlined dl-busy" wx:if="{{!d.isReady}}">
+      <view class="dl-busy-t">{{d.statusText}}</view>
+      <view class="dl-busy-hint" wx:if="{{errorDetail}}">{{errorDetail}}</view>
+      <view class="dl-actions">
+        <view wx:if="{{d.allowRetry}}" class="dl-btn dl-btn--outline" bindtap="retryDeck">重新处理</view>
+        <view class="dl-btn dl-btn--text" bindtap="retryLoad">刷新</view>
+      </view>
+    </view>
+
+    <block wx:else>
+      <!-- 旧 deck（无 files）：兼容版未生成 + 在线预览 + 重新处理（§12.4.3） -->
+      <view class="m3-card m3-card--outlined dl-legacy" wx:if="{{d.missingCompat}}">
+        <view class="dl-legacy-t">兼容版未生成</view>
+        <view class="dl-actions">
+          <view wx:if="{{d.canPreview}}" class="dl-btn dl-btn--outline" bindtap="openPreview">在线预览</view>
+          <view wx:if="{{d.allowRetry}}" class="dl-btn dl-btn--text" bindtap="retryDeck">重新处理</view>
+        </view>
+      </view>
+
+      <!-- 兼容提示（§12.2：外链媒体/字体未嵌入等，橙色逐条，不删除内容） -->
+      <view class="m3-card m3-card--outlined dl-warn" wx:if="{{d.hasWarnings}}">
+        <view class="dl-warn-t">兼容提示</view>
+        <view class="dl-warn-list">
+          <text wx:for="{{d.warnings}}" wx:key="*this" class="dl-warn-i">· {{item}}</text>
+        </view>
+      </view>
+
+      <!-- 文件行：兼容版 PPTX / PDF / 原始文件（显示大小；下载/取消进度；转发/复制链接） -->
+      <view class="dl-list" wx:if="{{d.rows.length}}">
+        <view class="m3-card m3-card--outlined dl-row {{dl.key === item.key ? 'dl-row--dl' : ''}}" wx:for="{{d.rows}}" wx:key="key">
+          <view class="dl-row-top">
+            <view class="dl-row-main">
+              <view class="dl-row-t">{{item.label}}</view>
+              <view class="dl-row-meta" wx:if="{{item.sizeText}}">{{item.sizeText}}</view>
+            </view>
+            <view class="dl-btn dl-btn--filled dl-dlbtn" wx:if="{{dl.key !== item.key}}"
+                  data-key="{{item.key}}" bindtap="downloadFile" hover-class="dl-btn--tap">打开文件</view>
+            <view class="dl-btn dl-btn--cancel dl-dlbtn" wx:else data-key="{{item.key}}"
+                  bindtap="cancelDownload" hover-class="dl-btn--tap">取消</view>
+          </view>
+          <!-- 下载进度（30–60MB 大文件必须给进度；可取消） -->
+          <view class="dl-progress" wx:if="{{dl.key === item.key}}">
+            <view class="dl-progress-bar" style="width:{{dl.pct > 0 ? dl.pct : 0}}%"></view>
+          </view>
+          <view class="dl-progress-t" wx:if="{{dl.key === item.key}}">{{dl.text}}</view>
+          <view class="dl-row-sub">
+            <text wx:if="{{shareSupported}}" class="dl-subbtn" data-key="{{item.key}}"
+                  bindtap="shareFile">转发到聊天/电脑</text>
+            <text class="dl-subbtn" data-key="{{item.key}}" bindtap="copyLink">复制链接</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- §12.8 视频/音频单独下载分组（仅 manifest.media_files 非空显示；旧 deck 无字段不显示）
+           每行：视频1 · 第 7 页 + 时长/分辨率 + 大小；下载→保存到相册（视频）/系统播放器（音频）；转发/复制链接 -->
+      <view class="dl-media" wx:if="{{d.hasMedia}}">
+        <view class="dl-media-hd">视频单独下载</view>
+        <view class="m3-card m3-card--outlined dl-row dl-row--media {{dl.key === item.key ? 'dl-row--dl' : ''}}"
+              wx:for="{{d.mediaRows}}" wx:key="key">
+          <view class="dl-row-top">
+            <view class="dl-row-main">
+              <view class="dl-row-t">{{item.label}}</view>
+              <view class="dl-row-meta">
+                <text wx:if="{{item.specText}}">{{item.specText}}</text>
+                <text wx:if="{{item.specText && item.sizeText}}"> · </text>
+                <text wx:if="{{item.sizeText}}">{{item.sizeText}}</text>
+              </view>
+            </view>
+            <view class="dl-btn dl-btn--filled dl-dlbtn" wx:if="{{dl.key !== item.key}}"
+                  data-key="{{item.key}}" bindtap="downloadFile" hover-class="dl-btn--tap">下载</view>
+            <view class="dl-btn dl-btn--cancel dl-dlbtn" wx:else data-key="{{item.key}}"
+                  bindtap="cancelDownload" hover-class="dl-btn--tap">取消</view>
+          </view>
+          <view class="dl-progress" wx:if="{{dl.key === item.key}}">
+            <view class="dl-progress-bar" style="width:{{dl.pct > 0 ? dl.pct : 0}}%"></view>
+          </view>
+          <view class="dl-progress-t" wx:if="{{dl.key === item.key}}">{{dl.text}}</view>
+          <view class="dl-row-sub">
+            <text wx:if="{{shareSupported}}" class="dl-subbtn" data-key="{{item.key}}"
+                  bindtap="shareFile">转发到聊天/电脑</text>
+            <text class="dl-subbtn" data-key="{{item.key}}" bindtap="copyLink">复制链接</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 无任何可下载文件（异常兜底） -->
+      <view class="m3-card m3-card--outlined dl-empty" wx:if="{{!d.rows.length && !d.hasMedia}}">
+        <view class="dl-empty-t">暂无可下载文件</view>
+        <view wx:if="{{d.allowRetry}}" class="dl-btn dl-btn--outline" bindtap="retryDeck">重新处理</view>
+      </view>
+
+      <!-- 有旧版预览字段（slides/video）时提供在线预览入口（§12.4.3；不再作为主流程） -->
+      <view class="dl-preview" wx:if="{{d.canPreview && !d.missingCompat}}">
+        <view class="dl-btn dl-btn--text" bindtap="openPreview">在线预览</view>
+      </view>
+    </block>
+  </block>
+</view>

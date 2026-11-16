@@ -1,0 +1,11 @@
+.page-head { padding: 40rpx 0 20rpx; }
+.ftt-scroll { width: 100%; }
+.ftt-table { display: inline-block; min-width: 100%; }
+.ftt-row { display: flex; flex-direction: row; align-items: stretch; border-bottom: 1rpx solid var(--md-outline-variant, #E6E9E8); }
+.ftt-head { background: var(--md-surface-container-high); border-radius: 12rpx 12rpx 0 0; }
+.ftt-item { width: 190rpx; flex: none; padding: 14rpx 10rpx; font-size: 23rpx; font-weight: 600; color: var(--md-on-surface); }
+.ftt-unit { display: block; font-size: 19rpx; font-weight: 400; color: var(--md-on-surface-variant); }
+.ftt-cell { width: 74rpx; flex: none; padding: 14rpx 4rpx; text-align: center; font-size: 22rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.ftt-head .ftt-cell { color: var(--md-primary); font-weight: 600; }
+/* AI 接力定位到某个项目时高亮对应行 */
+.ftt-focus { background: var(--md-primary-container, #E3EFEB); }

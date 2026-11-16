@@ -1,0 +1,124 @@
+/* pages/all/all.wxss —— 工具页（v2.0.0 改版）：全部工具目录 + 「编辑首页」模式 + 长按拖动排序
+ * 页面顶部不再有「首页快捷」工具行；普通模式没有勾选框，编辑模式由按钮进入、tile 出现选中徽标。
+ * 颜色只用 app.wxss 的 M3 token（var(--md-*)），浅色 / 暗色自动适配。
+ * 工具图标是白色字形 PNG（96×96，透明底），必须放在带底色的圆形 chip 上才可见；
+ * 暗色下 chip 底色换 container 角色（与 app.wxss 里 .m3-li__lead 的处理一致）。
+ */
+
+/* ===================== 标题行右侧「编辑首页 / 完成」按钮 ===================== */
+.all-edit {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 80rpx; padding: 0 28rpx; margin: -16rpx -8rpx -16rpx 0;
+  font-size: 26rpx; font-weight: 500; color: var(--md-primary);
+  border-radius: 999rpx; background: var(--md-primary-container);
+}
+.all-edit--done { background: var(--md-primary); color: var(--md-on-primary); margin-right: 0; }
+.all-edit--tap { opacity: .82; }
+.all-edit--done.all-edit--tap { opacity: .86; }
+/* 全部工具标题下的操作说明（普通态：拖动；编辑态：点选加入/移出） */
+.all-sub {
+  margin: -8rpx 0 16rpx; padding-left: 4rpx;
+  font-size: 24rpx; line-height: 1.5; color: var(--md-on-surface-variant);
+}
+
+/* ===================== 工具图标 chip（白字形 → 彩色圆底） ===================== */
+.ico-chip {
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  flex: none; border-radius: 999rpx;
+}
+.ico-chip--primary   { background: var(--md-primary); }
+.ico-chip--secondary { background: var(--md-secondary); }
+.ico-chip--tertiary  { background: var(--md-tertiary); }
+
+/* ===================== 全部工具（2 列网格） ===================== */
+.tool-grid { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: space-between; }
+.tool-cell { position: relative; width: 48.6%; margin-bottom: 16rpx; }
+.tool-cell__in {
+  display: flex; flex-direction: row; align-items: center;
+  /* 描述最多 2 行：132rpx 兜底高度改为 148rpx（名称 + 2 行描述 + 上下 padding 仍留白；拖动几何按实测 rect） */
+  min-height: 148rpx; padding: 20rpx; box-sizing: border-box;
+  border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low);
+}
+/* 编辑模式：给右侧徽标留出空间 */
+.tool-grid--edit .tool-cell__in { padding-right: 88rpx; }
+.tool-ico { width: 72rpx; height: 72rpx; margin-right: 18rpx; }
+.tool-img { width: 40rpx; height: 40rpx; display: block; }
+.tool-bd { flex: 1; min-width: 0; }
+.tool-name { font-size: 28rpx; font-weight: 500; line-height: 1.35; color: var(--md-on-surface); }
+.tool-meta {
+  margin-top: 4rpx; font-size: 24rpx; line-height: 1.35;
+  color: var(--md-on-surface-variant);
+  /* 2026-11-15（对齐安卓 v4.55 工具描述修复）：描述最多 2 行完整显示，不再单行 nowrap 截断；
+     卡片高度随内容自然撑开（改为 min-height 兜底），拖动命中仍由实测 rect 驱动。 */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; white-space: normal; overflow-wrap: anywhere;
+}
+
+/* ===================== 编辑模式：选中徽标 / 选中描边 ===================== */
+/* 选中 tile：主色描边 + 浅主色底，一眼看出已加入首页快捷 */
+.tool-cell--home .tool-cell__in {
+  background: var(--md-primary-container);
+  box-shadow: 0 0 0 3rpx var(--md-primary);
+}
+.tool-cell--home .tool-name { color: var(--md-on-primary-container); }
+.tool-cell--home .tool-meta { color: var(--md-on-primary-container); opacity: .8; }
+
+/* 徽标：右侧圆点/对勾；点按区 ≥ 40px（88rpx），实际点击由整个 tile 承接（不单独绑事件） */
+.tool-home-mark {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 88rpx;
+  display: flex; align-items: center; justify-content: center;
+}
+.tool-home-mark__dot {
+  width: 44rpx; height: 44rpx; box-sizing: border-box;
+  border-radius: 999rpx;
+  border: 3rpx solid var(--md-outline);
+  background: transparent;
+  transition: background 160ms cubic-bezier(0.2, 0, 0, 1), border-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.tool-home-mark--on .tool-home-mark__dot {
+  border-color: var(--md-primary);
+  background: var(--md-primary);
+}
+/* 选中态：白色对勾（纯 CSS，不引图片） */
+.tool-home-mark--on .tool-home-mark__dot::after {
+  content: ''; display: block;
+  width: 12rpx; height: 22rpx; margin: 6rpx auto 0;
+  border-right: 4rpx solid var(--md-on-primary);
+  border-bottom: 4rpx solid var(--md-on-primary);
+  transform: rotate(45deg);
+}
+
+/* ===================== 拖动状态 ===================== */
+/* 被拖动的原格子弱化（幽灵跟着手指走） */
+.tool-cell--dragging .tool-cell__in { opacity: .32; }
+.tool-cell--dragging .tool-home-mark { opacity: .32; }
+.tool-cell--dragging { border-radius: var(--md-shape-lg); }
+
+/* 跟手幽灵：fixed 定位到指针处（translate 居中），轻微放大 + 阴影制造「抬起」效果 */
+.drag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 9999;
+  display: flex; flex-direction: row; align-items: center;
+  min-width: 220rpx; max-width: 380rpx; padding: 16rpx 26rpx 16rpx 16rpx; box-sizing: border-box;
+  border-radius: 999rpx;
+  background: var(--md-surface-container-high);
+  box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, .22), 0 2rpx 8rpx rgba(0, 0, 0, .12);
+  transform: translate(-40%, -50%) scale(1.04);
+  opacity: .96;
+  pointer-events: none;
+}
+.ghost-ico { width: 64rpx; height: 64rpx; margin-right: 14rpx; }
+.ghost-img { width: 40rpx; height: 40rpx; display: block; }
+.ghost-name {
+  font-size: 26rpx; font-weight: 600; line-height: 1.3; color: var(--md-on-surface);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+
+/* ===================== 暗色：图标圆底换 container 角色 ===================== */
+/* 2026-11-15 外观：暗色映射跟随实际生效主题（.theme-dark 由 utils/appearance.js 注入页面根节点） */
+  .theme-dark .ico-chip--primary   { background: var(--md-primary-container); }
+  .theme-dark .ico-chip--secondary { background: var(--md-secondary-container); }
+  .theme-dark .ico-chip--tertiary  { background: var(--md-tertiary-container); }
+
+/* AI 接力定位到某个工具时的高亮（只做视觉提示） */
+.tool-cell--focus .tool-cell__in { box-shadow: 0 0 0 3rpx var(--md-primary); border-radius: var(--md-shape-lg); }

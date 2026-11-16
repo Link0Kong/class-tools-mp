@@ -1,0 +1,12 @@
+<view class="gp-card">
+  <view class="gp-hd">{{title}}</view>
+  <view wx:if="{{modeText}}" class="gp-sub">{{modeText}}</view>
+  <view wx:if="{{rows.length}}" class="gp-list">
+    <view class="gp-row" wx:for="{{rows}}" wx:key="index">
+      <view class="gp-idx">第 {{item.index}} 组（{{item.size}} 人）</view>
+      <view class="gp-mem">{{item.line}}</view>
+    </view>
+  </view>
+  <view wx:if="{{more > 0}}" class="gp-more">还有 {{more}} 组，可在分组页查看</view>
+  <view wx:if="{{empty}}" class="gp-empty">还没有分组结果</view>
+</view>

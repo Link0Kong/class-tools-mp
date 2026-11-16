@@ -1,0 +1,13 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">班级名单</text>
+    <text class="cnt">共 {{d.total}} 人</text>
+  </view>
+  <view class="row" wx:for="{{d.items}}" wx:key="seat">
+    <text class="seat">{{item.seat}}</text>
+    <text class="name">{{item.name}}</text>
+    <text class="role" wx:if="{{item.role}}">{{item.role}}</text>
+    <text class="admin" wx:if="{{item.isAdmin}}">管理员</text>
+  </view>
+  <view class="more" wx:if="{{d.total > d.items.length}}">还有 {{d.total - d.items.length}} 人，展开小程序查看完整名单</view>
+</view>

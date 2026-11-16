@@ -1,0 +1,52 @@
+<!-- pages/all/all.wxml —— 工具页（v2.0.0 改版）
+     页面主体只有「全部工具」：标题行右侧按钮进入/退出「首页快捷编辑模式」；
+     普通模式无勾选框（点 tile 打开工具 + 长按拖动排序）；编辑模式点 tile 切换首页快捷（选中显示徽标）。
+     顶部不再展示「首页快捷」工具行（勾选结果在工作台「常用工具」展示）。 -->
+<page-meta page-style="{{themeStyle}}{{dragPageStyle}}"></page-meta>
+
+<view class="page pad-b {{themeClass}}">
+
+  <!-- ============ 全部工具（2 列目录；仅统计为管理员工具） ============ -->
+  <view class="sec-title row between">
+    <text class="t-label-l muted">全部工具</text>
+    <view id="home-edit-btn" class="all-edit {{editMode ? 'all-edit--done' : ''}}"
+          bindtap="toggleEditMode" hover-class="all-edit--tap">{{editMode ? '完成' : '编辑首页'}}</view>
+  </view>
+  <view class="all-sub">{{editMode ? '点工具加入或移出首页快捷（最多 4 个）' : '长按工具可拖动排序'}}</view>
+
+  <view class="tool-grid enter enter-1 {{editMode ? 'tool-grid--edit' : ''}}">
+    <view id="all-tool-{{item.key}}"
+          class="tool-cell {{focusKey === item.key ? 'tool-cell--focus' : ''}} {{dragging && dragKey === item.key ? 'tool-cell--dragging' : ''}} {{editMode && item.home ? 'tool-cell--home' : ''}}"
+          wx:for="{{all}}" wx:key="key" data-key="{{item.key}}"
+          bindtap="onToolTap"
+          bindtouchstart="onToolTouchStart"
+          bindtouchmove="onToolTouchMove"
+          bindtouchend="onToolTouchEnd"
+          bindtouchcancel="onToolTouchCancel">
+      <touchable cls="tool-cell__in" data-key="{{item.key}}">
+        <view class="ico-chip ico-chip--{{item.tone}} tool-ico">
+          <image class="tool-img" src="{{item.icoImg}}" mode="aspectFit"></image>
+        </view>
+        <view class="tool-bd">
+          <view class="tool-name">{{item.name}}</view>
+          <view class="tool-meta">{{item.meta}}</view>
+        </view>
+      </touchable>
+      <!-- 编辑模式徽标：选中 = 主色对勾；未选中 = 空心圆（仅编辑态渲染，普通模式没有任何勾选框） -->
+      <view wx:if="{{editMode}}" id="tile-home-mark-{{item.key}}"
+            class="tool-home-mark {{item.home ? 'tool-home-mark--on' : ''}}"
+            aria-label="{{item.home ? '移出首页快捷' : '加入首页快捷'}}">
+        <view class="tool-home-mark__dot"></view>
+      </view>
+    </view>
+  </view>
+
+</view>
+
+<!-- ============ 拖动跟手幽灵（fixed 定位，图标 + 名称；抬起效果） ============ -->
+<view class="drag-ghost" wx:if="{{dragging}}" style="left:{{ghost.x}}px;top:{{ghost.y}}px">
+  <view class="ico-chip ico-chip--{{ghost.tone}} ghost-ico">
+    <image class="ghost-img" src="{{ghost.icoImg}}" mode="aspectFit"></image>
+  </view>
+  <text class="ghost-name">{{ghost.name}}</text>
+</view>

@@ -1,0 +1,192 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b pw-page {{themeClass}}">
+
+  <!-- 关注宿舍：单行入口（当前选中值），点击打开自定义 bottom-sheet -->
+  <view class="pw-pick" bindtap="openSheet" hover-class="pw-pick--hover" hover-stay-time="60">
+    <text class="pw-pick-label">{{hasSel ? '关注宿舍' : '选择宿舍'}}</text>
+    <text class="pw-pick-value">{{hasSel ? selLabel : '未选择'}}</text>
+    <text class="pw-pick-chev">›</text>
+  </view>
+
+  <!-- 未选择：引导（0 请求） -->
+  <block wx:if="{{state === 'idle'}}">
+    <view class="m3-card m3-card--outlined pw-guide">
+      <view class="pw-guide-t">关注一个宿舍，查看剩余电量</view>
+      <view class="pw-guide-s">选择保存在账号里，换设备登录会同步；未选择时不请求任何电量数据。</view>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--block" style="margin-top:20rpx" bindtap="openSheet">选择宿舍</touchable>
+    </view>
+  </block>
+
+  <!-- 加载中（首次进入且已选择） -->
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="m3-card m3-card--filled pw-dash">
+      <view class="sk sk-line sk-shimmer" style="width:38%;height:30rpx"></view>
+      <view class="pw-ring pw-ring--sk"><view class="pw-ring-in"></view></view>
+      <view class="sk sk-line sk-shimmer" style="width:70%;margin:18rpx auto 0"></view>
+    </view>
+  </block>
+
+  <!-- 失败 -->
+  <block wx:elif="{{state === 'error'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="⚠" title="加载失败" text="{{errorText}}" action-text="重试" bind:action="retry"></empty-state>
+    </view>
+  </block>
+
+  <!-- 仪表盘（紧凑 Hero：左小环 + 右侧状态/更新时间；刷新为右上角小按钮） -->
+  <block wx:elif="{{state === 'ready'}}">
+    <view class="m3-card m3-card--filled pw-dash">
+      <view class="pw-dash-main">
+        <view class="pw-ring" style="{{gaugeStyle}}">
+          <view class="pw-ring-in">
+            <text class="pw-q">{{qText}}</text>
+            <text class="pw-q-unit">{{unit}}</text>
+          </view>
+        </view>
+        <view class="pw-dash-info">
+          <view class="pw-dash-top">
+            <text class="pw-state pw-state--{{stateKey}}">{{stateText}}</text>
+            <view class="pw-refresh-btn" bindtap="refreshTap" aria-role="button" aria-label="刷新电量">刷新</view>
+          </view>
+          <text class="pw-dash-cap">剩余电量</text>
+          <text class="pw-dash-upd">{{updText || '—'}}</text>
+        </view>
+      </view>
+
+      <!-- 低电提示条（q<low）：保留在 hero 内底部 -->
+      <view class="pw-low" wx:if="{{lowOn}}">
+        <text class="pw-low-t">{{lowText}}</text>
+        <text class="pw-low-r">去完美校园充值</text>
+      </view>
+    </view>
+
+    <!-- 近 24h / 7天 / 30天趋势（区间 chips + canvas 2d 折线，对齐网站 v3.1） -->
+    <view class="m3-card m3-card--outlined pw-card">
+      <view class="pw-trend-hd">
+        <text class="t-title-m">{{trend.title}}</text>
+        <!-- v13（规格 power_cadence_spec.md §3）：13/16 号楼网关日更 → 固定「日更」短徽标（始终显示） -->
+        <text class="pw-daily" wx:if="{{trend.daily}}" aria-label="{{trend.dailyTitle}}">{{trend.dailyText}}</text>
+        <text class="pw-recharge" wx:if="{{trend.recharge}}" title="{{trend.recharged ? '充值跳变已折算，曲线按实际用电趋势显示' : ''}}">{{trend.recharged ? '期间有充值（已折算）' : '期间有充值'}}</text>
+        <text class="pw-slow" wx:if="{{trend.slow}}">{{trend.slowText}}</text>
+      </view>
+      <view class="pw-trend-top">
+        <view class="pw-ranges">
+          <view wx:for="{{ranges}}" wx:key="k"
+                class="pw-range {{item.k === range ? 'pw-range--on' : ''}}"
+                data-k="{{item.k}}" bindtap="pickRange">{{item.label}}</view>
+        </view>
+        <!-- 信息气泡（固定）：趋势图右上角上部、绘图区外；不随手指移动，窄屏自动折行不压按钮 -->
+        <view class="pw-cursor-tip" wx:if="{{cursor.on}}">{{cursor.text}}</view>
+      </view>
+      <view class="pw-trend">
+        <view class="pw-trend-body">
+          <!-- 绘图区铺满卡片：固定 canvas 宽=绘图区宽；点击/拖动查看最近采样点（无横滑组件）。
+               游标样式对齐网页版：竖线 + 真实采样点圆点 + 深色信息气泡（越界自动翻到点下方并 clamp）。 -->
+          <view class="pw-plot"
+                aria-label="{{cursor.on ? cursor.text : ''}}"
+                catchtouchstart="onTrendTouch"
+                catchtouchmove="onTrendTouchMove"
+                catchtouchend="onTrendTouchEnd">
+            <!-- 2026-11-08 修复（用户反馈：趋势图的线盖住宿舍选择框）：
+                 单层渲染不支持的机型/基础库上 canvas 2d 属原生组件，会盖在页面浮层（bottom-sheet / 低电阈值面板）之上。
+                 任何覆盖层打开时用 wx:if 移除 canvas（保留空态占位），关闭后 setData 回调 + wx.nextTick 重绘。 -->
+            <canvas wx:if="{{!trend.empty && !sheetOpen && !lowOpen}}" type="2d" id="pwTrend" class="pw-canvas" style="width:{{canvasW}}px"></canvas>
+            <view class="pw-trend-empty" wx:if="{{trend.empty}}">{{trend.note}}</view>
+            <view class="pw-cursor" wx:if="{{cursor.on}}" style="left:{{cursor.left}}px">
+              <view class="pw-cursor-line"></view>
+              <view class="pw-cursor-dot" style="top:{{cursor.top}}px"></view>
+            </view>
+          </view>
+          <!-- 固定竖坐标轴（不随游标移动；空态只留竖线无刻度） -->
+          <view class="pw-yaxis">
+            <view class="pw-yline"></view>
+            <block wx:if="{{!trend.empty}}">
+              <text class="pw-ylab pw-ylab--hi">{{trend.hiText}}</text>
+              <text class="pw-ylab pw-ylab--mid">{{trend.midText}}</text>
+              <text class="pw-ylab pw-ylab--lo">{{trend.loText}}</text>
+            </block>
+          </view>
+        </view>
+        <!-- 固定 x 轴覆盖层：随横滑按可见窗口刷新（24h HH:MM / 7d/30d MM-DD） -->
+        <view class="pw-xaxis" wx:if="{{!trend.empty}}">
+          <text class="pw-xlab" wx:for="{{trend.xTicks}}" wx:key="label"
+                style="left:{{item.left}}px;transform:translateX({{item.shift}})">{{item.label}}</text>
+        </view>
+        <view class="pw-legend" wx:if="{{!trend.empty}}">
+          <text>{{trend.startLabel}} <text class="pw-b">{{trend.startText}}</text> 度</text>
+          <text>当前 <text class="pw-b">{{trend.curText}}</text> 度</text>
+          <text>{{trend.dropLabel}} <text class="pw-b">{{trend.dropText}}</text> 度</text>
+          <!-- 充值折算图例（与网页 / 安卓同文案）：曲线已扣除充值跳变，真实剩余仍在「当前/上次充值」 -->
+          <text wx:if="{{trend.recharged && trend.rechargeTotalText}}">充值 <text class="pw-b">+{{trend.rechargeTotalText}}</text> 度（已折算）</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 4 个指标 tile（v5：估算可用≈rate/天 / 区间用电 / 低电阈值可点改 / 上次充值） -->
+    <view class="pw-tiles">
+      <view class="pw-tile {{item.hi ? 'pw-tile--hl' : ''}} {{item.btn ? 'pw-tile--btn' : ''}}"
+            wx:for="{{tiles}}" wx:key="key" data-key="{{item.key}}" bindtap="onTileTap">
+        <view class="pw-tile-l">{{item.label}}<text class="pw-tile-ref" wx:if="{{item.ref}}">参考</text><text class="pw-tile-exp" wx:if="{{item.btn}}">›</text></view>
+        <view class="pw-tile-v">{{item.value}}<text class="pw-tile-u" wx:if="{{item.unit}}">{{item.unit}}</text></view>
+        <view class="pw-tile-s" wx:if="{{item.sub}}">{{item.sub}}</view>
+        <!-- 自然周期同期比较（独立一行完整显示，对齐网页 / 安卓 v4.55；不再拼进单行副标） -->
+        <view class="pw-tile-cmp {{item.cmpUp ? 'pw-tile-cmp--up' : 'pw-tile-cmp--down'}}" wx:if="{{item.cmp}}">{{item.cmp}}</view>
+      </view>
+      <!-- 计费规则条（满宽，与 web #pwBill 同文案/同口径；放在电量统计 tiles 区末尾） -->
+      <view class="pw-bill" wx:if="{{bill}}">
+        <text class="pw-bill-i">电价 <text class="pw-bill-b">{{bill.elecText}}</text></text>
+        <text class="pw-bill-i">区间电费 <text class="pw-bill-b">{{bill.feeText}}</text></text>
+        <text class="pw-bill-i">免费 <text class="pw-bill-b">{{bill.freeText}}</text></text>
+        <text class="pw-bill-i">水费 <text class="pw-bill-b">{{bill.waterText}}</text></text>
+        <text class="pw-bill-ded" wx:if="{{bill.hasDed}}">{{bill.dedText}}</text>
+      </view>
+    </view>
+    <!-- 低电阈值小面板（v5）：8 档，点选立即生效并关闭 -->
+    <view class="pw-lowsel" wx:if="{{lowOpen}}">
+      <view class="pw-lowsel-hd">
+        <text>低电阈值</text>
+        <text class="pw-lowsel-x" bindtap="closeLow">×</text>
+      </view>
+      <view class="pw-lowsel-g">
+        <view wx:for="{{lowOptions}}" wx:key="*this"
+              class="pw-lowsel-opt {{item === low ? 'pw-lowsel-opt--on' : ''}}"
+              data-v="{{item}}" bindtap="chooseLow">{{item}}</view>
+      </view>
+      <view class="pw-lowsel-tip">低于该电量标红；低于 2 倍为偏低</view>
+    </view>
+
+    <view class="pw-foot">{{footer}}</view>
+  </block>
+
+  <!-- ============ 自定义宿舍选择 bottom-sheet ============ -->
+  <view class="pw-mask" wx:if="{{sheetOpen}}" bindtap="closeSheet" catchtouchmove="noop">
+    <view class="pw-sheet" catchtap="noop" catchtouchmove="noop">
+      <view class="pw-sheet-hd">
+        <text class="pw-sheet-title">关注宿舍</text>
+        <view class="pw-sheet-x" bindtap="closeSheet" aria-role="button" aria-label="关闭">×</view>
+      </view>
+      <view class="pw-sheet-scroll">
+        <view class="pw-sheet-label">楼栋</view>
+        <view class="pw-blds">
+          <view wx:for="{{buildings}}" wx:key="*this"
+                class="pw-bld {{item === activeBuilding ? 'pw-bld--on' : ''}}"
+                data-b="{{item}}" bindtap="pickBuilding">{{item}}</view>
+        </view>
+        <view class="pw-sheet-label">房间（{{activeBuilding}}）</view>
+        <view class="pw-rooms">
+          <view wx:for="{{buildingRooms}}" wx:key="rv"
+                class="pw-room-btn {{item.rv === selectedRv ? 'pw-room-btn--on' : ''}}"
+                data-rv="{{item.rv}}" bindtap="pickRoom">
+            <text class="pw-room-n">{{item.room}}</text>
+            <text class="pw-room-c" wx:if="{{item.rv === selectedRv}}">✓</text>
+          </view>
+        </view>
+      </view>
+      <view class="pw-sheet-ft">
+        <view class="pw-cancel" bindtap="closeSheet">取消</view>
+      </view>
+    </view>
+  </view>
+
+</view>

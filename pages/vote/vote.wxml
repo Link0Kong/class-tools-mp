@@ -1,0 +1,225 @@
+<!-- pages/vote/vote.wxml —— 「投票」列表 + 发起/编辑弹层（契约 web/vote/CONTRACT.md §4.2）
+     列表：进行中/已结束筛选、下拉刷新、卡片（标题 / 发起人 / 倒计时或截止 / 规则标签 / 已投人数）
+     发起：标题、说明、时限（5/10/30/60/120 分钟 · 指定日期时间 · 不限时）、2–20 选项（文字+说明+配图）、
+           单选/多选+最多选几项、匿名、允许改票、结果可见口径 -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b vote-page {{themeClass}}">
+
+  <!-- 未完成班级身份 -->
+  <block wx:if="{{state === 'denied'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="🗳" title="需要班级身份" text="完成学号 + 姓名验证后即可发起和参与投票。" action-text="返回工具" bind:action="goAll"></empty-state>
+    </view>
+  </block>
+
+  <!-- 首次加载骨架（只首次；失败也有兜底，不白屏） -->
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="vote-head">
+      <view class="grow"><view class="vote-head-t">投票</view></view>
+    </view>
+    <view class="vote-sk" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="sk sk-line sk-shimmer" style="width: 62%"></view>
+      <view class="sk sk-line sk-shimmer" style="width: 38%; margin-bottom: 0"></view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 顶部：标题 + 发起投票 -->
+    <view class="vote-head">
+      <view class="grow">
+        <view class="vote-head-t">投票</view>
+        <view class="vote-head-s">{{openCount}} 个进行中 · {{closedCount}} 个已结束</view>
+      </view>
+      <view class="vote-new" bindtap="openCreate" hover-class="vote-new--tap">发起投票</view>
+    </view>
+
+    <!-- 进行中 / 已结束 -->
+    <view class="vote-filter">
+      <view class="vote-filter-btn {{tab === 'open' ? 'vote-filter-btn--on' : ''}}" data-tab="open" bindtap="switchTab">进行中</view>
+      <view class="vote-filter-btn {{tab === 'closed' ? 'vote-filter-btn--on' : ''}}" data-tab="closed" bindtap="switchTab">已结束</view>
+    </view>
+
+    <!-- 云端瞬时失败轻提示（保留已渲染列表） -->
+    <view class="vote-tip" wx:if="{{listError}}">{{listError}}</view>
+
+    <!-- 投票卡片 -->
+    <view class="vote-list" wx:if="{{rows.length}}">
+      <view class="vote-card" wx:for="{{rows}}" wx:key="id" data-id="{{item.id}}"
+            bindtap="openDetail" hover-class="vote-card--tap">
+        <view class="vote-card-hd">
+          <view class="vote-card-title">{{item.title}}</view>
+          <text class="vote-card-cd {{item.closed ? 'vote-card-cd--end' : ''}}">{{item.countdownText}}</text>
+        </view>
+        <view class="vote-card-meta" wx:if="{{item.ownerText || item.deadlineText}}">{{item.ownerText}} · {{item.modeText}} · {{item.deadlineText}}</view>
+        <view class="vote-card-tags">
+          <text class="vote-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="key">{{tag.text}}</text>
+        </view>
+        <view class="vote-card-ft">
+          <text class="vote-card-total">{{item.totalText}}</text>
+          <text class="vote-card-voted" wx:if="{{item.hasVoted}}">已投票</text>
+          <view class="grow"></view>
+          <text class="vote-card-more">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空态（文案按筛选区分，契约 §3.2 同文案） -->
+    <view class="vote-empty" wx:if="{{empty}}">
+      <view class="vote-empty-art">🗳</view>
+      <view class="vote-empty-t">{{tab === 'open' ? '还没有进行中的投票' : '没有已结束的投票'}}</view>
+      <view class="vote-empty-btn" wx:if="{{tab === 'open'}}" bindtap="openCreate" hover-class="vote-empty-btn--tap">发起投票</view>
+    </view>
+  </block>
+
+  <!-- ============ 发起 / 编辑投票弹层 ============ -->
+  <block wx:if="{{formOpen}}">
+    <view class="sheet-mask" bindtap="closeCreate"></view>
+    <view class="sheet vote-sheet" catchtap="noop">
+      <view class="sheet__grabber"></view>
+      <view class="vote-sheet-hd">
+        <text class="vote-sheet-t">{{editing ? '编辑投票' : '发起投票'}}</text>
+        <view class="vote-sheet-x" bindtap="closeCreate" aria-role="button" aria-label="关闭">×</view>
+      </view>
+
+      <scroll-view scroll-y class="vote-sheet-body">
+        <!-- 标题 / 说明 -->
+        <view class="vote-field">
+          <view class="vote-label">标题</view>
+          <input class="vote-input" value="{{form.title}}" maxlength="80" placeholder="投票标题" bindinput="onTitleInput" />
+        </view>
+        <view class="vote-field">
+          <view class="vote-label">说明（可选）</view>
+          <textarea class="vote-textarea" value="{{form.desc}}" maxlength="500" placeholder="补充说明" auto-height bindinput="onDescInput"></textarea>
+        </view>
+
+        <!-- 时限：限时 / 指定截止 / 不限时 -->
+        <view class="vote-field">
+          <view class="vote-label">时限</view>
+          <view class="vote-seg">
+            <view class="vote-seg-btn {{form.type === 'quick' ? 'vote-seg-btn--on' : ''}}" data-v="quick" bindtap="pickDeadlineType">限时</view>
+            <view class="vote-seg-btn {{form.type === 'long' ? 'vote-seg-btn--on' : ''}}" data-v="long" bindtap="pickDeadlineType">指定截止</view>
+            <view class="vote-seg-btn {{form.type === 'none' ? 'vote-seg-btn--on' : ''}}" data-v="none" bindtap="pickDeadlineType">不限时</view>
+          </view>
+          <view class="vote-quicks" wx:if="{{form.type === 'quick'}}">
+            <view class="vote-quick {{form.quickMin === item ? 'vote-quick--on' : ''}}" wx:for="{{quickMins}}" wx:key="*this"
+                  data-min="{{item}}" bindtap="pickQuick">{{item}} 分钟</view>
+          </view>
+          <view class="vote-dt" wx:if="{{form.type === 'long'}}">
+            <picker mode="date" value="{{form.dDate}}" bindchange="onDateChange">
+              <view class="vote-dt-btn">{{form.dDate || '选择日期'}}</view>
+            </picker>
+            <picker mode="time" value="{{form.dTime}}" bindchange="onTimeChange">
+              <view class="vote-dt-btn">{{form.dTime || '选择时间'}}</view>
+            </picker>
+          </view>
+        </view>
+
+        <!-- 选项（2–20，文字 + 可选说明 + 可选配图） -->
+        <view class="vote-field">
+          <view class="vote-label">选项（{{form.options.length}}/20）</view>
+          <view class="vote-opt" wx:for="{{form.options}}" wx:key="id">
+            <view class="vote-opt-hd">
+              <text class="vote-opt-n">{{index + 1}}</text>
+              <input class="vote-opt-in" value="{{item.text}}" maxlength="80" placeholder="选项文字"
+                     data-i="{{index}}" bindinput="onOptText" />
+              <view class="vote-opt-del" wx:if="{{form.options.length > 2}}" data-i="{{index}}" catchtap="removeOption"
+                    aria-role="button" aria-label="删除选项">×</view>
+            </view>
+            <input class="vote-opt-desc" value="{{item.desc}}" maxlength="200" placeholder="补充说明（可选）"
+                   data-i="{{index}}" bindinput="onOptDesc" />
+            <view class="vote-opt-ft">
+              <view class="vote-opt-imgwrap" wx:if="{{item.img}}">
+                <image class="vote-opt-img" src="{{item.img}}" mode="aspectFill"></image>
+                <view class="vote-opt-imgx" data-i="{{index}}" catchtap="removeImg" aria-role="button" aria-label="移除配图">×</view>
+              </view>
+              <view class="vote-opt-addimg" wx:else data-i="{{index}}" catchtap="pickImg">＋ 配图</view>
+              <view class="grow"></view>
+              <view class="vote-opt-move" data-i="{{index}}" catchtap="moveOptionUp" aria-role="button" aria-label="上移">↑</view>
+              <view class="vote-opt-move" data-i="{{index}}" catchtap="moveOptionDown" aria-role="button" aria-label="下移">↓</view>
+            </view>
+          </view>
+          <view class="vote-opt-addbtn" wx:if="{{form.options.length < 20}}" bindtap="addOption" hover-class="vote-opt-addbtn--tap">＋ 添加选项</view>
+        </view>
+
+        <!-- 规则：多选 / 匿名 / 允许改票 / 结果可见 -->
+        <view class="vote-field">
+          <view class="vote-label">规则</view>
+          <view class="vote-row">
+            <view class="vote-row-l">
+              <view class="vote-row-t">多选</view>
+              <view class="vote-row-s">关闭为单选</view>
+            </view>
+            <switch checked="{{form.multi}}" color="{{th.primary}}" bindchange="onMultiChange" />
+          </view>
+          <view class="vote-row vote-row--sub" wx:if="{{form.multi}}">
+            <view class="vote-row-l">
+              <view class="vote-row-t">最多选几项</view>
+              <view class="vote-row-s">不超过选项数</view>
+            </view>
+            <view class="vote-maxs">
+              <view class="vote-maxbtn {{form.maxChoices === item ? 'vote-maxbtn--on' : ''}}" wx:for="{{maxOpts}}" wx:key="*this"
+                    data-n="{{item}}" bindtap="pickMax">{{item}}</view>
+            </view>
+          </view>
+          <view class="vote-row">
+            <view class="vote-row-l">
+              <view class="vote-row-t">匿名投票</view>
+              <view class="vote-row-s">不显示投票人姓名</view>
+            </view>
+            <switch checked="{{form.anonymous}}" color="{{th.primary}}" bindchange="onAnonChange" />
+          </view>
+          <view class="vote-row">
+            <view class="vote-row-l">
+              <view class="vote-row-t">允许改票</view>
+              <view class="vote-row-s">截止前可改选</view>
+            </view>
+            <switch checked="{{form.allowChange}}" color="{{th.primary}}" bindchange="onChangeChange" />
+          </view>
+          <view class="vote-vis">
+            <view class="vote-vis-btn {{form.vis === 'always' ? 'vote-vis-btn--on' : ''}}" data-vis="always" bindtap="pickVis">始终可见</view>
+            <view class="vote-vis-btn {{form.vis === 'afterVote' ? 'vote-vis-btn--on' : ''}}" data-vis="afterVote" bindtap="pickVis">投票后可见</view>
+            <view class="vote-vis-btn {{form.vis === 'afterClose' ? 'vote-vis-btn--on' : ''}}" data-vis="afterClose" bindtap="pickVis">截止后可见</view>
+          </view>
+        </view>
+
+        <!-- 可见范围（契约 §1.6，2026-11-11 18:08 增量）：全班 / 班委 / 团员 / 指定成员 -->
+        <view class="vote-field">
+          <view class="vote-label">可见范围</view>
+          <view class="vote-aud">
+            <view class="vote-aud-btn {{form.aud === 'all' ? 'vote-aud-btn--on' : ''}}" data-a="all" bindtap="pickAudience">全班</view>
+            <view class="vote-aud-btn {{form.aud === 'committee' ? 'vote-aud-btn--on' : ''}}" data-a="committee" bindtap="pickAudience">班委</view>
+            <view class="vote-aud-btn {{form.aud === 'league' ? 'vote-aud-btn--on' : ''}}" data-a="league" bindtap="pickAudience">团员</view>
+            <view class="vote-aud-btn {{form.aud === 'custom' ? 'vote-aud-btn--on' : ''}}" data-a="custom" bindtap="pickAudience">指定成员</view>
+          </view>
+          <block wx:if="{{form.aud === 'custom'}}">
+            <!-- 快捷预设（需求 8）：一键套全班 / 班委 / 团员基础集合，之后仍可逐个点成员增删（座号数组不变） -->
+            <view class="vote-mem-quick">
+              <view class="vote-mem-qbtn" data-k="all" bindtap="quickAudience">全班</view>
+              <view class="vote-mem-qbtn" data-k="committee" bindtap="quickAudience">班委</view>
+              <view class="vote-mem-qbtn {{leagueBusy ? 'vote-mem-qbtn--busy' : ''}}" data-k="league" bindtap="quickAudience">{{leagueBusy ? '团员…' : '团员'}}</view>
+              <view class="vote-mem-qbtn vote-mem-qbtn--ghost" data-k="none" bindtap="quickAudience">清空</view>
+            </view>
+            <view class="vote-mem-hd">指定成员 · 已选 <text class="vote-mem-n">{{selectedCount}}</text> 人</view>
+            <scroll-view scroll-y class="vote-mem-scroll" wx:if="{{members.length}}">
+              <view class="vote-mem-chips">
+                <view class="vote-mem {{item.sel ? 'vote-mem--on' : ''}}" wx:for="{{members}}" wx:key="seat"
+                      data-seat="{{item.seat}}" bindtap="toggleMember" aria-role="button" aria-label="{{item.name}}">{{item.name}}</view>
+              </view>
+            </scroll-view>
+            <view class="vote-mem-empty" wx:else>班级名单未同步，稍后重试</view>
+          </block>
+        </view>
+      </scroll-view>
+
+      <view class="vote-sheet-ft">
+        <view class="m3-btn m3-btn--text" bindtap="closeCreate">取消</view>
+        <view class="grow"></view>
+        <view class="m3-btn m3-btn--filled {{form.submitting ? 'm3-btn--disabled' : ''}}" bindtap="submitCreate">{{form.submitting ? '提交中…' : editing ? '保存' : '发起'}}</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 隐藏 canvas：选项配图压缩（长边 ≤640 JPEG，契约 §1.3） -->
+  <canvas type="2d" id="voteCanvas" class="vote-canvas"></canvas>
+</view>

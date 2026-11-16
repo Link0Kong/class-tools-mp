@@ -1,0 +1,130 @@
+/* ai/skills/timetable/components/timetable-card/index.wxss
+   原子组件 WXSS 约束：仅 class/标签/后代选择器；无动画/过渡；禁止 overflow-y；颜色固定 M3 token。 */
+.ttcard {
+  padding: 24rpx 28rpx;
+  background: #F7F8F8;
+  border-radius: 16rpx;
+}
+
+.tthead {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 12rpx;
+}
+
+.tttitle {
+  font-size: 32rpx;
+  line-height: 44rpx;
+  font-weight: 600;
+  color: #1A1C1A;
+}
+
+.ttsub {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  line-height: 34rpx;
+  color: #6E8CA8;
+}
+
+.ttrows {
+  margin-bottom: 8rpx;
+}
+
+.ttrow {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 8rpx 0;
+}
+
+.ttk {
+  font-size: 26rpx;
+  line-height: 36rpx;
+  color: #6E8CA8;
+}
+
+.ttv {
+  font-size: 26rpx;
+  line-height: 36rpx;
+  color: #1A1C1A;
+  text-align: right;
+}
+
+.ttlist {
+  margin-top: 4rpx;
+}
+
+.ttitem {
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #E3E6E4;
+}
+
+.ttmain {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ttname {
+  font-size: 28rpx;
+  line-height: 40rpx;
+  color: #1A1C1A;
+}
+
+.ttstate {
+  font-size: 22rpx;
+  line-height: 32rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  color: #4E9082;
+  background: #E6EFEC;
+}
+
+.ttmeta {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  line-height: 34rpx;
+  color: #6E8CA8;
+}
+
+.ttfoot {
+  margin-top: 16rpx;
+}
+
+.ttmuted {
+  font-size: 24rpx;
+  line-height: 34rpx;
+  color: #6E8CA8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ttcard {
+    background: #1F211F;
+  }
+
+  .tttitle,
+  .ttv,
+  .ttname {
+    color: #E4E6E3;
+  }
+
+  .ttsub,
+  .ttk,
+  .ttmeta,
+  .ttmuted {
+    color: #A9B4C0;
+  }
+
+  .ttitem {
+    border-bottom-color: #353A36;
+  }
+
+  .ttstate {
+    color: #9BC9BB;
+    background: #2B3833;
+  }
+}

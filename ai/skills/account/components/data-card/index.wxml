@@ -1,0 +1,41 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">我的数据</text>
+    <text class="kb" wx:if="{{d.local}}">本机 {{d.local.storageKB}} KB · {{d.local.keys}} 键</text>
+  </view>
+  <view class="grid" wx:if="{{d.counts}}">
+    <view class="cell">
+      <text class="num">{{d.counts.homework}}</text>
+      <text class="lb">作业</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.counts.notices}}</text>
+      <text class="lb">通知</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.counts.marks}}</text>
+      <text class="lb">勾选</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.counts.fitRecs}}</text>
+      <text class="lb">体测</text>
+    </view>
+    <view class="cell">
+      <text class="num">{{d.counts.members}}</text>
+      <text class="lb">名单</text>
+    </view>
+  </view>
+  <view class="sec" wx:if="{{d.ranges.length}}">
+    <text class="sec-t">云端同步范围</text>
+    <view class="chips">
+      <text class="chip" wx:for="{{d.ranges}}" wx:key="*this">{{item}}</text>
+    </view>
+  </view>
+  <view class="note" wx:if="{{d.notDeletable.length}}">无法删除：{{d.notDeletable}}</view>
+  <view class="sec" wx:if="{{d.summary}}">
+    <text class="sec-t">导出：作业 {{d.summary.homework}} · 通知 {{d.summary.notices}} · 已完成作业 {{d.summary.hwDone}} · 体测 {{d.summary.fitRecs}} · 约 {{d.summary.bytes}} 字节</text>
+  </view>
+  <view class="sec" wx:if="{{d.cleared}}">
+    <text class="sec-t">已清除云端：我的数据置空 · 勾选 {{d.cleared.marks}} 条置否 · 体测 {{d.cleared.fitrecs}} 条归档</text>
+  </view>
+</view>

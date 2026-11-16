@@ -1,0 +1,74 @@
+{
+  "pages": [
+    "pages/identity/identity",
+    "pages/index/index",
+    "pages/draw/draw",
+    "pages/tt/tt",
+    "pages/me/me",
+    "pages/data/data",
+    "pages/group/group",
+    "pages/sum/sum",
+    "pages/hw/hw",
+    "pages/nt/nt",
+    "pages/ft/ft",
+    "pages/fttable/fttable",
+    "pages/fb/fb",
+    "pages/ug/ug",
+    "pages/all/all",
+    "pages/roll/roll",
+    "pages/committee/committee",
+    "pages/stats/stats",
+    "pages/power/power",
+    "pages/water/water",
+    "pages/vote/vote",
+    "pages/votedetail/votedetail",
+    "pages/diag/diag",
+    "pages/ppt/ppt",
+    "pages/pptdl/pptdl",
+    "pages/pptplay/pptplay",
+    "pages/cloudspace/cloudspace",
+    "pages/screencast/screencast",
+    "pages/drawrec/drawrec",
+    "pages/map/map"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "@navBgColor",
+    "navigationBarTitleText": "班级工具",
+    "navigationBarTextStyle": "@navTextStyle",
+    "backgroundColor": "@bgColor",
+    "backgroundTextStyle": "@bgTextStyle",
+    "backgroundColorTop": "@bgColorTop",
+    "backgroundColorBottom": "@bgColorBottom"
+  },
+  "tabBar": {
+    "color": "@tabColor",
+    "selectedColor": "@tabSelectedColor",
+    "backgroundColor": "@tabBgColor",
+    "borderStyle": "@tabBorderStyle",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "工作台",
+        "iconPath": "@tabWorkIcon",
+        "selectedIconPath": "@tabWorkIconOn"
+      },
+      {
+        "pagePath": "pages/all/all",
+        "text": "工具",
+        "iconPath": "@tabToolsIcon",
+        "selectedIconPath": "@tabToolsIconOn"
+      },
+      {
+        "pagePath": "pages/me/me",
+        "text": "我的",
+        "iconPath": "@tabMeIcon",
+        "selectedIconPath": "@tabMeIconOn"
+      }
+    ]
+  },
+  "style": "v2",
+  "darkmode": true,
+  "themeLocation": "theme.json",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

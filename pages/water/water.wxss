@@ -1,0 +1,194 @@
+/* pages/water/water.wxss —— 宿舍水量统计（暖白卡片 + M3 token；暗色自动切换，与电费页同视觉体系） */
+.wt-page { padding-top: 8rpx; }
+
+/* —— 关注宿舍：单行入口（点击区域 ≥44px） —— */
+.wt-pick {
+  display: flex; flex-direction: row; align-items: center; gap: 12rpx;
+  min-height: 88rpx; padding: 0 24rpx; margin-bottom: 16rpx; box-sizing: border-box;
+  border-radius: var(--md-shape-lg); background: var(--md-surface-container-low);
+  border: 1rpx solid var(--md-outline-variant);
+}
+.wt-pick--hover { opacity: .86; }
+.wt-pick-label { flex: none; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.wt-pick-value {
+  flex: 1; min-width: 0; font-size: 28rpx; font-weight: 700; color: var(--md-on-surface);
+  text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.wt-pick-chev { flex: none; font-size: 36rpx; line-height: 1; color: var(--md-on-surface-variant); }
+
+/* —— 2026-11-11 云端共享状态（契约 §3）—— */
+.wt-sync {
+  margin: -6rpx 0 14rpx; padding: 0 6rpx; font-size: 21rpx; line-height: 1.4;
+  color: var(--md-on-surface-variant);
+}
+.wt-sync--err { color: var(--md-error); }
+.wt-sync-pend { margin-left: 6rpx; font-weight: 700; }
+
+/* —— 23A/23B 固定四人间（契约 §4：不可改）—— */
+.wt-person--lock {
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  border: 1rpx dashed var(--md-outline-variant); cursor: default;
+}
+
+/* —— 引导 —— */
+.wt-guide { padding: 40rpx 32rpx; text-align: center; }
+.wt-guide-t { font-size: 34rpx; font-weight: 700; color: var(--md-on-surface); }
+.wt-guide-s { margin-top: 14rpx; font-size: 25rpx; line-height: 1.6; color: var(--md-on-surface-variant); }
+.wt-guide-link { margin-top: 20rpx; min-height: 72rpx; line-height: 72rpx; font-size: 24rpx; color: var(--md-primary); }
+
+/* —— 本期对比 Hero —— */
+.wt-hero { padding: 26rpx 26rpx 28rpx; margin-bottom: 16rpx; text-align: left; }
+.wt-hero-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; }
+.wt-hero-title { font-size: 30rpx; font-weight: 800; color: var(--md-on-surface); }
+.wt-hero-month {
+  flex: none; max-width: 62%; font-size: 20rpx; color: var(--md-on-surface-variant);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.wt-hero-empty { display: block; margin-top: 18rpx; font-size: 32rpx; font-weight: 700; color: var(--md-on-surface); }
+.wt-hero-s { display: block; margin-top: 8rpx; font-size: 23rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.wt-hero-usage { display: block; margin-top: 16rpx; font-size: 30rpx; line-height: 1.45; color: var(--md-on-surface); }
+.wt-b { font-weight: 800; color: var(--md-on-surface); }
+.wt-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12rpx; margin-top: 16rpx; }
+.wt-tile {
+  width: auto; min-width: 0; box-sizing: border-box; padding: 18rpx 20rpx;
+  border-radius: 20rpx; background: var(--md-surface-container-low);
+  border: 1rpx solid var(--md-outline-variant);
+}
+.wt-tile--hl { background: var(--md-primary-container); border-color: transparent; }
+.wt-tile--hl .wt-tile-l, .wt-tile--hl .wt-tile-v, .wt-tile--hl .wt-tile-u { color: var(--md-on-primary-container); }
+.wt-tile-l { font-size: 21rpx; color: var(--md-on-surface-variant); }
+.wt-tile-v { margin-top: 6rpx; font-size: 40rpx; font-weight: 800; line-height: 1.1; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+.wt-tile-u { margin-left: 5rpx; font-size: 20rpx; font-weight: 600; color: var(--md-on-surface-variant); }
+.wt-over {
+  display: inline-block; margin-top: 14rpx; padding: 5rpx 14rpx; border-radius: 999rpx;
+  font-size: 21rpx; font-weight: 700;
+  background: var(--md-error-container); color: var(--md-on-error-container);
+}
+.wt-quota { display: block; margin-top: 12rpx; font-size: 22rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+
+/* —— 普通卡片 —— */
+.wt-card { margin-bottom: 16rpx; padding: 24rpx; }
+.wt-card-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; }
+.wt-card-t { font-size: 30rpx; font-weight: 800; color: var(--md-on-surface); }
+.wt-card-s { flex: none; font-size: 21rpx; color: var(--md-on-surface-variant); }
+
+/* —— 人数 4 / 6 —— */
+.wt-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.wt-label { flex: none; font-size: 25rpx; font-weight: 700; color: var(--md-on-surface); }
+.wt-persons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10rpx; flex: 1; min-width: 0; }
+.wt-person {
+  min-height: 80rpx; padding: 0 18rpx; border-radius: 999rpx; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22rpx; font-weight: 700; color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-high); white-space: nowrap;
+}
+.wt-person--on { background: var(--md-primary); color: #FFFFFF; }
+.wt-note { margin-top: 14rpx; font-size: 21rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+
+/* —— 录入表单 —— */
+.wt-field {
+  display: flex; flex-direction: row; align-items: center; gap: 12rpx;
+  min-height: 96rpx; padding: 0 20rpx; margin-top: 14rpx; box-sizing: border-box;
+  border-radius: 16rpx; background: var(--md-surface-container-low);
+  border: 1rpx solid var(--md-outline-variant);
+}
+.wt-field-l { flex: none; font-size: 23rpx; color: var(--md-on-surface-variant); }
+.wt-field-v { flex: 1; min-width: 0; text-align: right; font-size: 28rpx; font-weight: 700; color: var(--md-on-surface); }
+.wt-input { flex: 1; min-width: 0; height: 96rpx; text-align: right; font-size: 28rpx; font-weight: 700; color: var(--md-on-surface); }
+.wt-unit { flex: none; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.wt-chev { flex: none; font-size: 34rpx; line-height: 1; color: var(--md-on-surface-variant); }
+.wt-preview {
+  margin-top: 14rpx; padding: 14rpx 16rpx; border-radius: 14rpx;
+  font-size: 22rpx; line-height: 1.6; color: var(--md-on-surface);
+  background: var(--md-surface-container-low);
+}
+.wt-preview-warn { display: block; margin-top: 4rpx; font-size: 21rpx; font-weight: 700; color: var(--md-error); }
+.wt-preview-err { font-size: 21rpx; color: var(--md-error); }
+.wt-save { margin-top: 18rpx; min-height: 96rpx; }
+.wt-save[disabled] { opacity: .5; }
+
+/* —— 历史列表（月份倒序） —— */
+.wt-empty { margin-top: 18rpx; font-size: 23rpx; color: var(--md-on-surface-variant); text-align: center; }
+.wt-hrow {
+  display: flex; flex-direction: row; align-items: center; gap: 12rpx;
+  margin-top: 14rpx; padding: 16rpx 18rpx; box-sizing: border-box;
+  border-radius: 16rpx; background: var(--md-surface-container-low);
+  border: 1rpx solid var(--md-outline-variant);
+}
+.wt-hmain { flex: none; width: 150rpx; min-width: 0; display: flex; flex-direction: column; }
+.wt-hm { font-size: 26rpx; font-weight: 800; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+.wt-hr { margin-top: 4rpx; font-size: 20rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.wt-hvals { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 2rpx 14rpx; font-size: 21rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.wt-del {
+  flex: none; min-width: 96rpx; min-height: 76rpx; padding: 0 16rpx; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999rpx; font-size: 22rpx; font-weight: 700;
+  color: var(--md-error); background: var(--md-error-container);
+}
+
+/* —— 计费规则卡 —— */
+.wt-rule { padding: 24rpx; margin-bottom: 16rpx; }
+.wt-rule-row { display: flex; flex-direction: row; align-items: flex-start; gap: 18rpx; margin-top: 14rpx; }
+.wt-rule-k { flex: none; width: 120rpx; font-size: 22rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.wt-rule-v { flex: 1; min-width: 0; font-size: 23rpx; line-height: 1.5; font-weight: 600; color: var(--md-on-surface); overflow-wrap: anywhere; }
+.wt-rule-src { margin-top: 18rpx; padding-top: 14rpx; border-top: 1rpx solid var(--md-outline-variant); font-size: 20rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.wt-rule-note { margin-top: 4rpx; font-size: 20rpx; line-height: 1.5; color: var(--md-on-surface-variant); }
+.wt-foot { margin-top: 16rpx; font-size: 20rpx; line-height: 1.55; color: var(--md-on-surface-variant); text-align: center; }
+
+/* ============ 自定义宿舍选择 bottom-sheet（与电费页同款） ============ */
+.wt-mask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 900;
+  background: rgba(18, 28, 26, .46);
+  display: flex; align-items: flex-end;
+}
+.wt-sheet {
+  width: 100%; max-height: 82vh; box-sizing: border-box;
+  background: var(--md-surface-container-lowest);
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 24rpx 28rpx 0;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column;
+  box-shadow: 0 -10rpx 40rpx rgba(18, 28, 26, .16);
+}
+.wt-sheet-hd { display: flex; align-items: center; justify-content: space-between; padding: 6rpx 0 14rpx; }
+.wt-sheet-title { font-size: 34rpx; font-weight: 800; color: var(--md-on-surface); }
+.wt-sheet-x {
+  width: 80rpx; height: 80rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; line-height: 1; color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-high);
+}
+.wt-sheet-scroll { flex: 1; min-height: 0; max-height: 56vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.wt-sheet-label { margin: 18rpx 0 12rpx; font-size: 22rpx; font-weight: 700; color: var(--md-on-surface-variant); }
+.wt-blds { display: flex; flex-wrap: wrap; gap: 12rpx; }
+.wt-bld {
+  min-height: 80rpx; padding: 0 26rpx; border-radius: 999rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26rpx; font-weight: 600; color: var(--md-on-surface-variant);
+  background: var(--md-surface-container-high);
+}
+.wt-bld--on { background: var(--md-primary); color: #FFFFFF; }
+.wt-rooms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16rpx; padding-bottom: 8rpx; }
+.wt-room-btn {
+  width: auto; min-width: 0; min-height: 88rpx; border-radius: var(--md-shape-lg);
+  display: flex; align-items: center; justify-content: center; gap: 8rpx;
+  font-size: 28rpx; font-weight: 700; color: var(--md-on-surface);
+  background: var(--md-surface-container-low);
+  border: 1rpx solid var(--md-outline-variant);
+  box-sizing: border-box;
+}
+.wt-room-btn--on { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: var(--md-primary); }
+.wt-room-n { font-variant-numeric: tabular-nums; }
+.wt-room-c { font-size: 24rpx; color: var(--md-primary); }
+.wt-sheet-ft { flex: none; padding: 18rpx 0 8rpx; }
+.wt-cancel {
+  min-height: 96rpx; border-radius: 999rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30rpx; font-weight: 700; color: var(--md-on-surface);
+  background: var(--md-surface-container-high);
+}
+
+@media (max-width: 360px) {
+  .wt-rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wt-hmain { width: 132rpx; }
+}

@@ -1,0 +1,18 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">反馈建议</text>
+    <text class="cnt" wx:if="{{d.total !== undefined}}">共 {{d.total}} 条</text>
+  </view>
+  <view class="ok" wx:if="{{d.ok && d.feedbackId}}">已提交给管理员，请留意处理状态</view>
+  <view class="item" wx:for="{{d.items}}" wx:key="feedbackId">
+    <view class="line">
+      <text class="content">{{item.content120}}</text>
+    </view>
+    <view class="meta">
+      <text class="ts">{{item.tsText}}</text>
+      <text class="done" wx:if="{{item.done}}">已处理</text>
+      <text class="todo" wx:else>待处理</text>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{d.total === 0}}">还没有提交过反馈</view>
+</view>

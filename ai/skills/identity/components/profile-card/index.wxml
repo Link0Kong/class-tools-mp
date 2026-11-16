@@ -1,0 +1,24 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">班级身份</text>
+    <text class="tag" wx:if="{{d.isAdmin}}">管理员</text>
+  </view>
+  <view class="row">
+    <text class="lb">姓名</text>
+    <text class="vl">{{d.name}}</text>
+  </view>
+  <view class="row" wx:if="{{d.role}}">
+    <text class="lb">角色</text>
+    <text class="vl">{{d.role}}</text>
+  </view>
+  <view class="row" wx:if="{{d.badge && d.badge !== d.role}}">
+    <text class="lb">徽章</text>
+    <text class="vl">{{d.badge}}</text>
+  </view>
+  <view class="row">
+    <text class="lb">班级人数</text>
+    <text class="vl">{{d.memberCount}} 人</text>
+  </view>
+  <view class="note" wx:if="{{d.membersSynced}}">班级名单已同步</view>
+  <view class="note" wx:else>班级名单稍后同步，不影响使用</view>
+</view>

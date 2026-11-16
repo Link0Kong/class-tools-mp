@@ -1,0 +1,163 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b {{themeClass}}">
+
+  <!-- ============ 加载中：轻量骨架屏 ============ -->
+  <block wx:if="{{state === 'loading'}}">
+    <view class="wb-head">
+      <view class="grow">
+        <view class="sk sk-line sk-shimmer" style="width:46%;height:48rpx"></view>
+        <view class="sk sk-line sk-shimmer" style="width:34%;margin-top:16rpx"></view>
+      </view>
+    </view>
+    <view class="m3-card m3-card--elevated enter enter-1">
+      <view class="sk sk-line sk-shimmer" style="width:22%"></view>
+      <view class="sk sk-card sk-shimmer" style="height:120rpx;margin-top:16rpx"></view>
+    </view>
+    <view class="m3-card m3-card--outlined enter enter-2">
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+    <view class="m3-card m3-card--outlined enter enter-3">
+      <view class="sk sk-line sk-shimmer" style="width:60%"></view>
+    </view>
+  </block>
+
+  <!-- ============ 出错 ============ -->
+  <block wx:elif="{{state === 'error'}}">
+    <view class="m3-card m3-card--outlined wb-error enter enter-1">
+      <empty-state mode="error" icon="⚠" title="读取失败" text="{{errorText}}" action-text="重试" bind:action="retry"></empty-state>
+    </view>
+  </block>
+
+  <!-- ============ 工作台 ============ -->
+  <block wx:else>
+
+    <!-- 问候 -->
+    <view class="wb-head enter enter-1">
+      <view class="grow">
+        <view class="wb-hello">{{hello}}<text class="wb-name">{{identity.name}}</text></view>
+        <view class="wb-sub">{{dateText}}<text wx:if="{{weekText}}"> · {{weekText}}</text><text wx:if="{{identity.role}}"> · {{identity.role}}</text></view>
+      </view>
+    </view>
+
+    <!-- 今日课程 -->
+    <view class="m3-card m3-card--elevated wb-card enter enter-2">
+      <view class="wb-card-hd">
+        <text class="wb-eyebrow">今天</text>
+        <view class="wb-more" bindtap="goTT" hover-class="wb-more--tap">课表 ›</view>
+      </view>
+
+      <block wx:if="{{today.hasData && today.today.length}}">
+        <view class="wb-cls" wx:for="{{today.today}}" wx:key="startAt">
+          <view class="wb-cls-time">{{item.startText}}</view>
+          <view class="grow">
+            <view class="wb-cls-name">{{item.name}}</view>
+            <view class="wb-cls-meta">{{item.span}}<text wx:if="{{item.room}}"> · {{item.room}}</text></view>
+          </view>
+          <text wx:if="{{item.state === 'ongoing'}}" class="pill pill--primary wb-cls-pill">上课中</text>
+        </view>
+        <view wx:if="{{today.todayState === 'done'}}" class="wb-note">今日课程已结束<text wx:if="{{today.next}}"> · 下次 {{today.next.label}} {{today.next.name}}</text></view>
+      </block>
+
+      <block wx:elif="{{today.hasData}}">
+        <view class="wb-empty">
+          <text class="wb-empty-t">今天没课</text>
+          <text wx:if="{{today.next}}" class="wb-empty-s">下次 · {{today.next.label}} {{today.next.name}}</text>
+          <text wx:else class="wb-empty-s">近期暂无课程</text>
+        </view>
+      </block>
+
+      <block wx:else>
+        <view class="wb-empty">
+          <text class="wb-empty-t">课表未同步</text>
+          <text class="wb-empty-s">打开课表即可拉取本周课程</text>
+          <view class="m3-btn m3-btn--tonal m3-btn--sm wb-empty-btn" bindtap="goTT">打开课表</view>
+        </view>
+      </block>
+    </view>
+
+    <!-- 关注宿舍电费（v2.0.0）：未选择只引导、0 请求；选择后展示剩余电量/状态 -->
+    <view class="m3-card m3-card--outlined wb-power enter enter-3" bindtap="goPower" hover-class="wb-task--tap">
+      <view class="wb-power-hd">
+        <text class="wb-eyebrow">宿舍电费</text>
+        <text class="chev" wx:if="{{powerCard.has}}"></text>
+      </view>
+      <block wx:if="{{powerCard.has}}">
+        <view class="wb-power-main">
+          <view class="grow">
+            <view class="wb-power-label">{{powerCard.label}}</view>
+            <view class="wb-power-sub">
+              <text wx:if="{{powerCard.loading}}">读取电量…</text>
+              <text wx:elif="{{powerCard.updText}}">更新 {{powerCard.updText}}</text>
+              <text wx:else>点开查看趋势与充值</text>
+            </view>
+          </view>
+          <view class="wb-power-right">
+            <view class="wb-power-q">
+              <text class="wb-power-num">{{powerCard.qText}}</text><text class="wb-power-u">{{powerCard.unit}}</text>
+            </view>
+            <text class="pill wb-power-pill {{powerCard.stateKey === 'low' ? 'pill--error' : (powerCard.stateKey === 'warn' ? 'pill--tertiary' : (powerCard.stateKey === 'ok' ? 'pill--primary' : 'pill--neutral'))}}">{{powerCard.stateText}}</text>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="wb-power-empty">
+          <text class="wb-power-empty-t">关注宿舍后显示剩余电量</text>
+          <text class="wb-power-empty-s">去选择关注宿舍 ›</text>
+        </view>
+      </block>
+    </view>
+
+    <!-- 待办：作业（需求 11：卡内最新一条每 5s 上浮淡出→下浮淡入轮换；卡片轻微常驻浮动） -->
+    <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-a enter enter-3" bindtap="goHW" hover-class="wb-task--tap">
+      <view class="wb-task-ico wb-task-ico--tertiary">📝</view>
+      <view class="grow">
+        <view class="wb-task-t">作业待交<text wx:if="{{hw.open}}" class="wb-task-n">{{hw.open}}</text></view>
+        <view class="wb-task-s" wx:if="{{hw.open}}">
+          <text class="wb-rot wb-rot--{{hw.anim}}">{{hw.title}}<text wx:if="{{hw.sub}}"> · {{hw.sub}}</text></text>
+        </view>
+        <view class="wb-task-s muted" wx:else>作业都完成了</view>
+      </view>
+      <text class="chev"></text>
+    </view>
+
+    <!-- 待办：通知（需求 11：同上，轮待处理通知） -->
+    <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-b enter enter-4" bindtap="goNT" hover-class="wb-task--tap">
+      <view class="wb-task-ico wb-task-ico--primary">📢</view>
+      <view class="grow">
+        <view class="wb-task-t">通知待处理<text wx:if="{{nt.pending}}" class="wb-task-n">{{nt.pending}}</text><text wx:if="{{ntNew}}" class="wb-task-new">新通知</text></view>
+        <view class="wb-task-s" wx:if="{{nt.state === 'ok' && nt.pending}}">
+          <text class="wb-rot wb-rot--{{nt.anim}}">{{nt.title}}<text wx:if="{{nt.sub}}"> · {{nt.sub}}</text></text>
+        </view>
+        <view class="wb-task-s muted" wx:elif="{{nt.state === 'ok'}}">暂无待处理通知</view>
+        <view class="wb-task-s muted" wx:elif="{{nt.state === 'off'}}">通知需联网同步</view>
+        <view class="wb-task-s muted" wx:elif="{{nt.state === 'error'}}">通知同步失败，点开重试</view>
+        <view class="wb-task-s muted" wx:else>通知同步中…</view>
+      </view>
+      <text class="chev"></text>
+    </view>
+
+    <!-- 常用工具（用户在「工具」页主动勾选，最多 4 个；长按拖动排序 / 右侧勾选） -->
+    <view class="sec-title row between">
+      <text class="t-label-l muted">常用工具</text>
+      <view class="wb-all" bindtap="goAll" hover-class="wb-all--tap">全部 ›</view>
+    </view>
+    <view class="wb-quick enter enter-5" wx:if="{{quick.length}}">
+      <view class="wb-q" wx:for="{{quick}}" wx:key="key">
+        <touchable cls="wb-q__in" data-url="{{item.url}}" data-tab="{{item.tab}}" bindtap="open">
+          <view class="wb-q-ico wb-q-ico--{{item.tone}}"><image class="wb-q-img" src="{{item.icoImg}}" mode="aspectFit"></image></view>
+          <view class="wb-q-name">{{item.name}}</view>
+        </touchable>
+      </view>
+    </view>
+    <view class="wb-quick-empty enter enter-5" wx:else bindtap="goAll" hover-class="wb-quick-empty--tap">
+      <view class="grow">
+        <view class="wb-quick-empty-t">尚未勾选常用工具</view>
+        <view class="wb-quick-empty-s">去工具页勾选想放在首页的工具（最多 4 个）</view>
+      </view>
+      <text class="wb-quick-empty-a">去勾选 ›</text>
+    </view>
+
+  </block>
+
+</view>

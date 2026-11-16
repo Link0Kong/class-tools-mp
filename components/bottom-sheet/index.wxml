@@ -1,0 +1,8 @@
+<view class="bs" wx:if="{{show}}">
+  <view class="bs__mask" bindtap="onClose" catchtouchmove="noop"></view>
+  <view class="bs__sheet">
+    <view class="bs__grabber"></view>
+    <view class="bs__title t-title-m" wx:if="{{title}}">{{title}}</view>
+    <view class="bs__body"><slot></slot></view>
+  </view>
+</view>

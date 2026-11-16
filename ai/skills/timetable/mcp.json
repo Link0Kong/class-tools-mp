@@ -1,0 +1,288 @@
+{
+  "apis": [
+    {
+      "name": "getWeekInfo",
+      "description": "查询教学周信息：开学日期、当前第几周、本学期共几周。用户问「现在第几周」「开学多久了」「这学期几周」时调用，无需入参。开学日期优先用本机设置；未设置时自动使用教务同步的学期开始日期，并在结果里提示可在课表页设置。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/timetable-card/index",
+          "pagePath": "/pages/tt/tt"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "termStart": { "type": "string", "description": "开学日期 YYYY-MM-DD；空字符串表示尚未设置" },
+          "currentWeek": { "type": ["number", "null"], "description": "当前教学周（第 1 周 = 开学当周）；未开学或算不出时为 null" },
+          "totalWeeks": { "type": "number", "description": "本学期总周数（无课表数据时为 0）" },
+          "weekText": { "type": "string", "description": "如「第 8 周」「尚未开学」「未设置开学日期」" },
+          "todayText": { "type": "string", "description": "今天的日期 YYYY-MM-DD" },
+          "hasTimetable": { "type": "boolean", "description": "本机是否有课表数据" },
+          "termSource": { "type": "string", "description": "term-start=用户设置；tt-sync=教务同步" },
+          "cachedAtText": { "type": "string", "description": "课表缓存同步时间" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string", "description": "页面链接文案" }
+        }
+      }
+    },
+    {
+      "name": "getTimetable",
+      "description": "查询某一周的课程表，可只查某一天。用户问「本周有什么课」「下周课表」「周三上什么课」时调用。不传 week 默认本周；也支持 current/next/prev。课表数据优先读本机缓存，缓存超过 6 小时或缺失时会自动从教务快照 tt.json 拉取并保存。还没设置开学日期时只能按具体周次查询，结果会说明。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/timetable-card/index",
+          "pagePath": "/pages/tt/tt"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "week": {
+            "type": ["number", "string"],
+            "description": "要查询的周次：1-60 的整数，或 current=本周、next=下一周、prev=上一周；不传默认本周"
+          },
+          "day": {
+            "type": "number",
+            "description": "可选，1-7（1=周一，7=周日）；不传返回整周"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "week": { "type": ["number", "null"], "description": "查询的周次；null 表示未设置开学日期、返回整学期课程" },
+          "weekText": { "type": "string" },
+          "total": { "type": "number", "description": "返回的课程节数" },
+          "days": {
+            "type": "array",
+            "description": "按天分组的课程；无课的周末不会出现",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": { "type": "number", "description": "1=周一 … 7=周日" },
+                "dayText": { "type": "string" },
+                "dateText": { "type": "string", "description": "该天日期 YYYY-MM-DD；无开学日期时为空" },
+                "courses": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "teacher": { "type": "string" },
+                      "room": { "type": "string", "description": "教室短标识" },
+                      "span": { "type": "string", "description": "如「第1-2节」" },
+                      "startText": { "type": "string" },
+                      "endText": { "type": "string" },
+                      "parity": { "type": "string", "description": "all/odd/even" },
+                      "parityText": { "type": "string" },
+                      "weeks": { "type": "string" },
+                      "day": { "type": "number" },
+                      "dayText": { "type": "string" },
+                      "start": { "type": "number" },
+                      "end": { "type": "number" },
+                      "roomFull": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "hasTimetable": { "type": "boolean" },
+          "termStart": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getTodayCourses",
+      "description": "查询今天的课程安排和状态（进行中/未开始/已结束）。用户问「今天有什么课」「现在上什么课」「今天还有几节课」时调用，无需入参。按开学日期换算当前周次，并过滤单双周/周次范围课程。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/timetable-card/index",
+          "pagePath": "/pages/tt/tt"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string" },
+          "dayText": { "type": "string" },
+          "week": { "type": ["number", "null"] },
+          "courses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "teacher": { "type": "string" },
+                "room": { "type": "string" },
+                "span": { "type": "string" },
+                "startText": { "type": "string" },
+                "endText": { "type": "string" },
+                "state": { "type": "string", "description": "ongoing/next/done" },
+                "stateText": { "type": "string" },
+                "parity": { "type": "string" },
+                "parityText": { "type": "string" },
+                "weeks": { "type": "string" },
+                "day": { "type": "number" },
+                "dayText": { "type": "string" },
+                "start": { "type": "number" },
+                "end": { "type": "number" },
+                "roomFull": { "type": "string" }
+              }
+            }
+          },
+          "stateText": { "type": "string", "description": "今天整体状态文案" },
+          "next": { "type": "object", "description": "今天下一节未开始的课" },
+          "hasTimetable": { "type": "boolean" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getNextCourse",
+      "description": "查询下一次课（今天起 14 天内最近一节）。用户问「下一节课是什么」「什么时候上课」「还有多久上课」时调用，无需入参。返回课程名、周几/日期、节次、时间、教室、老师与倒计时文案。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/timetable-card/index",
+          "pagePath": "/pages/tt/tt"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "found": { "type": "boolean" },
+          "name": { "type": "string" },
+          "teacher": { "type": "string" },
+          "room": { "type": "string" },
+          "span": { "type": "string" },
+          "startText": { "type": "string" },
+          "endText": { "type": "string" },
+          "dayText": { "type": "string", "description": "今天/明天/周X" },
+          "dateText": { "type": "string", "description": "M/D" },
+          "dayOffset": { "type": "number" },
+          "week": { "type": "number" },
+          "startAt": { "type": "number" },
+          "endAt": { "type": "number" },
+          "leftText": { "type": "string", "description": "距上课时间文案" },
+          "parity": { "type": "string" },
+          "parityText": { "type": "string" },
+          "weeks": { "type": "string" },
+          "hint": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "getCourseDetail",
+      "description": "按课程名查询课程详情：老师、教室、上课日与节次、周次/单双周、接下来几次上课日期。用户问「高数在哪上」「这门课什么时候上」「XX 课的教室/老师」时调用。课程名从 getTimetable 或 getTodayCourses 的结果里取，不要编造。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/timetable-card/index",
+          "pagePath": "/pages/tt/tt"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "courseName": {
+            "type": "string",
+            "description": "课程名称，如「高等数学」。取值来源：getTimetable / getTodayCourses 返回的 courses[].name，按原文传入"
+          }
+        },
+        "required": ["courseName"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "teacher": { "type": "string" },
+          "room": { "type": "string" },
+          "roomsFull": { "type": "string" },
+          "weeks": { "type": "string" },
+          "parity": { "type": "string" },
+          "parityText": { "type": "string" },
+          "dayText": { "type": "string" },
+          "span": { "type": "string" },
+          "totalSchedules": { "type": "number" },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": { "type": "number" },
+                "dayText": { "type": "string" },
+                "span": { "type": "string" },
+                "startText": { "type": "string" },
+                "endText": { "type": "string" },
+                "room": { "type": "string" },
+                "roomFull": { "type": "string" },
+                "weeks": { "type": "string" },
+                "parity": { "type": "string" },
+                "parityText": { "type": "string" }
+              }
+            }
+          },
+          "nextDates": { "type": "array", "items": { "type": "string" }, "description": "接下来最多 5 次上课（M/D 周X 第a-b节）" },
+          "availableNames": { "type": "array", "items": { "type": "string" }, "description": "没找到课程时给出可选课程名" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "setTermStart",
+      "description": "设置开学日期（本机 store.termStart），用于计算当前第几周。用户明确说「开学日期是 X」「把开学日期改成 X」时调用。写本机，下一次打开小程序时自动同步云端；不是破坏性操作，无需确认。",
+      "_meta": {
+        "ui": {
+          "componentPath": "components/timetable-card/index",
+          "pagePath": "/pages/tt/tt"
+        }
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "termStart": {
+            "type": "string",
+            "description": "开学日期，格式 YYYY-MM-DD，例如 2026-09-01。应为第 1 周周一的日期"
+          }
+        },
+        "required": ["termStart"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "termStart": { "type": "string" },
+          "currentWeek": { "type": ["number", "null"] },
+          "weekText": { "type": "string" },
+          "todayText": { "type": "string" },
+          "cloudOff": { "type": "boolean" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "linkText" },
+          "linkText": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "components": [
+    {
+      "path": "components/timetable-card/index",
+      "relatedPage": "/pages/tt/tt"
+    }
+  ]
+}

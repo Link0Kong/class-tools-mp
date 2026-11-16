@@ -1,0 +1,37 @@
+<view class="nb-card">
+  <view class="nb-hd">
+    <text class="nb-ttl">{{title}}</text>
+    <text class="nb-off" wx:if="{{offline}}">本机缓存</text>
+  </view>
+  <view class="nb-stats">
+    <view class="nb-stat">
+      <text class="nb-num">{{pending}}</text>
+      <text class="nb-lab">待处理</text>
+    </view>
+    <view class="nb-stat">
+      <text class="nb-num nb-num-hot">{{urgent24h}}</text>
+      <text class="nb-lab">24 小时内</text>
+    </view>
+    <view class="nb-stat">
+      <text class="nb-num">{{week}}</text>
+      <text class="nb-lab">7 天内</text>
+    </view>
+    <view class="nb-stat">
+      <text class="nb-num nb-num-mut">{{expired}}</text>
+      <text class="nb-lab">已过期</text>
+    </view>
+  </view>
+  <view class="nb-next" wx:if="{{next}}" bind:tap="onNextTap">
+    <view class="nb-nexthd">
+      <text class="nb-nextlab">最紧迫</text>
+      <text class="nb-nextst">{{next.statusText}}</text>
+    </view>
+    <text class="nb-nexttitle">{{next.title}}</text>
+    <text class="nb-nextdl" wx:if="{{next.deadlineText}}">截止 {{next.deadlineText}}</text>
+  </view>
+  <view class="nb-empty" wx:else>目前没有待处理通知</view>
+  <view class="nb-acts">
+    <view class="nb-btn" bind:tap="onListTap">看待处理</view>
+    <view class="nb-btn nb-btn-ghost" bind:tap="onExpiredTap">看已过期</view>
+  </view>
+</view>

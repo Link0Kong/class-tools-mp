@@ -1,0 +1,146 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b me-page {{themeClass}}">
+
+  <!-- —— 骨架 / 错误态 / 空态 —— -->
+  <block wx:if="{{state === 'loading'}}">
+    <view class="me-sk enter enter-1">
+      <view class="grow">
+        <view class="sk sk-line sk-shimmer" style="width:220rpx;margin-bottom:0"></view>
+        <view class="sk sk-line sk-shimmer" style="width:300rpx;margin:16rpx 0 0"></view>
+      </view>
+    </view>
+    <view class="m3-card m3-card--filled me-card"><view class="sk sk-card sk-shimmer"></view></view>
+  </block>
+
+  <view class="m3-card m3-card--outlined" wx:elif="{{state === 'error'}}">
+    <empty-state icon="⚠" title="读取失败" text="{{errorText}}" action-text="重试" bind:action="refresh"></empty-state>
+  </view>
+
+  <view class="m3-card m3-card--outlined" wx:elif="{{state === 'empty'}}">
+    <empty-state icon="👤" title="还没有身份" text="验证姓名 + 学号后才能使用班级数据" action-text="去验证身份" bind:action="goIdentity"></empty-state>
+  </view>
+
+  <block wx:else>
+    <!-- —— 身份卡（不显示头像 / 学号）—— -->
+    <view class="m3-card m3-card--filled enter enter-1">
+      <view class="me-name t-title-l">{{identity.name}}</view>
+      <view class="row wrap me-pills">
+        <text class="pill pill--primary">身份已验证</text>
+        <text wx:if="{{identity.role}}" class="pill pill--tertiary">{{identity.role}}</text>
+        <text wx:if="{{identity.badge && identity.badge !== identity.role}}" class="pill pill--neutral">{{identity.badge}}</text>
+        <text wx:if="{{identity.isAdmin}}" class="pill pill--neutral">管理员</text>
+      </view>
+    </view>
+
+    <!-- —— 我的数据 —— -->
+    <view class="sec-title"><text class="t-label-l muted">我的数据</text></view>
+
+    <view class="m3-card m3-card--outlined me-card enter enter-2">
+      <view class="me-metrics">
+        <view class="me-metric">
+          <view class="stat__value t-num">{{stat.hwOpen}}</view>
+          <view class="stat__label">待交作业</view>
+        </view>
+        <view class="me-metric">
+          <view class="stat__value t-num">{{stat.hwDone}}</view>
+          <view class="stat__label">已完成作业</view>
+        </view>
+        <view class="me-metric">
+          <view class="stat__value t-num">{{stat.draw}}</view>
+          <view class="stat__label">抽签记录</view>
+        </view>
+        <view class="me-metric">
+          <view class="stat__value t-num">{{stat.fit}}</view>
+          <view class="stat__label">体测记录</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- —— 云同步 —— -->
+    <view class="m3-card m3-card--outlined me-card enter enter-3">
+      <view class="me-row">
+        <text class="t-body-m">云同步</text>
+        <text class="pill {{remoteReady ? 'pill--primary' : 'pill--neutral'}}">{{remoteReady ? '已开启' : '未开启'}}</text>
+      </view>
+      <view class="me-row" wx:if="{{remoteReady}}">
+        <text class="t-body-m">同步</text>
+        <text class="t-label-m muted me-row__val">{{syncText}}</text>
+      </view>
+      <view class="me-row" wx:if="{{pending > 0}}">
+        <text class="t-body-m">待补发</text>
+        <text class="t-label-m muted t-num">{{pending}} 项</text>
+      </view>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--block me-sync {{syncing ? 'm3-btn--disabled' : ''}}"
+                disabled="{{syncing}}" bindtap="doSync">{{syncing ? '同步中…' : '立即同步'}}</touchable>
+    </view>
+
+    <!-- —— 外观（2026-11-15）：跟随系统 / 浅色 / 深色；本机偏好，不随账号同步 —— -->
+    <view class="sec-title"><text class="t-label-l muted">外观</text></view>
+    <view class="m3-card m3-card--outlined me-card enter enter-4">
+      <block wx:for="{{appearanceOptions}}" wx:key="k">
+        <touchable cls="m3-li me-li-flush" data-k="{{item.k}}" bindtap="pickAppearance">
+          <view class="m3-li__lead {{appearanceMode === item.k ? 'm3-li__lead--primary' : ''}}">{{item.icon}}</view>
+          <view class="m3-li__body">
+            <view class="m3-li__title">{{item.label}}</view>
+          </view>
+          <view class="m3-li__trail me-appearance-mark">{{appearanceMode === item.k ? '✓' : ''}}</view>
+        </touchable>
+        <view class="divider" wx:if="{{index < appearanceOptions.length - 1}}"></view>
+      </block>
+    </view>
+
+    <!-- —— 数据与隐私（v19：入口 → pages/data/data；旧「只存本机」文案已过期）—— -->
+    <view class="m3-card m3-card--outlined me-card enter enter-4">
+      <touchable cls="m3-li me-li-flush" bindtap="goData">
+        <view class="m3-li__lead m3-li__lead--primary">隐</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">数据与隐私</view>
+          <view class="m3-li__sub">查看与设置</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+      <view class="me-priv">
+        <view class="me-priv__line">作业完成 / 通知已处理 / 通知置顶 / 抽签 / 分组 / 点名 / 隐藏项 / 偏好按账号同步</view>
+        <view class="me-priv__line">网页与小程序同一账号下互通；云端数据仅本人 token 可读</view>
+        <view class="me-priv__line">不采集证件 / 位置 / 通讯录；身份 token 与班级名单缓存只在本机</view>
+      </view>
+      <view class="divider"></view>
+      <touchable cls="m3-li me-li-flush" bindtap="clearData">
+        <view class="m3-li__lead m3-li__lead--tertiary">清</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">清空数据</view>
+          <view class="m3-li__sub">清空本机数据（身份保留，云端副本在「数据与隐私」单独处理）</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+    </view>
+
+    <!-- —— 帮助 —— -->
+    <view class="m3-card m3-card--outlined me-card enter enter-5">
+      <touchable cls="m3-li me-li-flush" bindtap="goFeedback">
+        <view class="m3-li__lead m3-li__lead--primary">馈</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">反馈建议</view>
+          <view class="m3-li__sub">问题或建议发给管理员</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+      <view class="divider"></view>
+      <touchable cls="m3-li me-li-flush" bindtap="goHelp">
+        <view class="m3-li__lead">明</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">使用说明</view>
+          <view class="m3-li__sub">各功能用法速览</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+    </view>
+
+    <!-- —— 退出身份 —— -->
+    <touchable cls="m3-btn m3-btn--outlined m3-btn--block me-logout enter enter-6" bindtap="doLogout">退出身份</touchable>
+    <view class="t-label-m muted me-logout-note">退出后需重新验证姓名 + 学号才能使用班级数据</view>
+    <view class="footer-note icp-note" wx:if="{{icpBeian}}" bindtap="copyIcp" hover-class="none">备案号：{{icpBeian}}</view>
+    <view class="footer-note">{{versionText}}</view>
+  </block>
+</view>

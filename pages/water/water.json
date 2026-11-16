@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "宿舍水量",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "touchable": "/components/touchable/index"
+  }
+}

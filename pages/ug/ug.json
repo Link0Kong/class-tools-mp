@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "使用说明",
+  "usingComponents": {
+    "top-app-bar": "/components/top-app-bar/index"
+  }
+}

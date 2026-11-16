@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "反馈建议",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "touchable": "/components/touchable/index",
+    "top-app-bar": "/components/top-app-bar/index",
+    "segmented": "/components/segmented/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

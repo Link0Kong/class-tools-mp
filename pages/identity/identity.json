@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "班级身份",
+  "navigationStyle": "default",
+  "usingComponents": {
+    "touchable": "/components/touchable/index"
+  }
+}

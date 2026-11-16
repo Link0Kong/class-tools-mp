@@ -1,0 +1,6 @@
+.es { display: flex; flex-direction: column; align-items: center; padding: 72rpx 0; }
+.es__art { width: 220rpx; height: 220rpx; border-radius: 999rpx; background: var(--md-surface-container-high, #E8E1D2);
+  color: var(--md-on-surface-variant, #5C6860); display: flex; align-items: center; justify-content: center; margin-bottom: 32rpx; }
+.es__glyph { font-size: 88rpx; line-height: 1; }
+.es__title { font-size: 34rpx; font-weight: 600; color: var(--md-on-surface, #303A35); }
+.es__text { font-size: 28rpx; color: var(--md-on-surface-variant, #5C6860); margin: 8rpx 0 32rpx; text-align: center; line-height: 1.5; }

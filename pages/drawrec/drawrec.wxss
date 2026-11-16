@@ -1,0 +1,113 @@
+/* pages/drawrec/drawrec.wxss —— 抽签记录（列表 + 存证详情/核验）；只用 app.wxss 的 M3 token，无新配色 */
+.dr-page { padding-top: 16rpx; }
+.dr-sk { padding: 24rpx 0; }
+
+/* ---------- 列表 ---------- */
+.dr-head { display: flex; align-items: center; padding: 8rpx 0 16rpx; }
+.dr-title { font-size: 40rpx; font-weight: 600; color: var(--md-on-surface); }
+.dr-sub { margin-top: 6rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.dr-filter { display: flex; margin-bottom: 12rpx; }
+.dr-fbtn {
+  min-width: 120rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
+  margin-right: 16rpx; padding: 0 28rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  font-size: 26rpx; font-weight: 500;
+}
+.dr-fbtn--on { background: var(--md-primary-container); color: var(--md-on-primary-container); font-weight: 600; }
+.dr-count { margin: 4rpx 0 12rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.dr-item {
+  padding: 24rpx 28rpx; margin-bottom: 16rpx; border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container-low); box-shadow: var(--md-elev-1);
+}
+.dr-item--tap { opacity: .88; }
+.dr-item-hd { display: flex; align-items: center; }
+.dr-item-time { font-size: 26rpx; font-weight: 600; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+.dr-item-seq {
+  margin-left: 14rpx; padding: 2rpx 14rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant); font-size: 22rpx;
+}
+.dr-mine {
+  margin-left: 12rpx; padding: 2rpx 14rpx; border-radius: var(--md-shape-full);
+  background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); font-size: 22rpx;
+}
+.dr-item-more { font-size: 24rpx; color: var(--md-primary); }
+.dr-item-p { margin-top: 12rpx; font-size: 24rpx; color: var(--md-on-surface-variant); word-break: break-all; }
+.dr-item-r { margin-top: 8rpx; font-size: 30rpx; font-weight: 600; color: var(--md-primary); word-break: break-all; }
+.dr-item-f {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 10rpx;
+  font-size: 22rpx; color: var(--md-on-surface-variant);
+}
+.dr-item-ev { color: var(--md-on-surface-variant); }
+
+/* ---------- 详情头部 ---------- */
+.dr-hero {
+  padding: 28rpx 32rpx 24rpx; margin-bottom: 20rpx; border-radius: var(--md-shape-xl);
+  background: var(--md-primary-container); color: var(--md-on-primary-container);
+}
+.dr-hero-hd { display: flex; align-items: center; justify-content: space-between; }
+.dr-hpill {
+  padding: 4rpx 18rpx; border-radius: var(--md-shape-full);
+  background: rgba(255, 255, 255, .45); font-size: 22rpx; font-weight: 600;
+}
+.dr-hid { font-size: 22rpx; opacity: .8; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.dr-htitle { margin-top: 18rpx; font-size: 36rpx; font-weight: 600; }
+.dr-hsub { margin-top: 8rpx; font-size: 24rpx; opacity: .82; word-break: break-all; }
+.dr-hstats { display: flex; margin-top: 20rpx; }
+.dr-hstat {
+  flex: 1; padding: 14rpx 18rpx; margin-right: 12rpx; border-radius: var(--md-shape-md);
+  background: rgba(255, 255, 255, .38);
+}
+.dr-hstat:last-child { margin-right: 0; }
+.dr-hstat-v { font-size: 32rpx; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dr-hstat-l { margin-top: 2rpx; font-size: 22rpx; opacity: .72; }
+
+/* ---------- 详情卡片 ---------- */
+.dr-card { margin-bottom: 20rpx; }
+.dr-card-t { margin-bottom: 12rpx; font-size: 26rpx; font-weight: 600; color: var(--md-on-surface-variant); }
+.dr-kv { display: flex; align-items: flex-start; padding: 10rpx 0; border-bottom: 1rpx solid var(--md-outline-variant); }
+.dr-kv:last-child { border-bottom: none; padding-bottom: 0; }
+.dr-kv-k { flex: none; width: 150rpx; font-size: 24rpx; color: var(--md-on-surface-variant); }
+.dr-kv-v { flex: 1; min-width: 0; font-size: 26rpx; color: var(--md-on-surface); word-break: break-all; }
+.dr-mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 22rpx; }
+.dr-break { word-break: break-all; }
+
+/* ---------- 结果 chips ---------- */
+.dr-chips { display: flex; flex-wrap: wrap; }
+.dr-chip {
+  display: flex; align-items: baseline; margin: 0 12rpx 12rpx 0; padding: 8rpx 20rpx;
+  border-radius: var(--md-shape-full); background: var(--md-surface-container-high);
+}
+.dr-chip-n { font-size: 26rpx; font-weight: 800; color: var(--md-primary); }
+.dr-chip-m { margin-left: 8rpx; font-size: 24rpx; color: var(--md-on-surface); }
+.dr-draworder { margin-top: 4rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+
+/* ---------- 时间线 ---------- */
+.dr-tl { display: flex; align-items: flex-start; padding: 12rpx 0; border-bottom: 1rpx solid var(--md-outline-variant); }
+.dr-tl:last-child { border-bottom: none; padding-bottom: 0; }
+.dr-tl-seq { flex: none; width: 76rpx; font-size: 22rpx; color: var(--md-on-surface-variant); font-variant-numeric: tabular-nums; }
+.dr-tl-main { flex: 1; min-width: 0; }
+.dr-tl-t { font-size: 26rpx; color: var(--md-on-surface); word-break: break-all; }
+.dr-tl-s { margin-top: 2rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+
+/* ---------- 二维码 ---------- */
+.dr-qr-wrap { display: flex; justify-content: center; padding: 16rpx 0 8rpx; }
+.dr-qr { width: 360rpx; height: 360rpx; background: #FFFFFF; border-radius: var(--md-shape-sm); }
+.dr-qr-fail { font-size: 22rpx; color: var(--md-on-surface-variant); text-align: center; }
+.dr-qr-cap { text-align: center; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.dr-link {
+  margin-top: 12rpx; padding: 14rpx 18rpx; border-radius: var(--md-shape-sm);
+  background: var(--md-surface-container-high); font-size: 22rpx; color: var(--md-on-surface-variant);
+}
+.dr-actions { display: flex; flex-wrap: wrap; align-items: center; margin-top: 16rpx; }
+.dr-actions .m3-btn { margin-right: 16rpx; }
+
+.dr-back {
+  margin: 24rpx 0 8rpx; height: 88rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); background: var(--md-surface-container-high);
+  color: var(--md-primary); font-size: 26rpx; font-weight: 500;
+}
+
+/* 2026-11-15 深色 hero 中性化（对齐安卓 v4.55）：大面积 primary-container 在深色下改中性 tonal 深色，
+   品牌绿只保留小面积（徽标/数字/按钮）。浅色不变；.theme-dark 由 utils/appearance.js 注入页面根节点。 */
+.theme-dark .dr-hero { background: var(--md-surface-container-high); color: var(--md-on-surface); }
+.theme-dark .dr-hpill { background: var(--md-surface-container-highest); }

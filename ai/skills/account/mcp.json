@@ -1,0 +1,286 @@
+{
+  "apis": [
+    {
+      "name": "getSyncStatus",
+      "description": "读取我的云同步状态：是否已验证身份、云同步是否已关闭、是否处于清除云端后的抑制期、待补发条数、上次同步时间、云端是否可用。用于回答“同步了吗/为什么没同步/我的数据在云端吗”。未验证身份也可调用。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "verified": { "type": "boolean" },
+          "off": { "type": "boolean", "description": "true = 云同步已关闭，仅本机" },
+          "hold": { "type": "boolean", "description": "true = 刚清除过云端，暂不自动回推" },
+          "pending": { "type": "number", "description": "待补发条数（勾选状态 + 用户数据）" },
+          "lastSyncText": { "type": "string", "description": "上次同步时间，未同步过为空" },
+          "network": { "type": "object", "properties": { "enabled": { "type": "boolean" } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/sync-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "syncNow",
+      "description": "立即刷新云端四类小表：勾选状态 marks、作业 homework、体测记录 fitrecs、用户数据 userdata。通知整表太大不在此接口拉取，需要通知请用通知技能。用于用户明确要求“立即同步/刷新数据”。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "refreshed": {
+            "type": "object",
+            "properties": {
+              "marks": { "type": "boolean" },
+              "homework": { "type": "boolean" },
+              "fitrecs": { "type": "boolean" },
+              "userdata": { "type": "boolean" }
+            }
+          },
+          "at": { "type": "number", "description": "本次同步时间戳（毫秒）" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/sync-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "setCloudSync",
+      "description": "打开或关闭云同步。关闭后不再拉取/推送云端数据（仅本机可用，勾选会进待补发队列）；重新打开后自动补发并拉取一次。用于用户说“关闭云同步/只用本机/重新打开同步”。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "description": "true = 打开云同步；false = 关闭（仅本机）" }
+        },
+        "required": ["enabled"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "off": { "type": "boolean", "description": "操作后的状态：true = 已关闭" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/sync-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "getDataOverview",
+      "description": "读取我的数据概览：本机存储占用（KB/键数）、本机各类数据条数（作业、通知、勾选、体测、名单）、云端同步范围清单与不可删除项。只报数量，不输出原文。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "local": { "type": "object", "properties": { "storageKB": { "type": "number" }, "keys": { "type": "number" } } },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "homework": { "type": "number" },
+              "notices": { "type": "number" },
+              "marks": { "type": "number" },
+              "fitRecs": { "type": "number" },
+              "members": { "type": "number" }
+            }
+          },
+          "cloud": {
+            "type": "object",
+            "properties": {
+              "ranges": { "type": "array", "items": { "type": "string" } },
+              "notDeletable": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/data-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "exportMyData",
+      "description": "导出我的数据为 JSON 文本（≤8KB）：同步范围内的个人改动 + 身份摘要（姓名/角色）+ 数据条数。不含 token、学号、完整班级名单原文。用于用户要求“导出/备份我的数据”。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "object",
+            "properties": {
+              "homework": { "type": "number" },
+              "notices": { "type": "number" },
+              "hwDone": { "type": "number" },
+              "ntDone": { "type": "number" },
+              "fitRecs": { "type": "number" },
+              "bytes": { "type": "number" }
+            }
+          },
+          "jsonText": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/data-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "clearCloudData",
+      "description": "清除云端“我的数据”：用户数据覆盖为空、勾选置为否、体测记录归档。访问统计与反馈无法删除；本机保留。不可撤销，必须先获得用户确认并传 confirmed=true。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "confirmed": { "type": "boolean", "description": "用户已确认清除云端数据后传 true；未确认时传 false 或不传" }
+        },
+        "required": ["confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "cleared": {
+            "type": "object",
+            "properties": {
+              "userdata": { "type": "boolean" },
+              "marks": { "type": "number" },
+              "fitrecs": { "type": "number" }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/data-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "clearLocalData",
+      "description": "清除本机数据（课表缓存、作业、通知、名单、体测、工作流、同步缓存），保留班级身份；云端副本不受影响。不可撤销，必须先获得用户确认并传 confirmed=true。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "confirmed": { "type": "boolean", "description": "用户已确认清空本机数据后传 true；未确认时传 false 或不传" }
+        },
+        "required": ["confirmed"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "identityKept": { "type": "boolean" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/data-card/index", "pagePath": "/pages/data/data" } }
+    },
+    {
+      "name": "submitFeedback",
+      "description": "提交反馈建议给管理员。反馈正文由平台透传本轮用户原文，无需模型复述。用于用户提出意见、问题或 bug 并希望提交。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "string", "description": "反馈正文，取用户想提交的内容（可与本轮原文一致）；必填，最长 500 字" }
+        },
+        "required": ["content"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "feedbackId": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": {
+        "ui": { "componentPath": "components/feedback-card/index", "pagePath": "/pages/fb/fb" },
+        "context": { "query": { "desc": "本轮反馈原文，用于核对反馈内容是否被完整提交" } }
+      }
+    },
+    {
+      "name": "listMyFeedback",
+      "description": "读取我提交过的反馈记录：内容摘要（≤120 字）、是否已处理、提交时间。用于回答“我的反馈/反馈处理了吗”。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "number" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "feedbackId": { "type": "string" },
+                "content120": { "type": "string" },
+                "done": { "type": "boolean" },
+                "tsText": { "type": "string" }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/feedback-card/index", "pagePath": "/pages/fb/fb" } }
+    },
+    {
+      "name": "markFeedbackDone",
+      "description": "把一条反馈标记为已处理（或撤销）。仅管理员可调用；反馈 ID 必须来自 listMyFeedback 或管理员反馈列表，不要编造。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "feedbackId": { "type": "string", "description": "反馈唯一标识，取自 listMyFeedback 返回的 feedbackId 原值；不要从用户自然语言推断" },
+          "done": { "type": "boolean", "description": "true 标记已处理（默认）；false 撤销标记" },
+          "confirmed": { "type": "boolean", "description": "可选，默认 false；标记/撤销已处理为可逆操作，无需强制确认" }
+        },
+        "required": ["feedbackId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "feedbackId": { "type": "string" },
+          "done": { "type": "boolean" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/feedback-card/index", "pagePath": "/pages/fb/fb" } }
+    },
+    {
+      "name": "getVisitStats",
+      "description": "读取访问统计（仅管理员）：近 7 或 30 天总访问次数、按姓名聚合的访问次数与最近时间、按天与按小时活跃账号数。不显示学号与设备号。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "days": { "type": "number", "enum": [7, 30], "description": "统计范围天数，默认 7，可选 30" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "number" },
+          "byName": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "visits": { "type": "number" },
+                "lastText": { "type": "string" }
+              }
+            }
+          },
+          "byDay": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "count": { "type": "number" } } } },
+          "byHour": { "type": "array", "items": { "type": "object", "properties": { "hour": { "type": "string" }, "count": { "type": "number" } } } },
+          "rangeText": { "type": "string" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/stats-card/index", "pagePath": "/pages/stats/stats" } }
+    }
+  ],
+  "components": [
+    { "path": "components/sync-card/index", "relatedPage": "/pages/data/data" },
+    { "path": "components/data-card/index", "relatedPage": "/pages/data/data" },
+    { "path": "components/feedback-card/index", "relatedPage": "/pages/fb/fb" },
+    { "path": "components/stats-card/index", "relatedPage": "/pages/stats/stats" }
+  ]
+}

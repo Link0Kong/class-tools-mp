@@ -1,0 +1,57 @@
+<!-- pages/screencast/screencast.wxml —— 大屏互联控制器（仅电脑大屏开启时可用） -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="sc-page {{themeClass}}">
+  <view class="sc-head">
+    <view class="sc-head-l">
+      <view class="sc-title">大屏互联</view>
+      <view class="sc-sub">同账号 · 传文件 / 发文字 / 遥控</view>
+    </view>
+    <view class="sc-refresh" hover-class="sc-hover" bindtap="retry">刷新</view>
+  </view>
+
+  <view wx:if="{{checking}}" class="sc-card"><view class="sc-empty">正在检查大屏状态…</view></view>
+
+  <view wx:elif="{{!stageOn}}" class="sc-card">
+    <view class="sc-empty-t">当前没有设备开启大屏</view>
+    <view class="sc-empty">先在电脑浏览器打开大屏（管理员），再回到这里刷新。</view>
+    <view class="sc-primary" hover-class="sc-hover" bindtap="retry">重新检查</view>
+  </view>
+
+  <block wx:else>
+    <view class="sc-card">
+      <view class="sc-state"><view class="sc-dot {{connected ? 'on' : ''}}"></view><b>{{connected ? '已连接大屏' : '未连接'}}</b>
+        <text class="sc-state-dim">{{connected ? '同账号 · 大屏在线' : '点击刷新重试'}}</text>
+      </view>
+      <view wx:if="{{err}}" class="sc-tip" bindtap="retry">{{err}} · 点此重试</view>
+    </view>
+
+    <view class="sc-card">
+      <view class="sc-card-h">发文字</view>
+      <textarea class="sc-ta" value="{{text}}" maxlength="10000" placeholder="输入文字，发送到电脑大屏" bindinput="onTextInput"></textarea>
+      <view class="sc-row"><view class="sc-primary {{sending ? 'off' : ''}}" hover-class="sc-hover" bindtap="sendText">{{sending ? '发送中…' : '发送到大屏'}}</view></view>
+    </view>
+
+    <view class="sc-card">
+      <view class="sc-card-h">传文件</view>
+      <view class="sc-actions">
+        <view class="sc-primary" hover-class="sc-hover" bindtap="chooseFile">选择文件</view>
+        <text class="sc-dim">任意大小 · 8MiB 分片直传 ECS</text>
+      </view>
+      <view wx:for="{{ups}}" wx:key="id" class="sc-up">
+        <view class="sc-up-top"><text class="sc-up-name">{{item.name}}</text><text class="sc-up-pct">{{item.pct}}%</text></view>
+        <view class="sc-up-bar"><view class="sc-up-in" style="width:{{item.pct}}%"></view></view>
+        <view class="sc-up-foot">{{item.stateText}}</view>
+      </view>
+    </view>
+
+    <view class="sc-card">
+      <view class="sc-card-h">遥控大屏</view>
+      <view class="sc-cmds">
+        <view wx:for="{{cmds}}" wx:key="k" class="sc-cmd" hover-class="sc-hover" data-cmd="{{item.k}}" bindtap="onCmd">{{item.n}}</view>
+      </view>
+    </view>
+  </block>
+
+  <view class="sc-note">大屏在线状态由电脑网页每 10 秒上报；电脑退出大屏后这里会自动显示「没有设备开启」。正式版需在微信后台配置 request 合法域名（tool.furina.fun）。</view>
+</view>

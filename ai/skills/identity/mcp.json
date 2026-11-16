@@ -1,0 +1,216 @@
+{
+  "apis": [
+    {
+      "name": "getMyProfile",
+      "description": "读取我的班级身份卡：是否已完成身份验证、姓名、角色/徽章、是否管理员、班级人数。用于回答“我是谁/我的身份/我是不是班委/我验证了吗”。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "verified": { "type": "boolean", "description": "本机是否已有有效班级身份" },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "badge": { "type": "string" },
+          "isAdmin": { "type": "boolean" },
+          "memberCount": { "type": "number", "description": "本机班级名单缓存人数，0 表示名单尚未同步" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/profile-card/index", "pagePath": "/pages/me/me" } }
+    },
+    {
+      "name": "verifyClassIdentity",
+      "description": "用真实姓名与 10 位学号验证班级身份；这是唯一无需已有身份即可调用的接口。验证成功后保存本机身份并同步班级名单，把对话接力到工作台。仅在用户明确给出学号与姓名并希望验证/进入班级工具时调用。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sid": { "type": "string", "description": "10 位数字学号，取自用户本轮原话，不要编造或使用示例值" },
+          "name": { "type": "string", "description": "用户真实姓名，取自用户本轮原话；不要用昵称或猜测" }
+        },
+        "required": ["sid", "name"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "verified": { "type": "boolean" },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "badge": { "type": "string" },
+          "isAdmin": { "type": "boolean" },
+          "memberCount": { "type": "number" },
+          "membersSynced": { "type": "boolean", "description": "班级名单是否已同步到本机" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/profile-card/index", "pagePath": "/pages/index/index" } }
+    },
+    {
+      "name": "listClassMembers",
+      "description": "查询本班名单（含座号、姓名、角色/徽章，不含学号）。可按关键字过滤、只看有职务的成员、分页。用于回答“班里有哪些人/某某在不在/名单列表”。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "roleOnly": { "type": "boolean", "description": "只看有职务的班委成员；默认 false 看全部" },
+          "keyword": { "type": "string", "description": "按姓名或职务模糊过滤的关键字，例如『张』『学习委员』；用户没说具体人名时不要填写" },
+          "page": { "type": "number", "description": "页码，从 1 开始，默认 1" },
+          "pageSize": { "type": "number", "description": "每页条数，默认 20，最大 50" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "number" },
+          "page": { "type": "number" },
+          "pageSize": { "type": "number" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": { "type": "number" },
+                "name": { "type": "string" },
+                "role": { "type": "string" },
+                "badge": { "type": "string" },
+                "isAdmin": { "type": "boolean" }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/roster-card/index", "pagePath": "/pages/committee/committee" } }
+    },
+    {
+      "name": "getCommittee",
+      "description": "查询班委名单（名单页「班委」分类）：只返回填写了职务的成员，管理员优先、其余按座号排序，字段为座号、姓名、角色/徽章。用于回答“班委有谁/谁负责什么”。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "number" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": { "type": "number" },
+                "name": { "type": "string" },
+                "role": { "type": "string" },
+                "badge": { "type": "string" }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/roster-card/index", "pagePath": "/pages/committee/committee" } }
+    },
+    {
+      "name": "getMyOverview",
+      "description": "读取我的数据概览：待交作业数、已完成作业数、最近一次抽签结果条数、本机体测记录数。只给数量，不返回作业/通知明细；明细请用作业、抽签、体测技能。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "pendingHomework": { "type": "number" },
+          "doneHomework": { "type": "number" },
+          "drawRecords": { "type": "number" },
+          "fitnessRecords": { "type": "number" },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/overview-card/index", "pagePath": "/pages/me/me" } }
+    },
+    {
+      "name": "getToolsDirectory",
+      "description": "读取班级工具目录：首页快捷（前 4 个）与全部工具（key、名称、分类、简介）。用于回答“有哪些功能/怎么调整首页顺序/某功能在哪”。非管理员不返回“统计”工具。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "homeTools": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "name": { "type": "string" } } } },
+          "all": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "name": { "type": "string" },
+                "cat": { "type": "string" },
+                "desc": { "type": "string" }
+              }
+            }
+          },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/tools-card/index", "pagePath": "/pages/all/all" } }
+    },
+    {
+      "name": "getUsageGuide",
+      "description": "读取班级工具站使用说明，按章节返回标题与正文：身份验证、功能用法、云同步、隐私、工具与排序。用于回答“怎么用/有什么功能/数据怎么同步”。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "section": { "type": "string", "enum": ["all", "identity", "sync", "privacy", "features", "tools"], "description": "章节：all 全部（默认）、identity 身份、sync 同步、privacy 隐私、features 功能、tools 工具" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sections": { "type": "array", "items": { "type": "object", "properties": { "title": { "type": "string" }, "content": { "type": "string" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "pagePath": "/pages/ug/ug" } }
+    },
+    {
+      "name": "getWorkspaceOverview",
+      "description": "读取工作台总览：当前周次、今日课程、下一节课、作业待交数、通知待处理数与最紧的一条、首页快捷工具。用于回答“今天有什么课/今天要做什么/工作台概览”。",
+      "inputSchema": { "type": "object", "properties": {} },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "week": { "type": "number", "description": "当前周次，0 表示还未设置开学日期" },
+          "todayCourses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "room": { "type": "string" },
+                "startText": { "type": "string" },
+                "endText": { "type": "string" },
+                "span": { "type": "string" },
+                "state": { "type": "string", "description": "ongoing 进行中 / done 已结束 / next 还未开始" }
+              }
+            }
+          },
+          "nextCourse": { "type": "object", "description": "下一节课；没有则为 null" },
+          "hwPending": { "type": "number" },
+          "hwMostUrgent": { "type": "object", "description": "最紧的待交作业 {id,subject,left}；没有则为 null" },
+          "ntPending": { "type": "number" },
+          "ntMostUrgent": { "type": "object", "description": "最紧的待处理通知 {id,title,statusText}；没有则为 null" },
+          "homeTools": { "type": "array", "items": { "type": "object", "properties": { "key": { "type": "string" }, "name": { "type": "string" } } } },
+          "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
+          "pageTitle": { "type": "string" }
+        }
+      },
+      "_meta": { "ui": { "componentPath": "components/workspace-card/index", "pagePath": "/pages/index/index" } }
+    }
+  ],
+  "components": [
+    { "path": "components/profile-card/index", "relatedPage": "/pages/me/me" },
+    { "path": "components/roster-card/index", "relatedPage": "/pages/committee/committee" },
+    { "path": "components/overview-card/index", "relatedPage": "/pages/me/me" },
+    { "path": "components/tools-card/index", "relatedPage": "/pages/all/all" },
+    { "path": "components/workspace-card/index", "relatedPage": "/pages/index/index" }
+  ]
+}

@@ -1,0 +1,18 @@
+.id-page { padding-top: 12rpx; }
+.id-hero { display: flex; flex-direction: column; align-items: center; padding: 48rpx 0 36rpx; text-align: center; }
+.id-logo { width: 120rpx; height: 120rpx; border-radius: 36rpx; margin-bottom: 22rpx;
+  display: block; box-shadow: var(--md-elev-1); }
+.id-hero__sub { margin-top: 10rpx; text-align: center; }
+
+.id-card { display: flex; flex-direction: row; align-items: center; gap: 20rpx; padding: 8rpx 0 12rpx; }
+.id-pills { display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; }
+.id-note { margin-top: 16rpx; }
+.id-err { margin-top: 12rpx; font-size: 24rpx; color: var(--md-error); }
+.id-tip { margin-top: 18rpx; font-size: 22rpx; line-height: 1.55; color: var(--md-on-surface-variant); text-align: center; }
+
+.id-priv { margin-top: 12rpx; }
+.id-priv__row { display: flex; flex-direction: row; align-items: flex-start; gap: 18rpx; padding: 14rpx 0;
+  border-bottom: 1rpx solid var(--md-outline-variant); }
+.id-priv__row:last-child { border-bottom: none; }
+.id-priv__k { flex: none; width: 128rpx; font-size: 24rpx; font-weight: 500; color: var(--md-on-surface-variant); }
+.id-priv__v { flex: 1; font-size: 24rpx; line-height: 1.5; color: var(--md-on-surface); }

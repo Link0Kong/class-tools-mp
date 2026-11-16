@@ -1,0 +1,143 @@
+<!-- pages/drawrec/drawrec.wxml —— 抽签记录：今日/全部列表 + 存证详情/核验（契约 web/draw/CONTRACT.md §3.2/§3.4/§4）
+     仅显示序号 / 自定义名称 / 参数 / 哈希 / 时间；不显示学号。 -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b dr-page {{themeClass}}">
+
+  <!-- 未完成班级身份 -->
+  <block wx:if="{{state === 'denied'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="🧾" title="需要班级身份" text="完成学号 + 姓名验证后即可查看抽签记录。" action-text="返回" bind:action="goBack"></empty-state>
+    </view>
+  </block>
+
+  <!-- 首次加载骨架 -->
+  <block wx:elif="{{state === 'loading'}}">
+    <view class="dr-sk" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="sk sk-line sk-shimmer" style="width:62%"></view>
+      <view class="sk sk-line sk-shimmer" style="width:38%; margin-bottom:0"></view>
+    </view>
+  </block>
+
+  <!-- 失败（保留已渲染内容时可重试） -->
+  <block wx:elif="{{state === 'error'}}">
+    <view class="m3-card m3-card--outlined">
+      <empty-state icon="🧾" title="记录加载失败" text="{{errorText}}" action-text="重试" bind:action="retryLoad"></empty-state>
+    </view>
+    <view wx:if="{{fromList}}" class="dr-back" bindtap="backToList">返回列表</view>
+  </block>
+
+  <!-- ================= 详情 / 核验 ================= -->
+  <block wx:elif="{{detail}}">
+    <!-- 头部：存证编号 + 已存证 + 时间/次数/操作人 -->
+    <view class="dr-hero">
+      <view class="dr-hero-hd">
+        <text class="dr-hpill">已存证</text>
+        <text class="dr-hid" bindtap="copyId">{{detail.id}}</text>
+      </view>
+      <view class="dr-htitle">{{detail.todayText}}</view>
+      <view class="dr-hsub">{{detail.atText}}<text wx:if="{{detail.dayText}}"> · {{detail.dayText}}</text></view>
+      <view class="dr-hsub">抽签人 {{detail.opFullText}}<text wx:if="{{detail.mine}}"> · 我</text></view>
+      <view class="dr-hstats">
+        <view class="dr-hstat"><view class="dr-hstat-v">{{detail.seqText}}</view><view class="dr-hstat-l">今日序号</view></view>
+        <view class="dr-hstat"><view class="dr-hstat-v">{{detail.eventCount}}</view><view class="dr-hstat-l">操作记录</view></view>
+        <view class="dr-hstat"><view class="dr-hstat-v">{{detail.replayOk ? '✓' : '✗'}}</view><view class="dr-hstat-l">算法复算</view></view>
+      </view>
+    </view>
+
+    <!-- 参数 -->
+    <view class="m3-card m3-card--outlined dr-card">
+      <view class="dr-card-t">参数</view>
+      <view class="dr-kv" wx:for="{{detail.params}}" wx:key="k">
+        <text class="dr-kv-k">{{item.k}}</text>
+        <text class="dr-kv-v">{{item.v}}</text>
+      </view>
+    </view>
+
+    <!-- 初始抽取结果（名称 = 映射命中；班级名单姓名在本机解析，不进云端） -->
+    <view class="m3-card m3-card--outlined dr-card">
+      <view class="dr-card-t">初始抽取结果（{{detail.rows.length}}）</view>
+      <view class="dr-chips">
+        <view class="dr-chip" wx:for="{{detail.rows}}" wx:key="key">
+          <text class="dr-chip-n">{{item.n}}</text>
+          <text wx:if="{{item.nm}}" class="dr-chip-m">{{item.nm}}</text>
+        </view>
+      </view>
+      <view class="dr-draworder">抽取顺序 · draw-v1</view>
+    </view>
+
+    <!-- 剔除重抽时间线 -->
+    <view class="m3-card m3-card--outlined dr-card" wx:if="{{detail.timeline.length}}">
+      <view class="dr-card-t">剔除重抽（{{detail.timeline.length}}）</view>
+      <view class="dr-tl" wx:for="{{detail.timeline}}" wx:key="seq">
+        <text class="dr-tl-seq">{{item.seqText}}</text>
+        <view class="dr-tl-main">
+          <view class="dr-tl-t">{{item.text}}</view>
+          <view class="dr-tl-s">{{item.timeText}}<text wx:if="{{item.note}}"> · {{item.note}}</text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 算法自检 + 哈希 -->
+    <view class="m3-card m3-card--outlined dr-card">
+      <view class="dr-card-t">算法自检</view>
+      <view class="dr-kv"><text class="dr-kv-k">算法</text><text class="dr-kv-v">{{detail.algo}}</text></view>
+      <view class="dr-kv"><text class="dr-kv-k">种子</text><text class="dr-kv-v dr-mono">{{detail.seed}}</text></view>
+      <view class="dr-kv"><text class="dr-kv-k">复算</text><text class="dr-kv-v">{{detail.replayText}}</text></view>
+      <view class="dr-kv"><text class="dr-kv-k">哈希</text><text class="dr-kv-v dr-mono dr-break">{{detail.hash}}</text></view>
+      <view class="dr-kv" wx:if="{{detail.prevHash}}"><text class="dr-kv-k">前序哈希</text><text class="dr-kv-v dr-mono dr-break">{{detail.prevHashShort}}</text></view>
+    </view>
+
+    <!-- 二维码 + 复制核验链接 -->
+    <view class="m3-card m3-card--outlined dr-card">
+      <view class="dr-card-t">核验二维码</view>
+      <view class="dr-qr-wrap">
+        <canvas type="2d" id="dqr" class="dr-qr"></canvas>
+        <view wx:if="{{qrFail}}" class="dr-qr-fail">二维码生成失败，可直接复制下方链接</view>
+      </view>
+      <view class="dr-qr-cap">扫码核验本次抽签记录（需登录班级身份）</view>
+      <view class="dr-link dr-mono dr-break">{{detail.verifyUrl}}</view>
+      <view class="dr-actions">
+        <view class="m3-btn m3-btn--tonal m3-btn--sm" bindtap="copyVerify">复制核验链接</view>
+        <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="goBack">返回</view>
+      </view>
+    </view>
+
+    <view wx:if="{{fromList}}" class="dr-back" bindtap="backToList">返回列表</view>
+  </block>
+
+  <!-- ================= 列表 ================= -->
+  <block wx:else>
+    <view class="dr-head">
+      <view class="grow">
+        <view class="dr-title">抽签记录</view>
+        <view class="dr-sub">{{todayText}}<text wx:if="{{dayText}}"> · {{dayText}}</text></view>
+      </view>
+    </view>
+
+    <view class="dr-filter">
+      <view class="dr-fbtn {{scope === 'today' ? 'dr-fbtn--on' : ''}}" data-scope="today" bindtap="switchScope">今日</view>
+      <view class="dr-fbtn {{scope === 'all' ? 'dr-fbtn--on' : ''}}" data-scope="all" bindtap="switchScope">全部</view>
+    </view>
+
+    <view class="dr-count">{{countText}}</view>
+
+    <empty-state wx:if="{{!rows.length}}" icon="🧾" title="暂无抽签记录" text="在抽签页点「开始抽签」后会自动存证" action-text="重新加载" bind:action="retryLoad"></empty-state>
+
+    <view wx:for="{{rows}}" wx:key="id" class="dr-item" data-id="{{item.id}}" bindtap="openRecord" hover-class="dr-item--tap">
+      <view class="dr-item-hd">
+        <text class="dr-item-time">{{item.timeText}}</text>
+        <text class="dr-item-seq">{{item.seqText}}</text>
+        <text wx:if="{{item.mine}}" class="dr-mine">我的</text>
+        <view class="grow"></view>
+        <text class="dr-item-more">查看 ›</text>
+      </view>
+      <view class="dr-item-p">{{item.paramText}}</view>
+      <view class="dr-item-r">{{item.resultText}}</view>
+      <view class="dr-item-f">
+        <text>{{item.opText}}</text>
+        <text wx:if="{{item.eventCount}}" class="dr-item-ev">操作 {{item.eventCount}}</text>
+      </view>
+    </view>
+  </block>
+</view>

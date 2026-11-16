@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "宿舍电费",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "touchable": "/components/touchable/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

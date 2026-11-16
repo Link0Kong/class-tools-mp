@@ -1,0 +1,22 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">云同步</text>
+    <text class="state state--off" wx:if="{{d.off}}">仅本机</text>
+    <text class="state" wx:elif="{{!d.networkEnabled}}">云端不可用</text>
+    <text class="state" wx:else>已开启</text>
+  </view>
+  <view class="row">
+    <text class="lb">身份</text>
+    <text class="vl">{{d.verified ? '已验证' : '未验证'}}</text>
+  </view>
+  <view class="row">
+    <text class="lb">上次同步</text>
+    <text class="vl">{{d.lastSyncText || '尚未同步'}}</text>
+  </view>
+  <view class="row">
+    <text class="lb">待补发</text>
+    <text class="vl">{{d.pending}} 条</text>
+  </view>
+  <view class="hold" wx:if="{{d.hold}}">最近清除过云端数据，修改同步内容前不会自动回写</view>
+  <view class="act" wx:if="{{canSync}}" bindtap="onSync" hover-class="act--tap">立即同步</view>
+</view>

@@ -1,0 +1,176 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page ttp {{themeClass}}">
+
+  <block wx:if="{{state === 'loading'}}">
+    <view class="ttcard"><view class="ttstate">课表加载中…</view></view>
+  </block>
+
+  <block wx:elif="{{state === 'error'}}">
+    <view class="ttcard">
+      <view class="ttstate">{{errorText}}</view>
+      <view class="tbtn tbtn--center" bindtap="retry">重试</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="ttcard">
+
+      <!-- 周导航 + 周/日切换（与网页一致：周/日只点击切换，滑动在下方内容区） -->
+      <view class="tthead">
+        <view class="ttwk">
+          <view class="wbtn" bindtap="prevWeek">‹</view>
+          <view class="wlab">
+            <text class="wlb">{{weekLabel}}</text>
+            <text class="wli">{{weekRange}}</text>
+          </view>
+          <view class="wbtn" bindtap="nextWeek">›</view>
+          <view class="ttseg">
+            <view class="seg {{view === 'week' ? 'on' : ''}}" data-v="week" bindtap="setView">周</view>
+            <view class="seg {{view === 'day' ? 'on' : ''}}" data-v="day" bindtap="setView">日</view>
+          </view>
+        </view>
+        <view class="ttacts">
+          <view class="tbtn" wx:if="{{!isThisWeek}}" bindtap="thisWeek">本周</view>
+          <!-- 2026-11-08 课表登录：登录后个人课表（ttLocal）优先于公共课表；再次点击可清除回退 -->
+          <view class="tbtn tbtn--login" wx:if="{{!shared}}" bindtap="openLogin">{{mine ? '我的课表' : '登录教务'}}</view>
+          <view class="tbtn" bindtap="exportImg">导出图片</view>
+          <text class="syncst {{mine ? 'syncst--mine' : ''}}">{{srcText}}</text>
+        </view>
+      </view>
+
+      <!-- 下一节 -->
+      <view class="nextbox" wx:if="{{next}}">
+        <view class="nwhen">
+          <text class="nk">{{next.live ? '正在上课' : '下一节'}}</text>
+          <text class="nclock">{{next.time}}</text>
+        </view>
+        <view class="nmain">
+          <text class="nv">{{next.name}}</text>
+          <text class="nt">{{next.dayName}} 第{{next.start}}-{{next.end}}节<text wx:if="{{next.room}}"> · {{next.room}}</text><text wx:if="{{cdText}}"> · 还有 {{cdText}}</text></text>
+        </view>
+        <view class="nmap" bindtap="openMap">在地图看这栋楼</view>
+      </view>
+
+      <!-- 空课表 -->
+      <view class="ttstate" wx:if="{{state === 'empty'}}">
+        <text class="ttstate-t">课表还是空的</text>
+        <text class="ttstate-s">教务课表同步后会自动出现</text>
+        <view class="tbtn tbtn--center" bindtap="retry">刷新</view>
+      </view>
+
+      <block wx:else>
+        <!-- 课表内容：左右滑动直接切上一周/下一周（与网页端同款跟手 + 松手吸附/飞出飞入） -->
+        <view class="ttswipe">
+          <view class="ttswipe-track" style="{{swipeStyle}}">
+            <!-- 周视图：列宽按卡片内宽自适应（5/6/7 天 = 106/89/76rpx），周六/周日有课也一屏看全；
+                 scroll-view 仅作防御（内容恒不溢出，_gridOverflow 恒 false），横向手势全部用于切周 -->
+            <scroll-view wx:if="{{view === 'week'}}" scroll-x class="tscroll" enhanced show-scrollbar="{{false}}"
+                        scroll-left="{{hScrollLeft}}" bindscroll="onGridScroll"
+                        bindtouchstart="onSwipeStart" bindtouchmove="onSwipeMove" bindtouchend="onSwipeEnd" bindtouchcancel="onSwipeCancel">
+          <view class="tgrid{{dense ? ' tt-dense' : ''}}{{dense7 ? ' tt-dense7' : ''}}">
+            <view class="trow thead">
+              <view class="tpd">节次</view>
+              <view wx:for="{{head}}" wx:key="n" class="td {{item.today ? 'today' : ''}}" style="width:{{colW}}rpx">
+                <text class="tdn">{{item.n}}</text>
+                <view class="tdd"><text>{{item.d}}</text><text wx:if="{{item.today}}" class="th-today">今天</text></view>
+              </view>
+            </view>
+            <view class="tbody">
+              <view class="tplabels">
+                <view wx:for="{{rows}}" wx:key="p" class="tplabel" style="height:{{rowH}}rpx">
+                  <text class="tpb">第{{item.p}}节</text>
+                  <text class="tpt">{{item.t1}}</text>
+                  <text class="tpt">{{item.t2}}</text>
+                </view>
+              </view>
+              <view wx:for="{{dayCols}}" wx:key="d" class="daycol" style="width:{{colW}}rpx">
+                <view wx:for="{{rows}}" wx:key="p" class="rowline" style="height:{{rowH}}rpx"></view>
+                <view wx:for="{{item.courses}}" wx:for-item="c" wx:key="cid" class="crs abs tt-c{{c.ci}} {{c.tall ? 'crs-tall' : 'crs-one'}}"
+                      style="top:{{c.top}}rpx;height:{{c.height}}rpx"
+                      data-cid="{{c.cid}}" bindtap="openDetail">
+                  <text class="cname">{{c.name}}</text>
+                  <text wx:if="{{c.meta}}" class="croom">{{c.meta}}</text>
+                  <text wx:if="{{showSpan && c.span && c.tall}}" class="cspan">{{c.span}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+
+            <!-- 日视图 -->
+            <view wx:else class="ttdaywrap"
+                  bindtouchstart="onSwipeStart" bindtouchmove="onSwipeMove" bindtouchend="onSwipeEnd" bindtouchcancel="onSwipeCancel">
+              <view class="ttday">
+            <view wx:for="{{dayBar}}" wx:key="d" class="daybtn {{item.on ? 'on' : ''}} {{item.today ? 'today' : ''}}" data-td="{{item.d}}" bindtap="pickDay">
+              <text class="ddn">{{item.n}}</text>
+              <text class="ddd">{{item.date}}</text>
+              <view class="ddot" wx:if="{{item.has}}"></view>
+            </view>
+          </view>
+          <view class="daylist">
+            <view wx:for="{{dayList}}" wx:key="cid" class="dcourse tt-c{{item.ci}}" data-cid="{{item.cid}}" bindtap="openDetail">
+              <view class="dbar"></view>
+              <view class="dt"><text class="dtime">{{item.time}}</text><text class="dperiod">第{{item.start}}-{{item.end}}节</text></view>
+              <view class="db">
+                <text class="dname">{{item.name}}</text>
+                <text class="dmeta">{{item.teacher}} · {{item.room}}</text>
+                <text class="dweeks">{{item.weeks}} 周</text>
+              </view>
+            </view>
+            <view wx:if="{{!dayList.length}}" class="ttstate ttstate--sm">这天没课</view>
+          </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 全部课程（默认收起） -->
+        <view class="ttlisttol" bindtap="toggleList">
+          <text>全部课程</text>
+          <text class="ttln">{{groups.length}} 门</text>
+          <text class="ar">{{listOpen ? '⌃' : '⌄'}}</text>
+        </view>
+        <view class="ttlist" wx:if="{{listOpen}}">
+          <view wx:for="{{groups}}" wx:key="name" class="gitem" data-name="{{item.name}}" bindtap="openGroup">
+            <view class="cdot tt-c{{item.ci}}"></view>
+            <view class="ginfo">
+              <text class="gname">{{item.name}}</text>
+              <view class="gpills"><text wx:for="{{item.pills}}" wx:for-item="p" wx:key="*this" class="gpill">{{p}}</text></view>
+              <text class="gmeta" wx:if="{{item.meta}}">{{item.meta}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+    </view>
+  </block>
+
+  <canvas type="2d" id="card" class="exp-canvas"></canvas>
+
+  <!-- 课程详情 -->
+  <bottom-sheet show="{{showDetail}}" title="课程详情" bind:close="closeDetail">
+    <view class="ttc-name"><view class="ttc-dot tt-c{{detail.ci}}"></view><text>{{detail.name}}</text></view>
+    <view class="ttc-row"><text class="ttc-k">教师</text><text class="ttc-v">{{detail.teacher}}</text></view>
+    <view class="ttc-row"><text class="ttc-k">时间</text><text class="ttc-v">{{detail.time}}</text></view>
+    <view class="ttc-row"><text class="ttc-k">教室</text><text class="ttc-v">{{detail.room}}</text></view>
+    <view class="ttc-row"><text class="ttc-k">下次</text><text class="ttc-v">{{detail.next}}</text></view>
+  </bottom-sheet>
+
+  <!-- 课表登录（个人教务课表）：学号默认当前班级身份（只读；云端 job.sid 由 token 决定）+ 教务密码（提交后立即清除） -->
+  <bottom-sheet show="{{loginOpen}}" title="登录教务" bind:close="closeLogin">
+    <view class="ttl-row">
+      <text class="ttl-k">学号</text>
+      <text class="ttl-v">{{loginSid}}</text>
+    </view>
+    <view class="ttl-row">
+      <text class="ttl-k">密码</text>
+      <input class="ttl-in" password="{{true}}" value="{{loginPwd}}" bindinput="onLoginPwdInput"
+             maxlength="128" placeholder="教务密码" confirm-type="done" bindconfirm="loginTap" />
+    </view>
+    <view class="ttl-msg" wx:if="{{loginMsg}}">{{loginMsg}}</view>
+    <view class="ttl-err" wx:if="{{loginErr}}">{{loginErr}}</view>
+    <view class="ttl-btns">
+      <view class="tbtn tbtn--login-main {{loginBusy ? 'tbtn--dis' : ''}}" bindtap="loginTap">{{loginBusy ? '登录中…' : '登录'}}</view>
+      <view class="tbtn tbtn--clear" wx:if="{{loginCanClear}}" bindtap="clearMine">清除我的课表</view>
+    </view>
+  </bottom-sheet>
+</view>

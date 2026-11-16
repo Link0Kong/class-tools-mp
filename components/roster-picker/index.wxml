@@ -1,0 +1,50 @@
+<bottom-sheet show="{{show}}" bind:close="cancel">
+  <view class="rp">
+    <!-- 头部：标题 + 已选 N / 总数 -->
+    <view class="rp-head">
+      <view class="rp-title">{{title}}</view>
+      <view class="rp-count"><text class="rp-count__n">{{count}}</text> / {{total}}</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="rp-tip">班级名单加载中…</view>
+    <view wx:elif="{{failed}}" class="rp-tip">
+      <text class="rp-tip__text">班级名单加载失败，请检查网络</text>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="retry">重新加载</touchable>
+    </view>
+
+    <block wx:else>
+      <!-- 快捷预设（需求 8）：点击套基础集合，之后仍可逐个增删；座号数组格式不变 -->
+      <view class="rp-quick">
+        <view class="rp-qbtn {{quick === 'all' ? 'rp-qbtn--on' : ''}}" bindtap="quickAll">全班</view>
+        <view class="rp-qbtn {{quick === 'committee' ? 'rp-qbtn--on' : ''}}" bindtap="quickCommittee">班委</view>
+        <view class="rp-qbtn {{quick === 'league' ? 'rp-qbtn--on' : ''}} {{leagueBusy ? 'rp-qbtn--busy' : ''}}" bindtap="quickLeague">{{leagueBusy ? '团员…' : '团员'}}</view>
+        <view class="grow"></view>
+        <view class="rp-qbtn rp-qbtn--ghost" bindtap="quickNone">清空</view>
+      </view>
+
+      <scroll-view class="rp-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+        <view class="rp-grid">
+          <view class="lp-bubble {{selMap[item.seat] ? 'lp-bubble--sel' : ''}}"
+                wx:for="{{items}}" wx:key="key"
+                hover-class="lp-bubble--press" hover-stay-time="60"
+                data-seat="{{item.seat}}" bindtap="toggleSeat">
+            <text class="lp-bubble__seat">{{item.seat}}</text>
+            <text class="lp-bubble__name">{{item.name}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </block>
+
+    <!-- 底部：全选 / 清空 + 取消 / 确定 -->
+    <view class="rp-actions">
+      <view class="rp-row">
+        <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="selectAll">全选</touchable>
+        <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="clearAll">清空</touchable>
+      </view>
+      <view class="rp-row rp-row--between">
+        <touchable cls="m3-btn m3-btn--text" bindtap="cancel">取消</touchable>
+        <touchable cls="m3-btn m3-btn--filled" bindtap="confirm">确定{{count ? '（' + count + '）' : ''}}</touchable>
+      </view>
+    </view>
+  </view>
+</bottom-sheet>

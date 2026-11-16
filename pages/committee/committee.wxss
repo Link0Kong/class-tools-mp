@@ -1,0 +1,30 @@
+.page-head { padding: 40rpx 0 20rpx; }
+.rd-head { padding: 24rpx 26rpx; }
+.rd-tabs { display: flex; flex-direction: row; gap: 12rpx; }
+.rd-tab { flex: 1; min-height: 72rpx; border-radius: 20rpx; background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10rpx; }
+.rd-tab--on { background: var(--md-primary); color: var(--md-on-primary); }
+.rd-tab__name { font-size: 28rpx; font-weight: 600; }
+.rd-tab__cnt { font-size: 22rpx; font-weight: 600; min-width: 28rpx; text-align: center;
+  opacity: .8; font-variant-numeric: tabular-nums; }
+.rd-meta { display: flex; flex-direction: row; align-items: center; gap: 12rpx; margin-top: 16rpx; }
+.rd-note { flex: 1; font-size: 24rpx; color: var(--md-on-surface-variant); line-height: 1.5; }
+.rd-manage { flex: none; font-size: 26rpx; font-weight: 600; color: var(--md-primary);
+  padding: 10rpx 18rpx; border-radius: 999rpx; background: var(--md-primary-container); }
+.rd-sync { margin-top: 10rpx; }
+.rd-row--edit { border: 2rpx solid var(--md-primary); }
+.rd-edit-hint { font-size: 22rpx; font-weight: 600; color: var(--md-primary); padding: 2rpx 12rpx;
+  border-radius: 999rpx; background: var(--md-primary-container); }
+
+.bz-card { margin-top: 16rpx; padding: 24rpx 28rpx; }
+.bz-row { display: flex; flex-direction: row; align-items: center; gap: 20rpx; }
+.bz-seat { flex: none; width: 72rpx; height: 72rpx; border-radius: 20rpx;
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28rpx; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bz-name { font-size: 32rpx; font-weight: 600; color: var(--md-on-surface); display: flex; align-items: center; gap: 12rpx; }
+.bz-admin { font-size: 20rpx; font-weight: 500; padding: 2rpx 12rpx; border-radius: 999rpx;
+  background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.bz-pills { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; }
+.bz-pill { height: 44rpx; font-size: 22rpx; padding: 0 18rpx; }
+.bz-foot { text-align: center; padding: 28rpx 0 8rpx; }

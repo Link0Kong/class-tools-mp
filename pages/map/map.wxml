@@ -1,0 +1,39 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="mp {{themeClass}}">
+  <view class="mbar">
+    <input class="msearch" value="{{query}}" placeholder="搜索楼名，如 图书馆 / 01" confirm-type="search" bindinput="onSearch" bindconfirm="doSearch" />
+    <view class="mbtn" bindtap="doSearch">搜索</view>
+  </view>
+
+  <view class="mtools">
+    <view class="mtool" bindtap="toggleMode">{{mode === 'iso' ? '2.5D' : '平面'}}</view>
+    <view class="mtool" bindtap="rotateL">↺</view>
+    <view class="mtool" bindtap="rotateR">↻</view>
+    <view class="mtool" bindtap="resetView">适应</view>
+    <view class="mhintline">拖动/双指缩放旋转</view>
+  </view>
+
+  <view class="mstage">
+    <canvas type="2d" id="map" class="mcanvas" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd"></canvas>
+    <view class="mloading" wx:if="{{loading}}">地图加载中…</view>
+  </view>
+
+  <view class="msheet" wx:if="{{sel}}">
+    <view class="mshead">
+      <view>
+        <text class="msname">{{sel.n}}</text>
+        <text class="msmeta">{{sel.fl ? sel.fl + ' 层' : '场地'}}{{sel.no ? ' · ' + sel.no + ' 号楼' : ''}}</text>
+      </view>
+      <view class="msclose" bindtap="clearRoute">清除</view>
+    </view>
+    <view class="msroute">
+      <text class="msr1">{{routeMeta || '暂无路线'}}</text>
+      <text class="msr2">{{routeText || '从正大门出发'}}</text>
+    </view>
+    <view class="msactions">
+      <view class="msbtn primary" bindtap="openTT">去课表</view>
+      <view class="msbtn" bindtap="clearRoute">关闭</view>
+    </view>
+  </view>
+</view>

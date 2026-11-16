@@ -1,0 +1,38 @@
+{
+  "light": {
+    "navBgColor": "#5E8F87",
+    "navTextStyle": "white",
+    "bgColor": "#F4F0E6",
+    "bgTextStyle": "dark",
+    "bgColorTop": "#F4F0E6",
+    "bgColorBottom": "#F4F0E6",
+    "tabColor": "#8B948B",
+    "tabSelectedColor": "#5E8F87",
+    "tabBgColor": "#FFFCF6",
+    "tabBorderStyle": "black",
+    "tabWorkIcon": "images/tab-work.png",
+    "tabWorkIconOn": "images/tab-work-on.png",
+    "tabToolsIcon": "images/tab-tools.png",
+    "tabToolsIconOn": "images/tab-tools-on.png",
+    "tabMeIcon": "images/tab-me.png",
+    "tabMeIconOn": "images/tab-me-on.png"
+  },
+  "dark": {
+    "navBgColor": "#1B1E1A",
+    "navTextStyle": "white",
+    "bgColor": "#1B1E1A",
+    "bgTextStyle": "light",
+    "bgColorTop": "#1B1E1A",
+    "bgColorBottom": "#1B1E1A",
+    "tabColor": "#C8C2B5",
+    "tabSelectedColor": "#9BC9BB",
+    "tabBgColor": "#22261F",
+    "tabBorderStyle": "white",
+    "tabWorkIcon": "images/tab-work-dark.png",
+    "tabWorkIconOn": "images/tab-work-on-dark.png",
+    "tabToolsIcon": "images/tab-tools-dark.png",
+    "tabToolsIconOn": "images/tab-tools-on-dark.png",
+    "tabMeIcon": "images/tab-me-dark.png",
+    "tabMeIconOn": "images/tab-me-on-dark.png"
+  }
+}

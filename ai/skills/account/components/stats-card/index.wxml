@@ -1,0 +1,31 @@
+<view class="card" wx:if="{{ready}}">
+  <view class="hd">
+    <text class="title">访问统计</text>
+    <text class="range">{{d.rangeText}}</text>
+  </view>
+  <view class="sum">
+    <view class="sum-cell">
+      <text class="num">{{d.total}}</text>
+      <text class="lb">访问次数</text>
+    </view>
+    <view class="sum-cell">
+      <text class="num">{{d.accounts}}</text>
+      <text class="lb">活跃同学</text>
+    </view>
+  </view>
+  <view class="sec" wx:if="{{d.byName.length}}">
+    <text class="sec-t">按姓名</text>
+    <view class="row" wx:for="{{d.byName}}" wx:key="name">
+      <text class="name">{{item.name}}</text>
+      <text class="v">{{item.visits}} 次</text>
+      <text class="last">{{item.lastText}}</text>
+    </view>
+  </view>
+  <view class="sec" wx:if="{{d.byDay.length}}">
+    <text class="sec-t">按天（活跃账号）</text>
+    <view class="row" wx:for="{{d.byDay}}" wx:key="date">
+      <text class="name">{{item.date}}</text>
+      <text class="v">{{item.count}}</text>
+    </view>
+  </view>
+</view>

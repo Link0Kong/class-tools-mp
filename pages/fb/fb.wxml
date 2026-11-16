@@ -1,0 +1,45 @@
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b {{themeClass}}">
+
+  <top-app-bar title="反馈建议" subtitle="{{subtitle}}" collapsed="{{scrolled}}" />
+
+  <view class="m3-card m3-card--elevated enter enter-1">
+    <view class="field" style="margin-top:0">
+      <view class="field__label">反馈内容</view>
+      <textarea class="area" value="{{text}}" maxlength="500" placeholder="建议或问题，写在这里" placeholder-class="ph" bindinput="onText"></textarea>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:8rpx" bindtap="submit">提交反馈</touchable>
+  </view>
+
+  <view class="section-gap"></view>
+
+  <block wx:if="{{showList}}">
+    <segmented items="{{segs}}" value="{{filter}}" bindchange="onSeg" />
+
+    <block wx:if="{{state === 'loading'}}">
+      <view class="m3-card m3-card--filled enter enter-2">
+        <view class="sk sk-title sk-shimmer"></view>
+        <view class="sk sk-line sk-shimmer" style="margin-top:16rpx"></view>
+      </view>
+    </block>
+
+    <empty-state wx:elif="{{state === 'error'}}" icon="⚠" title="读取反馈失败" text="{{errorText}}" action-text="重试" bind:action="refresh"></empty-state>
+
+    <empty-state wx:elif="{{state === 'empty'}}" icon="💬" title="{{emptyTitle}}" text="{{emptyText}}"></empty-state>
+
+    <block wx:else>
+      <view wx:for="{{list}}" wx:key="id" class="m3-card m3-card--filled enter enter-2" style="margin-top:8rpx">
+        <view class="row between">
+          <text class="t-title-m ellipsis">{{item.who}}</text>
+          <text wx:if="{{item.done}}" class="pill pill--primary">已处理</text>
+        </view>
+        <view class="t-body-m" style="margin-top:8rpx">{{item.content}}</view>
+        <view class="t-label-m muted" style="margin-top:8rpx">{{item.metaText}}</view>
+        <view wx:if="{{isAdmin && !item.done}}" class="row" style="margin-top:16rpx">
+          <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" data-id="{{item.id}}" bindtap="markDone">标已处理</touchable>
+        </view>
+      </view>
+    </block>
+  </block>
+</view>
