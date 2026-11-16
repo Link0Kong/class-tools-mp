@@ -1,0 +1,8 @@
+[PASS] unit           exit=0    6.1s  123 passed, 0 failed
+[FAIL] sync_contract  exit=2    4.4s  25 passed, 1 failed
+[PASS] staticcheck    exit=0    0.2s  handlers missing []
+
+==================================================================
+existing mp gates [baseline]: 3 项，PASS 2，FAIL 1
+结果 JSON: C:\Users\Ko_Li\.openclaw\workspace\mp-class-tools-tests\_qa_v2\_reports\existing_mp_baseline.json
+==================================================================

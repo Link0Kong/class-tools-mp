@@ -1,0 +1,133 @@
+{
+  "v": 6,
+  "at": {
+    "homeTools": 1762310000000,
+    "fit": 1762310100000,
+    "draw": 1762310200000,
+    "group": 1762310300000,
+    "roster": 1762310400000,
+    "hide": 1762310500000,
+    "tt": 1762300600000,
+    "prefs": 1762310700000,
+    "nick": 1762300700000,
+    "power": 1762300800000,
+    "water": 1762310900000
+  },
+  "homeTools": [
+    "hw",
+    "nt",
+    "ft",
+    "draw"
+  ],
+  "fit": {
+    "sex": "m",
+    "grade": "12",
+    "h": "178",
+    "w": "65",
+    "vc": "4200",
+    "r50": "7.0",
+    "sit": "40",
+    "jump": "220",
+    "pull": "12",
+    "durM": "3",
+    "durS": "30"
+  },
+  "draw": {
+    "start": 2,
+    "end": 50,
+    "count": 10,
+    "dup": false,
+    "excl": "",
+    "sort": "draw",
+    "names": "1 甲组\n2 乙组"
+  },
+  "group": {
+    "source": "prev",
+    "mode": "groups",
+    "n": 4,
+    "shuffle": false,
+    "sel": [
+      10,
+      11,
+      12
+    ]
+  },
+  "roster": {
+    "rosterSel": [
+      10,
+      11,
+      12
+    ],
+    "rollSel": [
+      13,
+      14
+    ],
+    "rollSt": {
+      "0": "到"
+    },
+    "rollNames": "13 张一\n14 张二"
+  },
+  "hide": {
+    "hwHide": {
+      "hw_mp": true
+    },
+    "ntHide": {}
+  },
+  "tt": {
+    "ttView": "day",
+    "ttUseMine": true,
+    "ttLocal": {
+      "c": [
+        {
+          "name": "高等数学",
+          "day": 0,
+          "start": 1,
+          "end": 2,
+          "weeks": "1-16",
+          "parity": "all",
+          "teacher": "龚志伟",
+          "room": "自强楼"
+        }
+      ],
+      "t": "2026-08-31"
+    },
+    "termStart": "2026-09-07"
+  },
+  "prefs": {
+    "hwRemind": {
+      "hw_mp": true
+    },
+    "ntSub": false,
+    "ntSubAt": 1762310700000
+  },
+  "nick": "陈同学",
+  "power": {
+    "sel": "4-23A---321",
+    "at": 1762300800000
+  },
+  "water": {
+    "rooms": {
+      "1-16---305": {
+        "p": 6,
+        "recs": [
+          {
+            "m": "2026-09",
+            "r": 80,
+            "ts": 1762010000000
+          },
+          {
+            "m": "2026-10",
+            "r": 93.5,
+            "ts": 1762110000000
+          },
+          {
+            "m": "2026-11",
+            "r": 100,
+            "ts": 1762210000000
+          }
+        ]
+      }
+    }
+  },
+  "homeToolsAt": 1762310000000
+}

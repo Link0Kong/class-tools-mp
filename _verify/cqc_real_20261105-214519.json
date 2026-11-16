@@ -1,0 +1,223 @@
+{
+  "tool": "code_quality_check.js",
+  "version": "1.0.0",
+  "generatedAt": "2026-11-05T13:45:19.906Z",
+  "projectDir": "C:\\Users\\Ko_Li\\.openclaw\\workspace\\mp-class-tools",
+  "miniprogramRoot": "",
+  "cloudfunctionRoot": "cloudfunctions",
+  "setting": {
+    "ignoreDevUnusedFiles": true,
+    "ignoreUploadUnusedFiles": null
+  },
+  "packOptionsIgnore": [
+    {
+      "type": "folder",
+      "value": "ai"
+    },
+    {
+      "type": "folder",
+      "value": "agent"
+    }
+  ],
+  "package": {
+    "fileCount": 161,
+    "totalBytes": 788159,
+    "unusedFilesFiltered": true,
+    "unusedFilesFilteredCount": 10,
+    "note": "按官方 dev 编译语义近似：white-list 扩展名 + packOptions 规则 + 无依赖代码文件过滤（可由 setting 关闭）"
+  },
+  "rules": [
+    {
+      "name": "IMAGE_AND_AUDIO_LIMIT",
+      "title": "图片和音频资源",
+      "desc": "图片和音频资源大小应不超过 %s K",
+      "level": 2,
+      "limit": 200,
+      "success": true,
+      "totalBytes": 108978,
+      "totalKB": 106.42,
+      "fileCount": 35,
+      "files": [
+        {
+          "file": "images/app-icon-1024.png",
+          "bytes": 13737
+        },
+        {
+          "file": "images/share/default.png",
+          "bytes": 10783
+        },
+        {
+          "file": "images/share/index.png",
+          "bytes": 10420
+        },
+        {
+          "file": "images/share/tt.png",
+          "bytes": 10214
+        },
+        {
+          "file": "images/share/nt.png",
+          "bytes": 10167
+        },
+        {
+          "file": "images/share/ft.png",
+          "bytes": 10080
+        },
+        {
+          "file": "images/share/draw.png",
+          "bytes": 9826
+        },
+        {
+          "file": "images/share/bz.png",
+          "bytes": 9532
+        },
+        {
+          "file": "images/share/hw.png",
+          "bytes": 9286
+        },
+        {
+          "file": "images/logo.png",
+          "bytes": 2221
+        },
+        {
+          "file": "images/tool-bz.png",
+          "bytes": 2149
+        },
+        {
+          "file": "images/tool-tt.png",
+          "bytes": 1714
+        },
+        {
+          "file": "images/tab-tools.png",
+          "bytes": 759
+        },
+        {
+          "file": "images/tab-tools-on.png",
+          "bytes": 723
+        },
+        {
+          "file": "images/tab-tools-dark.png",
+          "bytes": 558
+        },
+        {
+          "file": "images/tab-tools-on-dark.png",
+          "bytes": 558
+        },
+        {
+          "file": "images/tab-draw-on.png",
+          "bytes": 519
+        },
+        {
+          "file": "images/tab-draw.png",
+          "bytes": 519
+        },
+        {
+          "file": "images/tab-me-dark.png",
+          "bytes": 481
+        },
+        {
+          "file": "images/tab-me-on-dark.png",
+          "bytes": 481
+        },
+        {
+          "file": "images/tab-me-on.png",
+          "bytes": 481
+        },
+        {
+          "file": "images/tab-me.png",
+          "bytes": 480
+        },
+        {
+          "file": "images/tab-sched-on.png",
+          "bytes": 442
+        },
+        {
+          "file": "images/tab-sched.png",
+          "bytes": 442
+        },
+        {
+          "file": "images/tool-roll.png",
+          "bytes": 259
+        },
+        {
+          "file": "images/tool-draw.png",
+          "bytes": 254
+        },
+        {
+          "file": "images/tab-work-dark.png",
+          "bytes": 246
+        },
+        {
+          "file": "images/tab-work-on-dark.png",
+          "bytes": 246
+        },
+        {
+          "file": "images/tab-work-on.png",
+          "bytes": 246
+        },
+        {
+          "file": "images/tab-work.png",
+          "bytes": 246
+        },
+        {
+          "file": "images/tool-nt.png",
+          "bytes": 235
+        },
+        {
+          "file": "images/tool-all.png",
+          "bytes": 177
+        },
+        {
+          "file": "images/tool-hw.png",
+          "bytes": 174
+        },
+        {
+          "file": "images/tool-ft.png",
+          "bytes": 163
+        },
+        {
+          "file": "images/tool-stats.png",
+          "bytes": 160
+        }
+      ]
+    },
+    {
+      "name": "CONTAINS_UNUSED_COMPONENTS",
+      "title": "组件",
+      "desc": "不应存在无使用的组件 %s",
+      "level": 3,
+      "success": true,
+      "count": 0,
+      "unused": [],
+      "totalComponents": 7,
+      "usedComponents": 7,
+      "unresolved": []
+    },
+    {
+      "name": "CONTAINS_UNUSED_CODES",
+      "title": "代码文件",
+      "desc": "不应存在无依赖文件",
+      "level": 3,
+      "success": true,
+      "settingPass": true,
+      "ignoreDevUnusedFiles": true,
+      "ignoreUploadUnusedFiles": null,
+      "packageCodeFileCount": 126,
+      "usedCodeFileCount": 126,
+      "unusedInPackage": [],
+      "staticUnused": [
+        "app.miniapp.json",
+        "cloudfunctions/_backup/notify_20261105-1309_preRemind/config.json",
+        "cloudfunctions/_backup/notify_20261105-1309_preRemind/index.js",
+        "cloudfunctions/_backup/notify_20261105-1309_preRemind/package.json",
+        "cloudfunctions/notify/config.json",
+        "cloudfunctions/notify/index.js",
+        "cloudfunctions/notify/package.json",
+        "i18n/base.json",
+        "project.miniapp.json",
+        "project.private.config.json"
+      ]
+    }
+  ],
+  "summary": "全部规则通过",
+  "success": true
+}
