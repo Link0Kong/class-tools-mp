@@ -48,6 +48,9 @@ function run(outerTest) {
   const cs = require(path.join(MP, 'utils', 'cloudspace.js'));
   const cfg = require(path.join(MP, 'utils', 'cloud-config.js'));
   const savedDropBase = cfg.dropBase;
+  // 2026-11-17：生产 dropBase 为空 + DNS 暂停期正式版不再请求 tool.furina.fun；
+  // 请求契约用例显式配置测试基址，环境默认值用例用 withDefaultBase 验证「不可用」。
+  cfg.dropBase = 'https://drop.test';
   // C1–C3 验证「未配置 dropBase 时」的环境默认值；临时环境当前显式配置了 ko-link.cn，测前清空、测后恢复
   function withDefaultBase(fn) {
     const old = cfg.dropBase;
@@ -177,10 +180,13 @@ function run(outerTest) {
   });
 
   // C. 基址环境 -------------------------------------------------------------
-  T('C1 体验版/正式版默认 https://tool.furina.fun/drop', function () {
+  T('C1 正式版未配置 dropBase → 空基址（不发请求，等待域名备案）', function () {
     withDefaultBase(function () {
       global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'release' } }; };
-      assert.strictEqual(cs.base(), 'https://tool.furina.fun/drop');
+      assert.strictEqual(cs.base(), '');
+      mockRequest.log = [];
+      cs.mine();
+      assert.strictEqual(mockRequest.log.length, 0, '不得向已暂停域名发请求');
     });
   });
   T('C2 仅开发版可用 http IP；体验版/正式版强制 HTTPS', function () {
@@ -188,15 +194,15 @@ function run(outerTest) {
       global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'develop' } }; };
       assert.strictEqual(cs.base(), 'http://121.196.47.2/drop');
       global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'trial' } }; };
-      assert.strictEqual(cs.base(), 'https://tool.furina.fun/drop');
+      assert.strictEqual(cs.base(), '');
       global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'release' } }; };
-      assert.strictEqual(cs.base(), 'https://tool.furina.fun/drop');
+      assert.strictEqual(cs.base(), '');
     });
   });
-  T('C3 无 getAccountInfoSync 时保守回退正式版 https', function () {
+  T('C3 无 getAccountInfoSync 时保守回退正式版（空基址不可用）', function () {
     withDefaultBase(function () {
       delete global.wx.getAccountInfoSync;
-      assert.strictEqual(cs.base(), 'https://tool.furina.fun/drop');
+      assert.strictEqual(cs.base(), '');
     });
   });
 
@@ -255,7 +261,8 @@ function run(outerTest) {
     assert.ok(!REAL_SIDS.test(all), '发现真实账号/姓名');
   });
 
-  // 恢复 wx mock
+  // 恢复配置 / wx mock
+  cfg.dropBase = savedDropBase;
   try {
     global.wx.getAccountInfoSync = saved.getAccountInfoSync;
     global.wx.request = saved.request;

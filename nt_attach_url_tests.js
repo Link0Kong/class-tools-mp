@@ -158,24 +158,25 @@ function autoRow(g, i) {
     archived: false, ts: 1000 + i, hidden: false, override_json: '', edited_at: 0, edited_by: ''
   };
 }
-// 通知页 pull 走 cloud.ntAutoPull：mock /notices GET 返回 auto 通知行（其它请求空数组）
+// 通知页 pull 走 cloud.ntAutoPull：mock /notices GET 或 meta RPC 返回 auto 通知行（其它请求空数组）
 function ntPullMock(C, groups) {
   C.setReq(function (o) {
     const u = String((o && o.url) || '');
-    if (u.indexOf('/notices') >= 0) {
+    if (u.indexOf('/notices') >= 0 || u.indexOf('class_notices_meta') >= 0) {
       return o.success({ statusCode: 200, data: (groups || []).map(autoRow) });
     }
     return o.success({ statusCode: 200, data: [] });
   });
 }
 // 按真实通知页流程 pull 一次（身份/云配置/mock 请求 → mapGroup → 卡片数据）
-async function bootPull(C, groups) {
+async function bootPull(C, groups, reqImpl) {
   C.clear();
   C.setIdentity(ID);
   purge();
   const cloud = R('utils/cloud.js');
   cloud.configure({ enabled: true, restBase: 'https://rest.test/v1/rdb/rest/', publishableKey: 'pk-test', ttUrl: '' });
-  ntPullMock(C, groups);
+  if (typeof reqImpl === 'function') C.setReq(reqImpl);
+  else ntPullMock(C, groups);
   const def = loadNtPage();
   const ctx = ctxOf(def, {
     _raw: [], _all: [], _expanded: {}, _done: {}, _remind: {}, _imgs: {}, _loadingImgs: {},
@@ -243,7 +244,72 @@ function run(outerTest) {
         assert.strictEqual(pendingN, 1, '无 URL 的附件点击走待获取说明');
       });
 
-      /* ------------------------------------------------ 2. 压缩包内文件 */
+      /* ------------------------------------------------ 1b. lite lazy（2026-11-17 通知轻量化） */
+      await T('附件URL 2026-11-17：lite lazy 附件/图片 → 拉完整 body 一次后可用；不缩减入口', async function () {
+        const liteGroup = {
+          id: 'g_lazy', title: '轻量通知', cat: '教务', actionable: true,
+          deadline: '2099-01-01T00:00:00+08:00',
+          items: [
+            { kind: 'img', src: '', lazy: true, caption: '图' },
+            { kind: 'file', name: '附件.pdf', url: '', lazy: true, size: '4 KB' }
+          ]
+        };
+        const fullGroup = {
+          id: 'g_lazy', title: '轻量通知', cat: '教务', actionable: true,
+          deadline: '2099-01-01T00:00:00+08:00',
+          items: [
+            { kind: 'img', src: 'data:image/png;base64,' + 'A'.repeat(200), caption: '图' },
+            { kind: 'file', name: '附件.pdf', url: DATA_PDF, size: '4 KB' }
+          ]
+        };
+        const liteRows = [autoRow(liteGroup, 0)];
+        const fullRows = [autoRow(fullGroup, 0)];
+        let fullN = 0;
+        const { def, ctx } = await bootPull(C, [liteGroup], function (o) {
+          const u = String((o && o.url) || '');
+          if (u.indexOf('select=*&id=eq.') >= 0) { fullN++; return o.success({ statusCode: 200, data: fullRows }); }
+          if (u.indexOf('class_notices_meta') >= 0 || u.indexOf('/notices') >= 0) return o.success({ statusCode: 200, data: liteRows });
+          return o.success({ statusCode: 200, data: [] });
+        });
+        // 前 AUTO_IMG_CARDS 张自动拉完整 body：第 0 张应拉 1 次
+        assert.strictEqual(fullN, 1, '首卡自动拉完整 body 1 次');
+        const card = (ctx.data.cards || []).find(function (x) { return x.id === 'g_lazy'; });
+        assert.ok(card, 'lite 卡片应渲染');
+        const file = (card.items || []).find(function (x) { return x.kind === 'file'; });
+        assert.strictEqual(file.hasUrl, true, 'lazy 附件仍显示「预览/下载」');
+        assert.strictEqual(file.pending, false, 'lazy 附件不是「待获取」');
+        assert.ok((ctx._imgs['g_lazy'] || []).length >= 1, '图片应已落盘');
+        const path = await def._filePathOf.call(ctx, 'g_lazy', 1);
+        assert.ok(path && String(path).length > 0, '完整 body 到达后附件可打开');
+        assert.strictEqual(C.log.writes.length >= 1, true, 'data URI 应写临时文件');
+        // 自动路径不循环：已有 _bodyTried 后反复 applyFilter 不再拉 body
+        const before = fullN;
+        for (let i = 0; i < 5; i++) ctx.applyFilter();
+        await sleep(30);
+        assert.strictEqual(fullN, before, '自动路径不得重复拉同一 body');
+      });
+
+      await T('附件URL 2026-11-17：确实无 url 的附件只自动补拉一次（_bodyTried 负缓存防死循环）', async function () {
+        const g = { id: 'g_miss', title: '缺附件', cat: '教务', actionable: true, deadline: '2099-01-01T00:00:00+08:00', items: [{ kind: 'file', name: 'missing.pdf' }] };
+        const row = autoRow(g, 0);
+        let fullN = 0;
+        const { ctx } = await bootPull(C, [g], function (o) {
+          const u = String((o && o.url) || '');
+          if (u.indexOf('select=*&id=eq.') >= 0) { fullN++; return o.success({ statusCode: 200, data: [row] }); }
+          if (u.indexOf('class_notices_meta') >= 0 || u.indexOf('/notices') >= 0) return o.success({ statusCode: 200, data: [row] });
+          return o.success({ statusCode: 200, data: [] });
+        });
+        await sleep(60);
+        assert.strictEqual(fullN, 1, '展开时自动补拉 1 次');
+        for (let i = 0; i < 8; i++) ctx.applyFilter();
+        await sleep(60);
+        assert.strictEqual(fullN, 1, '仍无 url 时不得每次重绘都重拉：' + fullN);
+        const card = (ctx.data.cards || []).find(function (x) { return x.id === 'g_miss'; });
+        const file = (card.items || []).find(function (x) { return x.kind === 'file'; });
+        assert.strictEqual(file.pending, true, '无 url 仍显示「待获取」');
+      });
+
+
       await T('附件URL：压缩包 archive.files[] 的 URL/dataURI 都有 hasUrl/size（外层 URL 也可用）', async function () {
         const groups = [{
           id: 'g_zip', title: '压缩包', cat: '教务', actionable: true,

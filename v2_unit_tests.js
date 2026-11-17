@@ -92,7 +92,7 @@ function purge() {
 function R(rel) { return require(path.join(ROOT, rel)); }
 function fresh() { purge(); return { store: R('utils/store.js'), identity: R('utils/identity.js'), cloud: R('utils/cloud.js') }; }
 function enableCloud(cloud) {
-  cloud.configure({ enabled: true, restBase: 'https://rest.test/v1/rdb/rest/', publishableKey: 'pk-test', ttUrl: 'https://static.test/tt.json' });
+  cloud.configure({ enabled: true, restBase: 'https://rest.test/v1/rdb/rest/', publishableKey: 'pk-test', ttUrl: 'https://static.test/tt.json', ttLegacy: true });
 }
 function loadPage(rel) {
   let def = null;
@@ -164,7 +164,8 @@ function sampleNoticeGroups() {
 function ntPullMock(C, groups, hiddenIds, overrides) {
   C.setReq(function (o) {
     const u = String(o.url || '');
-    if (u.indexOf('/notices') >= 0 && o.method === 'GET') {
+    const isNoticeList = u.indexOf('/notices') >= 0 || u.indexOf('class_notices_meta') >= 0;
+    if (isNoticeList && (o.method === 'GET' || o.method === 'POST')) {
       const rows = (groups || sampleNoticeGroups()).map(function (g, i) {
         const row = autoNotice(Object.assign({ _i: i }, g));
         if ((hiddenIds || []).indexOf(g.id) >= 0) row.hidden = true;

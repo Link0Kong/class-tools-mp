@@ -45,6 +45,10 @@ async function run(outerTest) {
     global.wx.setStorageSync('zq_class_identity', { token: 'tok-sc', sid: '3260799999', name: '测试账号', role: '', badge: '', is_admin: false, ts: 1 });
   } catch (e) {}
   const sc = require(path.join(MP, 'utils', 'screencast.js'));
+  // 2026-11-17：正式版未配置 dropBase 时不再请求已暂停域名；请求契约用例显式配置测试基址。
+  const cfg = require(path.join(MP, 'utils', 'cloud-config.js'));
+  const savedDropBase = cfg.dropBase;
+  cfg.dropBase = 'https://drop.test';
 
   // A. 指令定义 -----------------------------------------------------------
   await T('A1 遥控指令 11 项（聚焦×4/退出聚焦/计时×3/抽签/恢复全屏/关闭大屏）', function () {
@@ -174,6 +178,7 @@ async function run(outerTest) {
     assert.ok(/item\.opened \? '打开' : '下载'/.test(wxml));
   });
 
+  cfg.dropBase = savedDropBase;
   try {
     global.wx.request = savedRequest;
   } catch (e) {}

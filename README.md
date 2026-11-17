@@ -1,5 +1,24 @@
 # 班级工具站小程序 · 测试与修复工程
 
+## 性能专项：通知 14MB→0.30MB + 启动/请求错误率（2026-11-17，未发版；待用户上传发布）
+
+对应微信后台性能报告（打开率 93.85%、启动 1638ms、请求错误率 45.45%）。只改 `mp-class-tools/**`
+与 `mp-class-tools-tests/**`（云端新增 `class_notices_meta` RPC，迁移在 `web/deploy/cloudbase/2026-11-17_notice_meta.sql`），
+**未上传发布、VERSION 仍 2.0.0、UD v6 不变**。
+
+| 文件 | 覆盖 | 复跑 |
+| --- | --- | --- |
+| `cache_unit_tests.js`（**改**，22 项） | 新增：meta RPC 优先/lite body lazy 原样进缓存且无 data URI；meta 404 才回退旧整表；meta 401 清身份且不回退；`ttLegacy:false` 时 site_assets 失败不再打 tool.furina.fun；保留原 16 项（分块/预算/TTL/签名/force/后台刷新/退出身份） | `node cache_unit_tests.js` / `node unit.js` |
+| `nt_attach_url_tests.js`（**改**，10 项） | 新增：lite lazy 附件/图片 → 前 2 张有图片的卡自动拉完整 body 一次后可用；确实无 url 的附件只自动补拉一次（`_bodyTried` 负缓存防死循环）；`bootPull` 支持自定义请求 mock；保留原 URL/data URI 双形态 8 项 | `node nt_attach_url_tests.js` / `node unit.js` |
+| `unit.js`（**改**） | 挂载上述断言；单测 config 显式 `ttLegacy:true`（生产 false），总断言 **560 / 6 既有失败** | `node unit.js` |
+| `perf_notice_probe.js`（**新增，本地诊断**） | devtools automator + 官方测试身份：冷启动请求/字节/`evaluateScript`、storage keys（不含值）；**不含真实账号/token** | 先 `cli.bat auto --project ... --auto-port 9431`，再 `node perf_notice_probe.js` |
+
+**实测（本机 2026-11-17）**：`unit.js` **560/6**（6 项既有失败：quickList 顺序 1 + draw ko-link 4 + 期次时间依赖 1）、
+`sync_contract_test.js` **34/0**、`cache_unit_tests.js` **22/0**、`nt_attach_url_tests.js` **10/0**、
+`staticcheck.py` exit 0（30 页）、`code_quality_check.js` exit 0；devtools automator（测试身份）冷启动请求 **10→4**
+（marks/site_assets/notices-lite/meta，**213,475B / 0 失败**）、二次启动 **2**（marks/power），`evaluateScript` **513→391ms**
+（完整重编译；热态复测 171ms），通知页自动完整 body **14→2**；真实云端 meta RPC **122 行 / 296,482B / 0 data URI**（旧整表 14.07MB）。
+
 ## 外观（跟随系统/浅色/深色）+ 电费同期比较独立行 专项（2026-11-15，未发版；待用户上传发布）
 
 对应「移植性审计 + 可完整移植项」任务（审计矩阵 `mp-class-tools/docs/PORTING_MATRIX_20261115.md`）。
@@ -491,4 +510,5 @@ Lead automator（真实只读云端）**13/0**，0 console error。**需用户�
 ④ 上传发布小程序后在真机点「新通知提醒」→ 网页端发一条新通知 → 5 分钟内收到；诊断页确认心跳/lastError；
 ⑤ 真机验水量共享（同宿舍两台设备/两个账号看到同一条记录）与 23A/23B 固定四人间。
 **自动化未发真实订阅消息、未写真实云表。**
+
 

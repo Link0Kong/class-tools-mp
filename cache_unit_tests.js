@@ -63,6 +63,7 @@ function createCtx() {
       restBase: 'https://mock.test/v1/rdb/rest/',
       publishableKey: 'pub',
       ttUrl: 'https://static.test/tt.json',
+      ttLegacy: true,          // 单测显式开启 legacy（生产 cloud-config.js 在 DNS 暂停期设为 false）
       timeout: 1000,
       rpc: { verify: 'rpc/class_verify', members: 'rpc/class_members' }
     });
@@ -72,8 +73,11 @@ function createCtx() {
   function urlOf(o) { return String((o && o.url) || ''); }
   function reqsOf(frag) { return reqLog.filter(function (o) { return urlOf(o).indexOf(frag) >= 0; }); }
   function noticesReqs() { return reqLog.filter(function (o) { return urlOf(o).indexOf('/notices?') >= 0; }); }
+  function metaReqs() { return reqLog.filter(function (o) { return urlOf(o).indexOf('/rpc/class_notices_meta') >= 0; }); }
   function liteReqs() { return reqLog.filter(function (o) { return urlOf(o).indexOf('select=id,ts') >= 0; }); }
   function fullReqs() { return reqLog.filter(function (o) { return urlOf(o).indexOf('/notices?') >= 0 && urlOf(o).indexOf('select=*') >= 0; }); }
+  // 2026-11-17：整表拉取首选 meta RPC（~0.3MB）；旧 select=* 只在接口缺失时回退。
+  function bulkReqs() { return fullReqs().concat(metaReqs()); }
   function cacheKeys() { return Object.keys(mem).filter(function (k) { return k.indexOf('zqc1_') === 0; }); }
   function chunkKeys(name) {
     return Object.keys(mem).filter(function (k) { return k.indexOf('zqc1_') === 0 && k.indexOf('_' + name + '_') > 0; });
@@ -81,7 +85,7 @@ function createCtx() {
   return {
     mem: mem, wxMock: wxMock,
     fresh: fresh, cloudFresh: cloudFresh, clearMem: clearMem, setIdentity: setIdentity,
-    urlOf: urlOf, reqsOf: reqsOf, noticesReqs: noticesReqs, liteReqs: liteReqs, fullReqs: fullReqs,
+    urlOf: urlOf, reqsOf: reqsOf, noticesReqs: noticesReqs, metaReqs: metaReqs, liteReqs: liteReqs, fullReqs: fullReqs, bulkReqs: bulkReqs,
     cacheKeys: cacheKeys, chunkKeys: chunkKeys,
     getReqLog: function () { return reqLog; },
     resetReqLog: function () { reqLog = []; },
@@ -286,7 +290,8 @@ function run(test) {
       C.setReqImpl(function (o) { o.success({ statusCode: 200, data: rows }); });
       const g1 = await cloud.ntAutoPull();
       assert.strictEqual(g1.length, 2);
-      assert.strictEqual(C.noticesReqs().length, 1, '首进应只有 1 次 notices 请求');
+      assert.strictEqual(C.metaReqs().length, 1, '首进应只发 1 次 meta RPC（~0.3MB）');
+      assert.strictEqual(C.noticesReqs().length, 0, '不应再拉旧 14MB 整表');
       assert.strictEqual(C.liteReqs().length, 0, '无缓存时不该先发签名请求');
       const cached = cache.getWithMeta('ntAuto');
       assert.ok(cached && cached.val && cached.val.g.length === 2, 'auto groups 应写入持久缓存');
@@ -313,7 +318,7 @@ function run(test) {
         return o.success({ statusCode: 200, data: rows });
       });
       await cloud.ntAutoPull();
-      assert.strictEqual(C.fullReqs().length, 1);
+      assert.strictEqual(C.bulkReqs().length, 1);
       // 模拟 TTL 过期（不改数据）
       const sync = cache.get('lastSync');
       sync.ntAuto = Date.now() - cloud.TTL.notices - 5000;
@@ -323,7 +328,7 @@ function run(test) {
       const list = await cloud.ntPull();
       assert.ok(Array.isArray(list));
       assert.strictEqual(C.liteReqs().length, 1, '过期后应先发 1 次轻量签名请求');
-      assert.strictEqual(C.fullReqs().length, 0, '签名一致时不应拉 2MB 整表');
+      assert.strictEqual(C.bulkReqs().length, 0, '签名一致时不应拉 2MB 整表');
       // 数据变了（新增一行）→ 签名不一致 → 整表 1 次
       const rows2 = rows.concat([autoRow('auto_9', 9000)]);
       C.setReqImpl(function (o) {
@@ -337,10 +342,71 @@ function run(test) {
       C.resetReqLog();
       await cloud.ntPull();
       assert.strictEqual(C.liteReqs().length, 1);
-      assert.strictEqual(C.fullReqs().length, 1, '签名变了才整表拉 1 次');
+      assert.strictEqual(C.bulkReqs().length, 1, '签名变了才整表拉 1 次');
       const g = await cloud.ntAutoPull();
       assert.strictEqual(g.length, 3, '整表后缓存应包含新通知');
     });
+
+    await test('云通知 2026-11-17：meta RPC 优先（~0.3MB），lite body 的 lazy 标记原样进缓存', async function () {
+      const { cloud, cache } = C.cloudFresh();
+      C.setIdentity(ID);
+      const liteBody = '[[CLASS_NOTICE_V1]]' + JSON.stringify({
+        id: 'g_lite', title: '轻量通知',
+        items: [
+          { kind: 'img', src: '', lazy: true, caption: '图1' },
+          { kind: 'file', name: 'a.pdf', size: '128 KB', url: '', lazy: true },
+          { kind: 'text', text: '正文' }
+        ]
+      });
+      const rows = [
+        { id: 'auto_g_lite', ts: 1000, body: liteBody, hidden: false, override_json: '', edited_at: 0, edited_by: '' },
+        normalRow('man_1', 1500)
+      ];
+      C.setReqImpl(function (o) {
+        if (String(o.url).indexOf('class_notices_meta') >= 0) return o.success({ statusCode: 200, data: rows });
+        return o.success({ statusCode: 200, data: [] });
+      });
+      const g = await cloud.ntAutoPull();
+      assert.strictEqual(C.metaReqs().length, 1, '应优先走 meta RPC');
+      assert.strictEqual(C.noticesReqs().length, 0, '不应再拉旧整表');
+      assert.strictEqual(g.length, 1);
+      assert.strictEqual(g[0].items[0].lazy, true);
+      assert.strictEqual(g[0].items[0].src, '', 'data URI 由服务端置空');
+      const cached = cache.getWithMeta('ntAuto');
+      assert.ok(cached && cached.val && cached.val.g.length === 1, 'lite 结果应写入分块缓存');
+      assert.ok(cached.bytes < 100 * 1024, 'lite 缓存应远小于 100KB：' + cached.bytes);
+      assert.strictEqual(JSON.stringify(cached.val).indexOf('data:image'), -1, '缓存里不应有 data URI');
+    });
+
+    await test('云通知 2026-11-17：meta RPC 404（旧后端）→ 回退 select=* 整表一次', async function () {
+      const { cloud } = C.cloudFresh();
+      C.setIdentity(ID);
+      const rows = noticeRows();
+      C.setReqImpl(function (o) {
+        const u = String(o.url);
+        if (u.indexOf('class_notices_meta') >= 0) return o.success({ statusCode: 404, data: {} });
+        if (u.indexOf('/notices?') >= 0) return o.success({ statusCode: 200, data: rows });
+        return o.success({ statusCode: 200, data: [] });
+      });
+      const g = await cloud.ntAutoPull();
+      assert.strictEqual(C.metaReqs().length, 1, '先尝试 meta');
+      assert.strictEqual(C.fullReqs().length, 1, '接口不存在时回退旧整表 1 次');
+      assert.strictEqual(g.length, 2);
+    });
+
+    await test('云通知 2026-11-17：meta RPC 401 → 清本机身份、绝不回退公开整表', async function () {
+      const { cloud, identity } = C.cloudFresh();
+      C.setIdentity(ID);
+      C.setReqImpl(function (o) {
+        if (String(o.url).indexOf('class_notices_meta') >= 0) return o.success({ statusCode: 401, data: {} });
+        return o.success({ statusCode: 200, data: noticeRows() });
+      });
+      const g = await cloud.ntAutoPull();
+      assert.deepStrictEqual(g, [], '401 时不应把旧/公开数据当结果');
+      assert.strictEqual(C.fullReqs().length, 0, '401 不得回退旧整表（避免继续用失效 token/公开读）');
+      assert.strictEqual(identity.has(), false, '401 应清掉本机身份，回身份页重新验证');
+    });
+
 
     await test('云通知：force（下拉刷新）只跳过 TTL，不跳过签名校验 → 未变时 0 整表', async function () {
       const { cloud } = C.cloudFresh();
@@ -355,7 +421,7 @@ function run(test) {
       const g = await cloud.ntAutoPull(true);
       assert.strictEqual(g.length, 2, 'force 时仍要返回可用数据');
       assert.strictEqual(C.liteReqs().length, 1, 'force 仍先做签名校验');
-      assert.strictEqual(C.fullReqs().length, 0, 'force 不应无条件整表拉 2MB');
+      assert.strictEqual(C.bulkReqs().length, 0, 'force 不应无条件整表拉 2MB');
     });
 
     await test('云通知：后台校验发现变化 → notifyPages 被调用；无 getApp 时不崩', async function () {
@@ -393,6 +459,22 @@ function run(test) {
     });
 
     /* ============ utils/cloud.js：小表 TTL 门控 ============ */
+    await test('课表 2026-11-17：ttLegacy=false（DNS 暂停期）→ site_assets 失败也不再打旧域名', async function () {
+      const { cloud } = C.cloudFresh();
+      C.setIdentity(ID);
+      cloud.configure({ ttLegacy: false });
+      C.setReqImpl(function (o) {
+        const u = String(o.url || '');
+        if (u.indexOf('/site_assets?') >= 0) return o.success({ statusCode: 404, data: {} });
+        if (u.indexOf('/tt.json') >= 0) return o.success({ statusCode: 200, data: { c: [{ name: '不应出现' }] } });
+        return o.success({ statusCode: 200, data: [] });
+      });
+      let err = null;
+      try { await cloud.ttFetch(true); } catch (e) { err = e; }
+      assert.ok(err, 'site_assets 失败且 legacy 关闭时应 reject（页面保留本机缓存）');
+      assert.strictEqual(C.reqsOf('/tt.json').length, 0, '不得再请求已暂停解析的 tool.furina.fun');
+    });
+
     await test('云：cloudPull 连续 3 次只有第 1 次打网络（TTL 门控）', async function () {
       const { cloud } = C.cloudFresh();
       C.setIdentity(ID);
@@ -473,9 +555,9 @@ function run(test) {
         assert.ok(appDef, 'app.js 未注册 App()');
         appDef.onLaunch();
         appDef.onShow.call(appDef);
-        assert.strictEqual(C.noticesReqs().length, 0, 'onShow 立刻同步会阻塞首屏：应延后 ~300ms 才拉通知大表');
+        assert.strictEqual(C.metaReqs().length + C.noticesReqs().length, 0, 'onShow 立刻同步会阻塞首屏：应延后 ~300ms 才拉通知大表');
         await sleep(420);
-        assert.ok(C.noticesReqs().length >= 1, '300ms 后应后台预热/刷新一次通知表');
+        assert.ok(C.metaReqs().length >= 1, '300ms 后应后台预热/刷新一次通知表');
         appDef.onHide.call(appDef);
         assert.strictEqual(appDef._timer, null, 'onHide 应停掉 30s 轮询');
         assert.strictEqual(appDef._warmT, null, 'onHide 应清掉预热 timer');
@@ -509,3 +591,4 @@ if (require.main === module) {
     process.exitCode = failN ? 2 : 0;
   }).catch(function (e) { console.error('FATAL', e); process.exit(1); });
 }
+

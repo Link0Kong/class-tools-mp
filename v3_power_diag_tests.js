@@ -3747,7 +3747,7 @@ function run(test) {
       assert.ok(/loadPowerCard/.test(idxJs) && /cloud\.powerCached/.test(idxJs) && /goPower\(\) \{ wx\.navigateTo\(\{ url: '\/pages\/power\/power' \}\)/.test(idxJs), '工作台卡片加载/缓存/跳转');
       assert.ok(/wb-power/.test(src('pages/index/index.wxss')), '工作台电费卡样式');
       assert.ok(/udFlush: udFlush/.test(src('utils/cloud.js')) && /function udFlush/.test(src('utils/cloud.js')), 'UD 立即冲刷 API');
-      assert.ok(/cloud\.udFlush\(\)/.test(src('app.js')), '小程序 onHide 冲刷待推送（选完马上退出）');
+      assert.ok(/(?:cloud|cloudMod\(\))\.udFlush\(\)/.test(src('app.js')), '小程序 onHide 冲刷待推送（选完马上退出）');
       assert.ok(/if \(!c \&\& view\.power\.at\) view\.at\.power/.test(src('utils/cloud.js')), '无基线时 power 用本机时间戳参与合并');
       assert.ok(/return String\(\(d\.power && d\.power\.sel\) \|\| ''\) \? \['power'\] : \[\]/.test(src('utils/cloud.js')), '无基线且已有本机选择 → power 脏检测可触发推送');
       assert.ok(/allowFallback = !base \|\| !base\.power \|\| base\.power\.sel === undefined/.test(pwPageSrc), '兜底键只在无 UD 基线时补位（云端权威清空不复活）');
