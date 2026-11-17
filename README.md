@@ -7,7 +7,7 @@
 > 额外复制 24 块造成主线程/内存峰值。修复：云端 `class_notices_meta`（lite body，data URI 置空 + `lazy=true`，
 > 实测 **296KB**）+ 小程序按 id 懒加载附件/图片 + 预算前置 + `ttLegacy:false` + 401 统一回身份页 + 启动懒加载
 > （`cloud/store/diag/notify` 不再在 app.js 顶部 require，`wx.cloud.init`/`store.get()` 移出 onLaunch，
-> 30s 同步延后 300ms，身份页已登录切换 520ms→80ms）+ 无提醒时不调云函数 + 网络失败指数退避。
+> 30s 同步延后 300ms，身份页已登录自动进入改 onReady 立即切 + 600ms 兜底 + reLaunch 兜底（原 520ms））+ 无提醒时不调云函数 + 网络失败指数退避。
 > 通知页只自动拉前 2 张有图片的卡的完整 body（其余点「图片加载中… 点击加载」），`_bodyTried` 负缓存修掉
 > 「文件确实未获取」卡片的 84 次/页重复拉取。实测（devtools automator，测试身份）：冷启动请求 **10→7**（14MB 整表→0.30MB meta）、
 > 二次启动 **2**，`evaluateScript` **513→391ms**（完整重编译；热态 171ms），通知页自动完整 body **14→2**；`unit.js 560/6`（6 项既有）、
@@ -1351,6 +1351,7 @@ AI 原子接口运行在独立 JS 环境，**不能 require 主包 utils/**，�
 
 
 > **2026-11-09（待上传；代码版本仍 2.0.0）· 诊断 v2.1**：AI 结论改为**下挂到对应异常项下方**（折叠一行：severity 点+标题+状态胶囊+⚙；点击展开原因/建议/flow/关联修复；无关联进「其它诊断」折叠区），进展轮询 15s→**10s**，设备上报/展示信息最小化（无品牌/型号/语言，detail 必带 check id）；WXML 嵌套数组限制用预渲染文本兜底。详见 CHANGELOG 顶部条目。
+
 
 
 
