@@ -15,8 +15,7 @@
 
 **实测（本机 2026-11-17）**：`unit.js` **560/6**（6 项既有失败：quickList 顺序 1 + draw ko-link 4 + 期次时间依赖 1）、
 `sync_contract_test.js` **34/0**、`cache_unit_tests.js` **22/0**、`nt_attach_url_tests.js` **10/0**、
-`staticcheck.py` exit 0（30 页）、`code_quality_check.js` exit 0；devtools automator（测试身份）冷启动请求 **10→4**
-（marks/site_assets/notices-lite/meta，**213,475B / 0 失败**）、二次启动 **2**（marks/power），`evaluateScript` **513→391ms**
+`staticcheck.py` exit 0（30 页）、`code_quality_check.js` exit 0；devtools automator（测试身份）冷启动请求 **10→7**（marks/site_assets/notices-lite/meta/visits/fit/homework/members，**209,393B / 0 失败**）、二次启动 **2**（marks/power），`evaluateScript` **513→391ms**
 （完整重编译；热态复测 171ms），通知页自动完整 body **14→2**；真实云端 meta RPC **122 行 / 296,482B / 0 data URI**（旧整表 14.07MB）。
 
 ## 外观（跟随系统/浅色/深色）+ 电费同期比较独立行 专项（2026-11-15，未发版；待用户上传发布）
@@ -510,5 +509,6 @@ Lead automator（真实只读云端）**13/0**，0 console error。**需用户�
 ④ 上传发布小程序后在真机点「新通知提醒」→ 网页端发一条新通知 → 5 分钟内收到；诊断页确认心跳/lastError；
 ⑤ 真机验水量共享（同宿舍两台设备/两个账号看到同一条记录）与 23A/23B 固定四人间。
 **自动化未发真实订阅消息、未写真实云表。**
+
 
 
