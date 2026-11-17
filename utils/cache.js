@@ -197,9 +197,11 @@ function set(name, val, ttl) {
   var text;
   try { text = JSON.stringify(val); } catch (e) { return false; }
   if (typeof text !== 'string') return false;
-  var chunks = splitChunks(text);
+  // 2026-11-17 修复：先判总预算再切块。通知整表曾达 14MB，旧顺序会先 splitChunks 复制出
+  // 24 个 600KB 分块（额外十余 MB 内存/主线程）才因超预算 return false，冷启动直接卡顿。
   var bytes = utf8Len(text);
   if (bytes > MAX_BYTES) return false;         // 单条超出总预算：放弃（业务照常走网络）
+  var chunks = splitChunks(text);
 
   var idx = readIdx();
   var key = itemKey(sid, name);

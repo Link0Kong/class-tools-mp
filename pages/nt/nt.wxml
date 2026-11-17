@@ -62,7 +62,7 @@
           <text wx:if="{{im.caption}}" class="nt-img-cap">{{im.caption}}</text>
         </view>
       </view>
-      <view wx:elif="{{card.imgCount}}" class="nt-imgs-loading">图片加载中…</view>
+      <view wx:elif="{{card.imgCount}}" class="nt-imgs-loading" data-gid="{{card.id}}" catchtap="loadImgs">图片加载中… 点击加载</view>
 
       <view wx:for="{{card.items}}" wx:for-item="it" wx:key="key" class="nt-item nt-item--{{it.kind}}">
         <!-- 附件 -->

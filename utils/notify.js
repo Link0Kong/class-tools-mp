@@ -23,6 +23,19 @@ const TEMPLATE_ID = 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo';
 const SECOND_TEMPLATE_ID = '';
 // 云函数名（微信云开发「云函数」里必须是 notify；未部署时 status/bootstrap 失败会归因 cloud-missing）
 const CLOUD_FN = 'notify';
+// 云开发环境：只在真正要发订阅消息/提醒时初始化（2026-11-17 从 app.onLaunch 移出，避免启动首帧加载 SDK）。
+const CLOUD_ENV = 'fengdan-d6g7hnk4gf35685b3';
+let _cloudReady = false;
+function ensureInit() {
+  // 每次调用都确认 callFunction 仍在（测试/极少数运行时会删除 wx.cloud；不能只信缓存布尔）
+  if (!wx.cloud || typeof wx.cloud.callFunction !== 'function') return false;
+  if (_cloudReady) return true;
+  if (typeof wx.cloud.init === 'function') {
+    try { wx.cloud.init({ env: CLOUD_ENV, traceUser: true }); } catch (e) { return false; }
+  }
+  _cloudReady = true;
+  return true;
+}
 
 function templateIds() {
   const out = [TEMPLATE_ID];
@@ -49,7 +62,7 @@ function classify(err) {
   return 'unknown';
 }
 function call(data) {
-  if (!wx.cloud || !wx.cloud.callFunction) return Promise.reject(new Error('no-cloud'));
+  if (!ensureInit()) return Promise.reject(new Error('no-cloud'));
   return wx.cloud.callFunction({ name: CLOUD_FN, data: data }).then(function (r) {
     var v = r && r.result;
     if (v && v.ok === false) { var e = new Error(v.reason || 'notify-failed'); e.reason = v.reason; throw e; }
@@ -233,6 +246,7 @@ function bootstrap(token) {
 module.exports = {
   TEMPLATE_ID: TEMPLATE_ID,
   CLOUD_FN: CLOUD_FN,
+  ensureInit: ensureInit,
   templateIds: templateIds,
   classify: classify,
   fmt: fmt,

@@ -27,10 +27,14 @@ const CONFIG = {
   restBase: '',
   publishableKey: '',
   ttUrl: '',
+  // 2026-11-17：DNS 暂停期默认关闭 legacy 回退；cloud-config.js 可显式设 false/true。
+  ttLegacy: true,
   timeout: 15000,
   // 云端 RPC（class_verify 签发身份 token / class_members 下发班级名单）
   rpc: {
     verify: 'rpc/class_verify', members: 'rpc/class_members',
+    // 2026-11-17 通知列表轻量化：服务端返回同构行数组，body 内 data URI 已换成 lazy 标记
+    noticesMeta: 'rpc/class_notices_meta',
     // 2026-11-11 名单快捷预设（需求 8）：团员名单（契约 web/AGENTS.md §33；返回 {ok,seats:[{seat,name}]}，无学号）
     league: 'rpc/class_league',
     // 2026-11-12 名单页「管理」：设置/清除班委职务（网页同名 RPC class_set_role，仅管理员）
@@ -58,7 +62,20 @@ const CONFIG = {
 };
 
 // 云端连通状态：hw = 作业表通、nt = 通知表通、ud = 个人数据表通
-const NET = { hw: false, nt: false, ud: false, tested: false, lastOk: 0, lastFail: 0 };
+const NET = { hw: false, nt: false, ud: false, tested: false, lastOk: 0, lastFail: 0, failStreak: 0, retryAt: 0 };
+// 网络失败退避（2026-11-17）：离线/弱网时 30s 轮询曾每轮重试所有过期表，放大错误率与耗电。
+// 连续失败后指数退避（最长 60s）只影响后台轮询；页面 onShow/下拉刷新等 force 调用不受影响。
+function noteNetOk() {
+  NET.lastOk = Date.now();
+  NET.failStreak = 0;
+  NET.retryAt = 0;
+}
+function noteNetFail() {
+  NET.lastFail = Date.now();
+  NET.failStreak = Math.min(6, (NET.failStreak || 0) + 1);
+  const wait = Math.min(60000, 1500 * Math.pow(2, NET.failStreak - 1));
+  NET.retryAt = Date.now() + wait;
+}
 
 // ---------------------------------------------------------------- 缓存与 TTL（1.4.4 性能优化）
 // 手机端每 30 秒整表重拉的通知表约 2MB（其中 98% 是图片/附件 data URI），是卡顿与耗流的主要来源。
@@ -174,19 +191,30 @@ function rawRequest(method, url, data, header, opts) {
       timeout: (opts && opts.timeout) || CONFIG.timeout,
       success: function (res) {
         const sc = (res && res.statusCode) || 0;
-        if (sc >= 200 && sc < 300) { NET.lastOk = Date.now(); resolve(res.data); }
-        else { NET.lastFail = Date.now(); reject(new Error('http' + sc)); }
+        if (sc >= 200 && sc < 300) { noteNetOk(); resolve(res.data); }
+        else {
+          NET.lastFail = Date.now();
+          // 401 = 班级 token 过期/失效：清本机身份并回身份页，停止继续用失效 token 打请求。
+          // （403 是 RLS 权限拒绝，可能只是单表权限，不跳身份页。）
+          if (sc === 401 && !opts.public) {
+            try { require('./identity.js').onAuthExpired(); } catch (e2) { /* ignore */ }
+          }
+          if (sc >= 500) noteNetFail();
+          reject(new Error('http' + sc));
+        }
       },
-      fail: function (err) { NET.lastFail = Date.now(); reject(err || new Error('network')); }
+      fail: function (err) { noteNetFail(); reject(err || new Error('network')); }
     });
   });
 }
 
 // GET 失败自动重试一次（弱网/冷启动 DNS 抖动最常见）；写请求不重试，避免重复写入。
+// opts.retry=true 仅给「幂等只读 RPC」用（如 class_notices_meta），让 POST 也能享受一次弱网重试。
 function request(method, url, data, header, retried, opts) {
   return rawRequest(method, url, data, header, opts).catch(function (e) {
     const isHttp = String((e && e.message) || '').indexOf('http') === 0;
-    if (method === 'GET' && !retried && !isHttp) {
+    const canRetry = method === 'GET' || !!(opts && opts.retry);
+    if (canRetry && !retried && !isHttp) {
       return new Promise(function (r) { setTimeout(r, 350); }).then(function () {
         return rawRequest(method, url, data, header, opts);
       });
@@ -299,12 +327,16 @@ function saveMembers(list) {
   // 1.3.4：名单到位后补做「旧自定义名单文本 → 座号」迁移（幂等；名单为空时迁移内部会跳过）
   try { require('./roster.js').migrate(); } catch (e) { /* 迁移失败不阻塞名单缓存 */ }
 }
+var _membersPulling = null;
 function classMembersPull(force) {
   if (!identity.has() || !isEnabled()) return Promise.resolve([]);
   // 6h TTL：名单极少变化；本机 store 已有名单时直接返回，0 请求
   const local = members();
   if (!force && local.length && syncFresh('members', TTL.members)) return Promise.resolve(local);
-  return request('POST', CONFIG.restBase + CONFIG.rpc.members, {}, headers(false))
+  // 2026-11-17 单飞：冷启动 app.warmSync 与 cloudPull 会同时 ensureMembers，
+  // 旧实现并发出 2 个 class_members（首屏请求数 +1）；force 也复用进行中的请求。
+  if (_membersPulling) return _membersPulling;
+  const p = request('POST', CONFIG.restBase + CONFIG.rpc.members, {}, headers(false))
     .then(function (raw) {
       const list = Array.isArray(raw) ? raw : ((raw && Array.isArray(raw.data)) ? raw.data : []);
       const arr = list.map(normalizeMember).filter(Boolean);
@@ -312,7 +344,16 @@ function classMembersPull(force) {
       touchSync('members');
       return arr;
     })
-    .catch(function () { return []; });
+    .catch(function () { return []; })
+    .then(function (arr) {
+      _membersPulling = null;
+      return arr;
+    }, function () {
+      _membersPulling = null;
+      return [];
+    });
+  _membersPulling = p;
+  return p;
 }
 // 本机缓存读取（不发请求）
 function members() { return (store.get().classMembers || []).slice(); }
@@ -677,37 +718,55 @@ function mergeNotices(list) {
   return merged;
 }
 
-// 唯一的整表拉取（~2MB）：重建 auto groups 分块缓存 + 签名，普通通知合并进 store
-// v2.0.0（需求 12）：解析行时保留 override_json / hidden / edited_at / edited_by，
-// 供通知页套用管理员编辑、过滤已隐藏、显示「已更新」标记。
-function ntFullFetch() {
-  return cbGet(CONFIG.tables.notices, NT_FULL_Q).then(function (rows) {
-    rows = Array.isArray(rows) ? rows : [];
-    const autos = [], normal = [];
-    rows.forEach(function (r) {
-      if (isAutoNoticeRow(r)) {
-        try {
-          const g = JSON.parse(String(r.body).slice(AUTO_NOTICE_PREFIX.length));
-          if (g && g.id) {
-            g._hidden = !!r.hidden;
-            g._override = ntParseOverride(r.override_json);
-            g._editedAt = Number(r.edited_at) || 0;
-            g._editedBy = String(r.edited_by || '');
-            autos.push(g);
-          }
-        } catch (e) { /* 单行坏 JSON 跳过，不影响其它通知 */ }
-      } else normal.push(r);
-    });
-    const sig = ntSigOf(rows);
-    const at = Date.now();
-    cache.set('ntAuto', { at: at, sig: sig, g: autos }, TTL.notices);
-    mergeNotices(normal);
-    touchSync('ntAuto', at);
-    touchSync('nt', at);
-    _ntMem = { sid: currentSid(), at: at, g: autos, sig: sig };
-    return { autos: autos, normal: normal, sig: sig };
-  }).catch(function (e) {
+// 唯一的整表拉取：2026-11-17 起优先调用 class_notices_meta（服务端把 body 内的图片/文件
+// data URI 替换为 lazy 标记，响应 ~0.3MB），失败且是「接口不存在」时才回退旧 select=*（~14MB）。
+// 解析行时保留 override_json / hidden / edited_at / edited_by，供通知页套用管理员编辑、
+// 过滤已隐藏、显示「已更新」标记。
+function ntApplyRows(rows) {
+  rows = Array.isArray(rows) ? rows : [];
+  const autos = [], normal = [];
+  rows.forEach(function (r) {
+    if (isAutoNoticeRow(r)) {
+      try {
+        const g = JSON.parse(String(r.body).slice(AUTO_NOTICE_PREFIX.length));
+        if (g && g.id) {
+          g._hidden = !!r.hidden;
+          g._override = ntParseOverride(r.override_json);
+          g._editedAt = Number(r.edited_at) || 0;
+          g._editedBy = String(r.edited_by || '');
+          autos.push(g);
+        }
+      } catch (e) { /* 单行坏 JSON 跳过，不影响其它通知 */ }
+    } else normal.push(r);
+  });
+  const sig = ntSigOf(rows);
+  const at = Date.now();
+  cache.set('ntAuto', { at: at, sig: sig, g: autos }, TTL.notices);
+  mergeNotices(normal);
+  touchSync('ntAuto', at);
+  touchSync('nt', at);
+  _ntMem = { sid: currentSid(), at: at, g: autos, sig: sig };
+  return { autos: autos, normal: normal, sig: sig };
+}
+function ntMetaFetch() {
+  const rpc = CONFIG.rpc && CONFIG.rpc.noticesMeta;
+  if (!rpc) return Promise.reject(new Error('nt-meta-disabled'));
+  return request('POST', CONFIG.restBase + rpc, {}, headers(false), false, { timeout: 20000, retry: true })
+    .then(function (rows) { return Array.isArray(rows) ? rows : ((rows && rows.rows) || []); });
+}
+function ntFullFetchLegacy() {
+  return cbGet(CONFIG.tables.notices, NT_FULL_Q).then(ntApplyRows).catch(function (e) {
     NET.nt = false; NET.tested = true;
+    throw e;
+  });
+}
+function ntFullFetch() {
+  return ntMetaFetch().then(ntApplyRows).catch(function (e) {
+    const msg = String((e && e.message) || '');
+    NET.nt = false; NET.tested = true;
+    // 旧后端没有该 RPC（404/405）→ 回退旧整表，保证未迁移环境仍可用；
+    // 401 已由 rawRequest 触发身份过期跳转，不回退（否则又会打 14MB 公开整表）。
+    if (msg === 'http404' || msg === 'http405' || msg === 'nt-meta-disabled') return ntFullFetchLegacy();
     throw e;
   });
 }
@@ -1558,20 +1617,25 @@ function visitLog() {
     const mark = id.sid + '|' + slot;
     try { if (wx.getStorageSync('zq_visit_slot') === mark) return Promise.resolve(false); } catch (e) { /* ignore */ }
     const row = { id: mark, slot: slot, sid: id.sid, name: id.name, did: didOf(), ts: Date.now() };
-    return request('POST', CONFIG.restBase + CONFIG.tables.visits, [row], headers(false))
+    // 2026-11-17：同一账号同一小时重复写（换设备/清缓存/重装）会撞主键 409，是请求错误率的
+    // 真实来源之一。visits 无 UPDATE 权限，不能用 merge-duplicates；用 ignore-duplicates
+    // （ON CONFLICT DO NOTHING）幂等忽略，成功返回 2xx，不再计一次失败请求。
+    return request('POST', CONFIG.restBase + CONFIG.tables.visits, [row],
+      headerOf({ Prefer: 'resolution=ignore-duplicates,return=minimal' }))
       .then(function () { try { wx.setStorageSync('zq_visit_slot', mark); } catch (e) { /* ignore */ } return true; })
       .catch(function () { return false; });
   } catch (e) { return Promise.resolve(false); }
 }
-// 单条通知 body 按需刷新：auto 行的 rowid = 'auto_' + gid；select=* 拿完整 body（含 archive 附件清单）。
-// 用于「已有缓存但 body 后补 archive、而 ts/签名未变」的情况（展开详情时触发；不新增接口/不上传）。
+// 单条通知 body 按需刷新：auto 行的 rowid = 'auto_' + gid；select=* 拿完整 body（含图片/附件 data URI）。
+// 2026-11-17：列表缓存只存 lite body（data URI 置空 + lazy），完整 body 仅放内存热缓存，
+// **不回写持久缓存**，避免 14MB 重新撑爆 storage；下次冷启动需要时再按 id 拉单行。
 function ntPatchCachedGroup(g) {
   try {
     const mem = ntLoad();
     if (!mem || !mem.g || !mem.sid || mem.sid !== currentSid()) return;
-    let hit = false;
-    for (let i = 0; i < mem.g.length; i++) if (mem.g[i] && mem.g[i].id === g.id) { mem.g[i] = g; hit = true; break; }
-    if (hit) cache.set('ntAuto', { at: mem.at, sig: mem.sig, g: mem.g }, TTL.notices);
+    for (let i = 0; i < mem.g.length; i++) {
+      if (mem.g[i] && mem.g[i].id === g.id) { mem.g[i] = g; break; }
+    }
   } catch (e) { /* ignore */ }
 }
 function ntGroupFull(gid) {
@@ -1579,7 +1643,7 @@ function ntGroupFull(gid) {
   if (!gidS || !isEnabled()) return Promise.resolve(null);
   return request('GET',
     CONFIG.restBase + CONFIG.tables.notices + '?select=*&id=eq.' + encodeURIComponent(ntAdminRowId(gidS)),
-    undefined, headers(false))
+    undefined, headers(false), false, { timeout: 20000 })
     .then(function (list) {
       const r = Array.isArray(list) ? list[0] : null;
       if (!r || !isAutoNoticeRow(r)) return null;
@@ -2060,6 +2124,7 @@ function ttCloudFetch() {
 // legacy：站点静态 tt.json，只读公开文件，不携带身份 token；仍然要求本机有身份才允许请求（见 ttFetch 顶部守卫）。
 function ttLegacyFetch() {
   const url = CONFIG.ttUrl;
+  if (CONFIG.ttLegacy === false) return Promise.reject(new Error('tt-legacy-off'));
   if (!url) return Promise.reject(new Error('tt-disabled'));
   return new Promise(function (resolve, reject) {
     wx.request({
@@ -2102,6 +2167,11 @@ function cloudPull(force) {
   if (!isEnabled()) return Promise.resolve({ off: true });
   if (!identity.has()) return Promise.resolve({ off: false, identity: false });
   if (udOff()) return Promise.resolve({ off: true, cloudOff: true });
+  // 背景轮询退避：刚连续失败过就不在 30s 定时器里反复打同一批请求；
+  // force（下拉刷新/手动同步/页面 onShow）始终放行，保证用户主动操作能立即重试。
+  if (!force && NET.retryAt && Date.now() < NET.retryAt) {
+    return Promise.resolve({ skipped: true, retryAt: NET.retryAt });
+  }
   return Promise.all([
     marksPull(force), fitPull(force), hwPull(force), ntPull(force), ensureMembers(!!force), udSync(!!force)
   ]).then(function (r) {
@@ -2174,3 +2244,4 @@ module.exports = {
   waterRoomGet: waterRoomGet, waterRoomUpsert: waterRoomUpsert, waterForceFresh: waterForceFresh,
   cloudPull: cloudPull, syncText: syncText, netState: netState
 };
+

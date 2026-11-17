@@ -34,6 +34,10 @@ const SEG_CLS = {
 };
 const FILE_KIND = { pdf: 'PDF', xls: 'XLS', xlsx: 'XLS', doc: 'DOC', docx: 'DOC', ppt: 'PPT', pptx: 'PPT' };
 const MAX_QUOTE_LINES = 2;
+// 2026-11-17：通知列表默认展开全部未过期卡；lite 列表的图片要按 id 拉完整 body。
+// 只自动拉前 2 张有图片的卡（视口内常见数量），其余显示「点击加载」占位——避免一次进页并发拉
+// 十几条完整 body（每条数百 KB、内存回到 10MB+），也避免弱网下同时打满请求。
+const AUTO_IMG_CARDS = 2;
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
 // 已处理状态的真源：store.ntDone（= marks kind='ntdone' 的本机缓存；网页端与小程序的共同状态）
@@ -221,14 +225,17 @@ function mapGroup(rawG, nowTs) {
     if (kind === 'img') return;   // 图片统一在 imgs 区展示
     if (kind === 'file') {
       const fk = fileKindOf(it.name || '');
-      const hasUrl = !!(it.url || it.src);
+      // 2026-11-17：lite 列表里 data URI 被服务端置空 + lazy=true；仍显示可点（hasUrl），
+      // 点开时按 id 拉单行完整 body（附件本身不丢，离线时列表仍可读）。
+      const lazy = !!it.lazy;
+      const hasUrl = !!(it.url || it.src || lazy);
       const ar = notice.archiveInfo(it);                 // 压缩包内部文件清单（仅元数据，不含 data URI）
       const archiveFiles = ar.files.map(function (f) {
         const fk2 = fileKindOf(f.name);
         return {
           name: f.name, extKind: fk2.kind, extText: fk2.text,
           // 外置后包内文件同样可能只有 URL：用数据管线给的 size，没有就留空（不显示 0 B）
-          size: f.size || '', hasUrl: f.hasUrl
+          size: f.size || '', hasUrl: f.hasUrl, lazy: !!f.lazy
         };
       });
       items.push({
@@ -238,6 +245,7 @@ function mapGroup(rawG, nowTs) {
         // URL / data URI 两种形态统一走 fileSizeText：URL 不再用 dataUriBytes 得 0 B
         meta: [fileSizeText(it), it.note || ''].filter(Boolean).join(' · ') || '附件',
         hasUrl: hasUrl,
+        lazy: lazy,
         // 需求 7：无 url 且无可用 archive 才「待获取」；压缩包已识别（archiveOk）时展示包内清单
         pending: !hasUrl && !ar.ok,
         archiveOk: ar.ok,
@@ -297,8 +305,10 @@ function mapGroup(rawG, nowTs) {
     }
   });
 
-  const imgs = (g.items || []).filter(function (x) { return x.kind === 'img' && x.src; })
-    .map(function (x, i) { return { caption: x.caption || '', ocr: !!x.ocr, i: i }; });
+  // 2026-11-17：lite 列表的图片 src 为空但 lazy=true；先保留占位（imgCount>0），
+  // 展开/预览时 ensureImgs 按 id 拉完整 body 后再转本地文件。
+  const imgs = (g.items || []).filter(function (x) { return x.kind === 'img' && (x.src || x.lazy); })
+    .map(function (x, i) { return { caption: x.caption || '', ocr: !!x.ocr, i: i, lazy: !!x.lazy }; });
 
   const senderName = String(g.senderName || '').trim();
   const senderRole = String(g.senderRole || '').trim();
@@ -831,36 +841,71 @@ Page({
       emptyText: empt.text
     });
 
-    // 自动展开的卡片：按需把图片转成本地临时文件（避免 base64 塞进 setData）
-    const loadDetail = function (c) {
+    // 自动展开的卡片：按需把图片转成本地临时文件（避免 base64 塞进 setData）。
+    // 2026-11-17：只自动拉前 AUTO_IMG_CARDS 张「有图片」的卡（不是前 N 张卡），保证列表里能看到图；
+    // 纯文件卡等用户点附件才拉完整 body；用户手动展开的卡不受限制。
+    let autoImgs = 0;
+    const loadDetail = function (c, idx) {
       if (!c.expanded) return;
-      if (c.imgCount) that.ensureImgs(c.id);
+      const userExpanded = !!(that._expanded && that._expanded[c.id]);
+      if (c.imgCount && (autoImgs < AUTO_IMG_CARDS || userExpanded)) {
+        autoImgs++;
+        that.ensureImgs(c.id);
+      }
       // 缓存里旧 body 可能没有 archive（数据管线后补、ts 签名未变）：展开时按需刷新单条 body
-      if (typeof that._needsGroupBody === 'function' && that._needsGroupBody(that._rawById(c.id))) that.refreshGroupBody(c.id);
+      if (!(idx >= AUTO_IMG_CARDS && !userExpanded) &&
+        typeof that._needsGroupBody === 'function' && that._needsGroupBody(that._rawById(c.id))) that.refreshGroupBody(c.id);
     };
     active.forEach(loadDetail);
     // 资料 / 无时间栏默认展开 → 同样按需加载图片 / 补 body
     if (filter === 'all' && this.data.showInfo) infoCards.forEach(loadDetail);
   },
-  // 该组是否有「无 url、也无 archive」的附件（需要拉一次完整 body）
+  // 该组是否有需要拉完整 body 的内容：
+  //   a) lite 列表里被置空的图片（展开时要显示）——文件不自动拉，点开才拉，省流量；
+  //   b) 旧缓存里「无 url、也无 archive」的文件（数据管线后补 archive、ts 未变）。
   _needsGroupBody(g) {
     if (!g) return false;
+    if (this._bodyTried && this._bodyTried[g.id]) return false;
     return (g.items || []).some(function (it) {
-      return it && it.kind === 'file' && !it.url && !it.src && !notice.archiveInfo(it).ok;
+      if (!it) return false;
+      if (it.kind === 'img' && it.lazy) return true;
+      return it.kind === 'file' && !it.url && !it.src && !notice.archiveInfo(it).ok;
     });
   },
-  refreshGroupBody(gid) {
+  // 按 id 拉单条完整 body（data URI 在内存里用，不回写持久缓存）；并发去重。
+  // manual=true（用户点附件/图片）允许重试；自动路径用 _bodyTried 负缓存，防止「文件确实未获取」
+  // 的卡片每次 applyFilter 都重新拉同一行（2026-11-17 实测死循环 84 次/页）。
+  refreshGroupBody(gid, manual) {
+    this._bodyPending = this._bodyPending || {};
     this._bodyTried = this._bodyTried || {};
-    if (this._bodyTried[gid]) return;
-    this._bodyTried[gid] = true;
-    cloud.ntGroupFull(gid).then((g) => {
-      if (!g) return;
+    this._bodyFailAt = this._bodyFailAt || {};
+    if (!manual && this._bodyTried[gid]) return Promise.resolve(this._rawById(gid));
+    if (!manual && this._bodyFailAt[gid] && Date.now() - this._bodyFailAt[gid] < 10000) {
+      return Promise.reject(new Error('body-cooldown'));
+    }
+    if (this._bodyPending[gid]) return this._bodyPending[gid];
+    const p = cloud.ntGroupFull(gid).then((g) => {
+      if (!g) throw new Error('no-body');
+      this._bodyTried[gid] = true;
+      delete this._bodyFailAt[gid];
       const i = (this._raw || []).findIndex(function (x) { return x.id === gid; });
-      if (i < 0) return;
+      if (i < 0) return g;
       this._raw[i] = g;
       this._all = this._raw.map(function (raw) { return mapGroup(raw); });
       this.applyFilter();
-    }).catch(function () { /* 离线/失败保留旧卡片 */ });
+      return g;
+    }).catch((e) => {
+      this._bodyFailAt[gid] = Date.now();
+      throw e;
+    }).then((g) => {
+      delete this._bodyPending[gid];
+      return g;
+    }, (e) => {
+      delete this._bodyPending[gid];
+      throw e;
+    });
+    this._bodyPending[gid] = p;
+    return p;
   },
 
   _rawById(id) {
@@ -893,8 +938,21 @@ Page({
     if (this._imgs[gid] || this._loadingImgs[gid]) return Promise.resolve(this._imgs[gid] || []);
     const g = this._rawById(gid);
     if (!g) return Promise.resolve([]);
-    const list = (g.items || []).filter(function (x) { return x.kind === 'img' && x.src; }).slice(0, 9);
-    if (!list.length) { this._imgs[gid] = []; return Promise.resolve([]); }
+    const all = (g.items || []).filter(function (x) { return x.kind === 'img' && (x.src || x.lazy); });
+    if (!all.length) { this._imgs[gid] = []; return Promise.resolve([]); }
+    // lite 列表的图片 data URI 已置空：先拉单条完整 body，再走原有落盘流程（只拉一次，按卡片懒加载）
+    if (all.some(function (x) { return !x.src && x.lazy; })) {
+      if (this._bodyTried && this._bodyTried[gid]) { this._imgs[gid] = []; return Promise.resolve([]); }
+      this._loadingImgs[gid] = true;
+      return this.refreshGroupBody(gid).then(() => {
+        this._loadingImgs[gid] = false;
+        return this.ensureImgs(gid);
+      }).catch((e) => {
+        this._loadingImgs[gid] = false;
+        return [];
+      });
+    }
+    const list = all.slice(0, 9);
     this._loadingImgs[gid] = true;
     return Promise.all(list.map(function (it) {
       const src = String(it.src || '');
@@ -1520,24 +1578,43 @@ Page({
   closeRaw() { this.setData({ rawSheet: false }); },
 
   // 文件：预览 / 下载（data URI 写临时文件；http(s) 签名 URL 先 downloadFile；失败 reject 由调用方 toast）
+  // 2026-11-17：lite 列表的 url 为空 + lazy=true → 先按 id 拉完整 body，再取 url（不缩减附件功能）。
   _filePathOf(gid, i) {
-    const g = this._rawById(gid);
-    const it = g && (g.items || [])[i];
-    if (!it) return Promise.reject(new Error('no-item'));
-    const url = it.url || it.src || '';
-    if (!url) return Promise.reject(new Error('no-url'));
-    return tempPathOf(url, it.name || 'file.bin');
+    const itemOf = () => {
+      const g = this._rawById(gid);
+      return g && (g.items || [])[i];
+    };
+    const first = itemOf();
+    if (!first) return Promise.reject(new Error('no-item'));
+    const ready = (first.url || first.src)
+      ? Promise.resolve(first)
+      : (first.lazy ? this.refreshGroupBody(gid, true).then(itemOf) : Promise.reject(new Error('no-url')));
+    return ready.then((it) => {
+      if (!it) throw new Error('no-item');
+      const url = it.url || it.src || '';
+      if (!url) throw new Error('no-url');
+      return tempPathOf(url, it.name || 'file.bin');
+    });
   },
-  // 压缩包内文件路径：同 _filePathOf（data URI / http(s) URL 两种形态都支持）
+  // 压缩包内文件路径：同 _filePathOf（data URI / http(s) URL 两种形态都支持；lazy 时先拉 body）
   _archivePathOf(gid, i, ai) {
-    const g = this._rawById(gid);
-    const it = g && (g.items || [])[i];
-    const a = it && it.archive;
-    const f = a && (a.files || [])[ai];
-    if (!f) return Promise.reject(new Error('no-archive-file'));
-    const url = f.url || f.src || '';
-    if (!url) return Promise.reject(new Error('no-url'));
-    return tempPathOf(url, f.name || 'file.bin');
+    const fileOf = () => {
+      const g = this._rawById(gid);
+      const it = g && (g.items || [])[i];
+      const a = it && it.archive;
+      return a && (a.files || [])[ai];
+    };
+    const first = fileOf();
+    if (!first) return Promise.reject(new Error('no-archive-file'));
+    const ready = (first.url || first.src)
+      ? Promise.resolve(first)
+      : (first.lazy ? this.refreshGroupBody(gid, true).then(fileOf) : Promise.reject(new Error('no-url')));
+    return ready.then((f) => {
+      if (!f) throw new Error('no-archive-file');
+      const url = f.url || f.src || '';
+      if (!url) throw new Error('no-url');
+      return tempPathOf(url, f.name || 'file.bin');
+    });
   },
   // 压缩包内部文件预览（仅清单/大文件不可点；防重复点击）
   previewArchiveFile(e) {
@@ -1548,7 +1625,7 @@ Page({
     const a = it && it.archive;
     const f = a && (a.files || [])[ai];
     if (!f) return;
-    if (!f.url && !f.src) { util.toast('仅清单，无法预览'); return; }
+    if (!f.url && !f.src && !f.lazy) { util.toast('仅清单，无法预览'); return; }
     if (this._archOpening) return;
     this._archOpening = true;
     wx.showLoading({ title: '打开中', mask: true });
@@ -1573,7 +1650,7 @@ Page({
     const g = this._rawById(gid);
     const it = g && (g.items || [])[i];
     if (!it) return;
-    if (it.url || it.src) { this.previewFile(e); return; }
+    if (it.url || it.src || it.lazy) { this.previewFile(e); return; }
     if (notice.archiveInfo(it).ok) return;
     this.filePending(e);
   },
@@ -1583,8 +1660,8 @@ Page({
     const i = Number(e.currentTarget.dataset.i);
     const raw = this._rawById(gid);
     const it = raw && (raw.items || [])[i];
-    // 已有 url 或压缩包已识别（archiveOk）不弹「待获取」
-    if (!it || it.url || it.src || notice.archiveInfo(it).ok) return;
+    // 已有 url 或 lazy（lite 列表，点开可拉完整 body）或压缩包已识别（archiveOk）不弹「待获取」
+    if (!it || it.url || it.src || it.lazy || notice.archiveInfo(it).ok) return;
     const group = groupNameOf(raw);
     const name = (it && (it.name || it.text)) || '该文件';
     wx.showModal({
@@ -1608,7 +1685,7 @@ Page({
     const g = this._rawById(gid);
     const it = g && (g.items || [])[i];
     if (!it) return;
-    if (!it.url && !it.src) { util.toast('该附件没有可打开的地址'); return; }
+    if (!it.url && !it.src && !it.lazy) { util.toast('该附件没有可打开的地址'); return; }
     wx.showLoading({ title: '打开中', mask: true });
     this._filePathOf(gid, i).then((path) => {
       wx.hideLoading();
@@ -1644,6 +1721,16 @@ Page({
     }).catch(() => { wx.hideLoading(); util.toast('下载失败'); });
   },
 
+  // 图片占位点击加载（前 AUTO_IMG_CARDS 张有图片的卡自动加载；其余不自动拉完整 body）
+  loadImgs(e) {
+    const gid = e.currentTarget.dataset.gid;
+    if (!gid) return;
+    wx.showLoading({ title: '加载中', mask: true });
+    this.ensureImgs(gid).then((imgs) => {
+      wx.hideLoading();
+      if (!imgs || !imgs.length) util.toast('图片加载失败');
+    }).catch(() => { wx.hideLoading(); util.toast('图片加载失败'); });
+  },
   // 图片预览（全部图片）
   previewImgs(e) {
     const gid = e.currentTarget.dataset.gid;
@@ -1695,3 +1782,5 @@ Page({
     });
   }
 });
+
+

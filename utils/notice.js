@@ -950,7 +950,10 @@ function archiveInfo(item) {
       kind: String(f.kind || ''),
       size: String(f.size || ''),
       textLen: Number(f.textLen) || 0,
-      hasUrl: !!(f.url || f.src)
+      // 2026-11-17：列表接口把 data URI 替换为空串 + lazy=true；仍视为「可预览」，
+      // 点开时由 pages/nt 按 id 拉完整 body（不缩减功能）。
+      hasUrl: !!(f.url || f.src || f.lazy),
+      lazy: !!f.lazy
     };
   }) : [];
   return {

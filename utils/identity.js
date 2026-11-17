@@ -98,6 +98,21 @@ function goIdentity() {
   try { wx.reLaunch({ url: IDENTITY_PAGE }); } catch (e) { /* ignore */ }
 }
 
+// 云端 401（token 过期/被清）统一入口：清本机身份 + 通知缓存，回身份页，避免继续用失效 token
+// 每 5 秒最多触发一次（多个并发请求同时 401 时只跳一次，不弹多次 toast/不产生跳转循环）。
+let _expiredAt = 0;
+function onAuthExpired() {
+  const now = Date.now();
+  if (_expiredAt && now - _expiredAt < 5000) return;
+  _expiredAt = now;
+  if (!has()) return;
+  clear();
+  try {
+    wx.showToast({ title: '身份已过期，请重新验证', icon: 'none', duration: 1800 });
+  } catch (e) { /* ignore */ }
+  goIdentity();
+}
+
 // 验证身份：class_verify → 保存身份 → 拉取 class_members 名单
 // 返回 Promise<{ok, reason?, identity?, members?}>
 function login(sidIn, nameIn) {
@@ -130,5 +145,5 @@ module.exports = {
   KEY, IDENTITY_PAGE,
   get, has, save, clear,
   token, sid, name, role, badge, isAdmin, label,
-  ensure, goIdentity, login, logout
+  ensure, goIdentity, login, logout, onAuthExpired
 };

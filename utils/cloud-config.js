@@ -28,7 +28,10 @@ module.exports = {
   // 班级身份 RPC（CloudBase PostgreSQL 函数名；一般不用改）
   rpc: {
     verify: 'rpc/class_verify',
-    members: 'rpc/class_members'
+    members: 'rpc/class_members',
+    // 2026-11-17 通知列表轻量化：服务端把 body 里的 data URI 替换为空串 + lazy=true
+    // （契约 web/deploy/cloudbase/2026-11-17_notice_meta.sql）。失败时 utils/cloud.js 自动回退旧整表。
+    noticesMeta: 'rpc/class_notices_meta'
   },
 
   // 课表静态快照（legacy 兜底，只读）：2026-11-07 起课表优先读 CloudBase `site_assets` 行
@@ -37,6 +40,10 @@ module.exports = {
   // 小程序后台 → 开发管理 → 服务器域名 → request 合法域名（不添加则 legacy 兜底不可用，只显示本机缓存）。
   // 留空则 CloudBase 失败后直接 reject（只用本机缓存 / 旧课表数据）。
   ttUrl: 'https://tool.furina.fun/tt.json',
+  // 2026-11-17（DNS 暂停期性能优化）：legacy 地址仍保留，但默认关闭。
+  // tool.furina.fun 尚未恢复解析，开启会让每次 CloudBase 抖动都多打一次必失败的请求（拉高请求错误率）；
+  // 域名恢复后把 ttLegacy 改回 true 即恢复旧链路，CloudBase 主链路与本机缓存不受影响。
+  ttLegacy: false,
 
   // 网页版站点基址（只用于生成「抽签存证核验链接」= webBase + '/#verify=<recordId>'，
   // 小程序不向该域名发请求，因此不需要配到 request 合法域名；用户扫码后在浏览器打开核验页）。

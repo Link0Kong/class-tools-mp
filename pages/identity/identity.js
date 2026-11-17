@@ -37,21 +37,73 @@ Page({
     const id = identity.get();
     if (id) {
       this.setData({ identity: viewOf(id), name: id.name, sid: id.sid, err: '' });
+      // 自动进入：onReady 立即切；onShow 再放一个 600ms 兜底（冷启动 onReady 迟到时也能进）。
       if (!this._auto) {
-        this._auto = true;
-        this._t = setTimeout(() => {
-          this._t = null;
-          if (identity.has()) wx.switchTab({ url: '/pages/index/index' });
-        }, 520);
+        if (this._fallbackT) clearTimeout(this._fallbackT);
+        this._fallbackT = setTimeout(() => {
+          this._fallbackT = null;
+          if (!this._auto && identity.has()) { this._auto = true; this._scheduleEnter(0); }
+        }, 600);
       }
     } else {
       this._auto = false;
+      this._entering = false;
+      if (this._fallbackT) { clearTimeout(this._fallbackT); this._fallbackT = null; }
       if (this._t) { clearTimeout(this._t); this._t = null; }
       this.setData({ identity: null });
     }
   },
-  onHide() { if (this._t) { clearTimeout(this._t); this._t = null; } },
-  onUnload() { if (this._t) { clearTimeout(this._t); this._t = null; } },
+  onReady() {
+    if (this._auto || !identity.has()) return;
+    if (this._fallbackT) { clearTimeout(this._fallbackT); this._fallbackT = null; }
+    this._auto = true;
+    // 2026-11-17：本机已有有效身份时不再固定等 520ms；onReady 后立即切工作台。
+    this._scheduleEnter(0);
+  },
+  _scheduleEnter(delay) {
+    if (this._entering) return;
+    this._entering = true;
+    const tryEnter = (n) => {
+      this._t = null;
+      if (!identity.has()) { this._entering = false; this._auto = false; return; }
+      let settled = false;
+      const done = function () { settled = true; };
+      try {
+        wx.switchTab({ url: '/pages/index/index', success: done, fail: done });
+      } catch (e) { done(); }
+      // 冷启动早期 switchTab 可能挂起：500ms 后仍未回调且仍在身份页就重试（最多 5 次）。
+      this._t = setTimeout(() => {
+        if (settled) return;
+        const pages = getCurrentPages();
+        const cur = pages[pages.length - 1];
+        if (cur && cur.route !== 'pages/identity/identity') { this._entering = false; return; }
+        // devtools/极慢冷启动下 switchTab 可能挂起：先 reLaunch 兜底一次（tab 页同样可开），
+        // 再回到 switchTab 重试；两条路都带 success/fail，不会无限等。
+        if (n === 0) {
+          try {
+            wx.reLaunch({ url: '/pages/index/index', success: done, fail: done });
+          } catch (e) { done(); }
+          this._t = setTimeout(() => {
+            if (!settled) { this._entering = false; this._auto = false; }
+          }, 800);
+          return;
+        }
+        if (n < 5) tryEnter(n + 1);
+        else { this._entering = false; this._auto = false; }
+      }, 500);
+    };
+    this._t = setTimeout(() => tryEnter(0), delay || 0);
+  },
+  onHide() {
+    if (this._t) { clearTimeout(this._t); this._t = null; }
+    if (this._fallbackT) { clearTimeout(this._fallbackT); this._fallbackT = null; }
+    this._entering = false;
+  },
+  onUnload() {
+    if (this._t) { clearTimeout(this._t); this._t = null; }
+    if (this._fallbackT) { clearTimeout(this._fallbackT); this._fallbackT = null; }
+    this._entering = false;
+  },
 
   onName(e) { this.setData({ name: e.detail.value, err: '' }); },
   onSid(e) {

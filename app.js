@@ -14,13 +14,16 @@
 //
 // 云端：只用 wx.request，配置在 utils/cloud-config.js；未配置 / 断网 → 本机功能照常。
 // 硬约束：不引 CDN / npm / 第三方 UI 库。
-const store = require('./utils/store.js');
 const identity = require('./utils/identity.js');
-const cloud = require('./utils/cloud.js');
 const version = require('./utils/version.js');
-const diagUtil = require('./utils/diag.js');
-const notify = require('./utils/notify.js');
 const appearance = require('./utils/appearance.js');
+
+// 2026-11-17 启动性能：cloud.js（111KB）/ store / diag / notify 不再在 app.js 顶部 require。
+// 身份页首帧只需要 identity/version/appearance；重模块等到首屏后用 cloudMod() 等懒加载，
+// 避免冷启动 evaluateScript 阶段解析全部业务代码（小程序「按需注入」下这属于公有代码）。
+function cloudMod() { return require('./utils/cloud.js'); }
+function diagMod() { return require('./utils/diag.js'); }
+function notifyMod() { return require('./utils/notify.js'); }
 
 // 2026-11-15 外观（跟随系统/浅色/深色）：在 App() 之前包装全局 Page，给每个页面注入
 // themeStyle/themeClass（页面 WXML 根节点 <page-meta page-style="{{themeStyle}}"> 使用），
@@ -114,6 +117,8 @@ function reportJsError(err) {
     const app = getApp && getApp();
     if (app && app.globalData) app.globalData.jsErrorCount = (app.globalData.jsErrorCount || 0) + 1;
     if (!identity.has()) return;                       // 仅已登录身份才上报
+    const cloud = cloudMod();
+    const diagUtil = diagMod();
     if (typeof cloud.diagReport !== 'function') return;
     const now = Date.now();
     _errSent = _errSent.filter(function (t) { return now - t < ERR_WINDOW; });
@@ -158,8 +163,6 @@ App({
   },
 
   onLaunch() {
-    // 订阅消息云函数（与班级身份无关；未启用云开发时静默跳过）
-    try { if (wx.cloud) wx.cloud.init({ env: 'fengdan-d6g7hnk4gf35685b3', traceUser: true }); } catch (e) {}
     // AI 页面接力监听（模块级已尝试挂载；这里重试，保证 onLaunch 后一定能接住）
     try { hookAgentHandoff(); } catch (e) {}
     // 诊断 v2：内存警告计数（只计数，不弹窗；诊断页「内存」检查项展示）
@@ -171,8 +174,9 @@ App({
         });
       }
     } catch (e) { /* 基础库不支持时忽略 */ }
-    // 数据层：冷启动预读一次
-    try { store.get(); } catch (e) { /* 读取失败不阻塞启动 */ }
+    // 2026-11-17：wx.cloud.init / store.get() 移出 onLaunch 首帧关键路径。
+    // 云开发 SDK 只在真正要发订阅消息时初始化（utils/notify.ensureInit）；
+    // 主数据由工作台 onShow 的 store.reload() 读取，身份页不需要。
   },
 
   // 全局 JS 错误（诊断 v2）：同步计数 + 异步脱敏上报（仅已登录、去重、限频、失败静默）
@@ -185,7 +189,6 @@ App({
   onAgentHandoff(payload) { receiveAgentHandoff(payload); },
 
   onShow() {
-    this.globalData.remoteReady = cloud.isEnabled();
     this.globalData.identity = identity.get();
     if (!identity.has()) {
       this.stopSync();
@@ -204,7 +207,7 @@ App({
     this.clearWarm();
     this.stopSync();
     // 「选完马上退出」：页面已把选择同步落盘；这里取消防抖并立即尝试推送一次 userdata。
-    try { cloud.udFlush(); } catch (e) { /* 离线/未登录时失败不影响本机保存 */ }
+    try { cloudMod().udFlush(); } catch (e) { /* 离线/未登录时失败不影响本机保存 */ }
   },
 
   // 首屏后预热 / 回到前台后的后台同步（不阻塞 UI）
@@ -215,6 +218,8 @@ App({
   // 首屏后的次要云请求：名单缓存、访问记录、marks 强拉，再整表后台同步
   warmSync() {
     if (!identity.has()) return;
+    const cloud = cloudMod();
+    this.globalData.remoteReady = cloud.isEnabled();
     cloud.ensureMembers(false).catch(function () { /* 名单拉取失败保留本机缓存 */ });
     cloud.visitLog();  // 每小时最多一次按账号的访问记录
     // 需求 16：回前台/冷启动后强制拉一次 marks（页面 onShow 已能立即触发；这里再兜底一次），失败静默。
@@ -222,26 +227,49 @@ App({
     if (!cloud.marksFresh(5000)) {
       cloud.marksPull(true).catch(function () { /* 离线保留本机状态 */ });
     }
-    // 需求 11（2026-11-11）：把当前班级 token 上报云函数 __notify_cfg（30 分钟节流，失败静默），
-    // 供 notify 定时器通过 PostgREST 轮询新通知；token 过期由任一小程序客户端再次 bootstrap 刷新。
-    try { notify.bootstrap(identity.token()).catch(function () { /* 静默 */ }); } catch (e) { /* 静默 */ }
-    // 通知提醒 catch-up（2026-11-10 修复）：定时触发器之外的送达保障——回前台时补发本人已到点的提醒；
-    // 云函数只处理调用者 openid，失败静默（离线/未授权不影响启动）。
-    try { notify.flushReminders().catch(function () { /* 静默 */ }); } catch (e) { /* 静默 */ }
+    // 2026-11-17：订阅消息云函数只在用户真正开过提醒时才调用（以前每次前台固定 2 次，
+    // 云函数未部署/未联网时只会制造失败请求）。init 也延后到这里，不占启动首帧。
+    let d = null;
+    try { d = require('./utils/store.js').get(); } catch (e) { /* ignore */ }
+    const remindCount = d ? Object.keys(d.ntRemind || {}).length : 0;
+    const hwRemindCount = d ? Object.keys(d.hwRemind || {}).length : 0;
+    if (d && (d.ntSub || remindCount || hwRemindCount)) {
+      const notify = notifyMod();
+      // 需求 11（2026-11-11）：把当前班级 token 上报云函数 __notify_cfg（30 分钟节流，失败静默），
+      // 供 notify 定时器通过 PostgREST 轮询新通知；token 过期由任一小程序客户端再次 bootstrap 刷新。
+      if (d.ntSub) {
+        try { notify.bootstrap(identity.token()).catch(function () { /* 静默 */ }); } catch (e) { /* 静默 */ }
+      }
+      // 通知提醒 catch-up（2026-11-10 修复）：定时触发器之外的送达保障——回前台时补发本人已到点的提醒；
+      // 云函数只处理调用者 openid，失败静默（离线/未授权不影响启动）。
+      try { notify.flushReminders().catch(function () { /* 静默 */ }); } catch (e) { /* 静默 */ }
+    }
     this.bgSync();
   },
-  clearWarm() { if (this._warmT) { clearTimeout(this._warmT); this._warmT = null; } },
+  clearWarm() {
+    if (this._warmT) { clearTimeout(this._warmT); this._warmT = null; }
+  },
 
   // 定时同步（等价网页版 setInterval 30s 的 cloudPull + udSync）
+  // 2026-11-17：等首屏后再加载 cloud.js / 启动 30s 定时器，避免身份页首帧解析 111KB 业务模块。
   startSync() {
-    if (!cloud.isEnabled() || !identity.has()) return;
-    if (this._timer) return;
-    this._timer = setInterval(() => { this.bgSync(); }, SYNC_MS);
+    if (!identity.has()) return;
+    if (this._timer || this._startT) return;
+    this._startT = setTimeout(() => {
+      this._startT = null;
+      const cloud = cloudMod();
+      if (!cloud.isEnabled() || !identity.has() || this._timer) return;
+      this._timer = setInterval(() => { this.bgSync(); }, SYNC_MS);
+    }, WARM_MS);
   },
-  stopSync() { if (this._timer) { clearInterval(this._timer); this._timer = null; } },
+  stopSync() {
+    if (this._startT) { clearTimeout(this._startT); this._startT = null; }
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+  },
 
   bgSync() {
     if (!identity.has()) return Promise.resolve(null);
+    const cloud = cloudMod();
     return cloud.cloudPull().then(() => {
       if (!identity.has()) return null;
       const now = Date.now();
