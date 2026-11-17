@@ -98,6 +98,8 @@ Page({
     if (this._t) { clearTimeout(this._t); this._t = null; }
     if (this._fallbackT) { clearTimeout(this._fallbackT); this._fallbackT = null; }
     this._entering = false;
+    // 若在自动进入前退到后台，允许回到前台后重新调度（已在工作台时本页会 unload，不受影响）
+    this._auto = false;
   },
   onUnload() {
     if (this._t) { clearTimeout(this._t); this._t = null; }
