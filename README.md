@@ -372,7 +372,7 @@
 | 规则呈现（2026-11-06 用户反馈调整） | 页面内 | **电费计费规则移入「宿舍电费」页电量统计 tiles 区**：tiles 网格内新增满宽「计费规则」条（电价 0.58 元/度、区间电费 ≈¥X.XX、免费 5 度电/人/月按人数（4 人间=20 度）、水费 3.03 元/吨从电费账户扣 · 1 吨≈5.2 度、已忽略扣减摘要）；**水量页规则卡只留水费规则**（3.03 元/吨、每人 2 吨水/月免费定额、超出定额×3.03、折合扣电÷0.58、无阶梯/来源/以学校最新通知为准），不再重复电费单价/电免费定额；人数文案只提每月免费 8/12 吨水；不出现市政阶梯价 |
 | 同步（UD v6） | `utils/privacy.js` / `utils/cloud.js` / `utils/store.js` | 新增第 11 个 section `water`（默认 `{rooms:{}}`，值内不镜像 at）：`water.rooms[<rv>]={p,recs:[{m:"YYYY-MM",r,ts}]}`，recs 按月唯一升序 ≤120、与网页端同格式；顶层 blob **14 键**（`v,at,homeTools,fit,draw,group,roster,hide,tt,prefs,nick,power,water,homeToolsAt`）；旧数据无 water → 默认、不报错；未拥有端原样保留；保存记录 → `store.save()` → 既有 1200ms 防抖同步 |
 | 隐私 | `utils/privacy.js` | 水量与电费一样**不进导出 JSON**（宿舍号红线）；同步范围新增「抄表记录（水量）」 |
-| 图标 | `images/tool-water.png` | 40×40 PNG-8（665 B），媒体预算仍 < 200 KB |
+| 图标 | `images/tool-water.png` | 96×96 PNG-8（309 B）白色线性水滴，风格对齐同批线性图标（96 画布 / 白描边 / 透明底）；媒体预算仍 < 200 KB |
 
 测试：`node unit.js` **212/212 PASS**（含 water 专项 12 项：公式 4/6 人间、未超定额=0、对比/删除重算、store 旧数据默认、
 UD water section 合并/恢复、页面渲染/保存/删除/人数切换/未选择 0 数据）、`node sync_contract_test.js` **31/31 PASS**
