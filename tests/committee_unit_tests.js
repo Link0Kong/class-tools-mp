@@ -67,6 +67,27 @@ function purge() {
 }
 function R(rel) { return require(path.join(ROOT, rel)); }
 
+// 加载页面定义（Page 被调用即捕获配置对象，不执行生命周期）
+function loadPage(rel) {
+  let def = null;
+  global.Page = function (d) { def = d; };
+  try { require(path.join(ROOT, rel)); } finally { delete global.Page; }
+  assert.ok(def, rel + ' 未注册 Page');
+  return def;
+}
+// 最小页面实例：data 深拷贝 + setData 浅合并（回调同步触发）
+function makePage(def) {
+  const inst = { data: JSON.parse(JSON.stringify(def.data || {})) };
+  Object.keys(def).forEach(function (k) {
+    if (typeof def[k] === 'function') inst[k] = def[k];
+  });
+  inst.setData = function (patch, cb) {
+    Object.keys(patch || {}).forEach(function (k) { inst.data[k] = patch[k]; });
+    if (typeof cb === 'function') cb();
+  };
+  return inst;
+}
+
 module.exports.run = async function (test) {  test('名单：班委分类只显示 role/badge 且按职务权重排序', function () {
     purge();
     global.wx = createCtx().wxMock;
@@ -100,12 +121,20 @@ module.exports.run = async function (test) {  test('名单：班委分类只显�
     assert.ok(v.note.indexOf('团员') >= 0 && v.note.indexOf('班级团员库') >= 0, '来源说明');
   });
 
-  test('名单：团员未加载时显示加载态、无计数', function () {
+  test('名单：团员未加载时显示加载态（计数占位）', function () {
     const roster = R('utils/roster.js');
     const v = roster.listView('league', { members: MEMBERS, leagueLoaded: false });
     assert.strictEqual(v.rows.length, 0);
-    assert.strictEqual(v.counts.leagueText, '');
     assert.strictEqual(v.emptyText, '团员名单加载中…');
+    // 2026-11-19 用户反馈「团员名单在未打开时不显示数字」：未加载时也必须是数字（0），
+    // 页面用 countsLoading.league 画脉冲占位，加载完成后变真实人数。
+    assert.strictEqual(v.counts.leagueText, '0', '未加载时 tab 上仍显示数字 0（不再留空）');
+    assert.strictEqual(v.counts.league, 0);
+    assert.strictEqual(v.counts.loading.league, true, '未加载时标记 loading（画脉冲占位）');
+    assert.strictEqual(v.counts.loading.committee, false, '班委/全班本就来自班级名单，不占位');
+    assert.strictEqual(v.counts.loading.all, false);
+    assert.strictEqual(roster.listView('all', { members: MEMBERS, leagueLoaded: true }).counts.loading.league, false,
+      '加载完成后取消占位');
   });
 
   test('名单：全班分类按座号升序且仅姓名与座号', function () {
@@ -177,7 +206,83 @@ module.exports.run = async function (test) {  test('名单：班委分类只显�
     assert.ok(err2 && /not-admin/.test(String((err2 && err2.message) || err2)),
       '云端拒绝原因透传（实际：' + ((err2 && err2.message) || err2) + '）');
   });
+
+  test('名单：左右滑动切分类的纯逻辑（邻接 / 边界 / 指示条几何）', function () {
+    const roster = R('utils/roster.js');
+    assert.deepStrictEqual(roster.TAB_KEYS, ['committee', 'league', 'all'], '分类顺序 = 班委 → 团员 → 全班');
+    assert.strictEqual(roster.tabIndex('league'), 1);
+    assert.strictEqual(roster.tabIndex('nope'), 0, '未知分类回落首个');
+    assert.strictEqual(roster.tabKeyOf(2), 'all');
+    assert.strictEqual(roster.tabKeyOf(-5), 'committee', '越界钳制');
+    // dir>0 = 左滑看下一个
+    assert.strictEqual(roster.tabNeighbor('committee', 1).key, 'league');
+    assert.strictEqual(roster.tabNeighbor('league', 1).key, 'all');
+    assert.strictEqual(roster.tabNeighbor('league', -1).key, 'committee');
+    assert.strictEqual(roster.tabNeighbor('committee', -1), null, '首个分类左滑无目标（橡皮筋）');
+    assert.strictEqual(roster.tabNeighbor('all', 1), null, '最后一个分类右滑无目标（橡皮筋）');
+    // 指示条：3 段等宽 + 间距，位置单调递增且首段贴左
+    const a = roster.tabIndicator('committee'), b = roster.tabIndicator('league'), c = roster.tabIndicator('all');
+    assert.strictEqual(a.left, '0.000%');
+    assert.strictEqual(a.width, b.width);
+    assert.ok(parseFloat(b.left) > parseFloat(a.left) && parseFloat(c.left) > parseFloat(b.left), '位置单调递增');
+    assert.ok(parseFloat(c.left) + parseFloat(c.width) <= 100.001, '最后一段不溢出容器');
+  });
+
+  await test('名单页：滑动手势接线（横向锁定 / 提交切换 / 边界回弹 / 滑动后吞点击）', async function () {
+    purge();
+    const C = createCtx();
+    global.wx = C.wxMock;
+    const identity = R('utils/identity.js');
+    identity.save({ sid: 'sid-x', name: '测试账号', token: 'tok-x', is_admin: false });
+    const def = loadPage('pages/committee/committee.js');
+    const ctx = makePage(def);
+    def.onLoad.call(ctx, {});
+    ctx.data.state = 'data';
+    ctx.data.list = [{ key: 'a' }];
+    ctx.data.tab = 'committee';
+
+    const T = (x, y) => ({ touches: [{ clientX: x, clientY: y }], changedTouches: [{ clientX: x, clientY: y }] });
+    // 纵向手势：不应产生跟手位移
+    def.onSwipeStart.call(ctx, T(200, 300));
+    def.onSwipeMove.call(ctx, T(206, 360));
+    assert.strictEqual(ctx.data.swipeStyle, '', '纵向手势交给页面滚动');
+    def.onSwipeEnd.call(ctx, T(206, 360));
+
+    // 横向跟手 1:1
+    def.onSwipeStart.call(ctx, T(200, 300));
+    def.onSwipeMove.call(ctx, T(140, 305));
+    assert.ok(/translateX\(-60px\)/.test(ctx.data.swipeStyle), '左滑 1:1 跟手：' + ctx.data.swipeStyle);
+    // 未过阈值 56px：回弹
+    def.onSwipeEnd.call(ctx, T(160, 305));   // dx=-40
+    assert.ok(/translateX\(0\);opacity:1;transition:transform \.2s/.test(ctx.data.swipeStyle), '未过阈值应回弹');
+
+    // 过阈值：提交切到团员 → 旧内容先飞出
+    ctx.data.swipeStyle = '';
+    def.onSwipeStart.call(ctx, T(200, 300));
+    def.onSwipeMove.call(ctx, T(120, 302));
+    def.onSwipeEnd.call(ctx, T(120, 302));   // dx=-80
+    assert.strictEqual(def._tapBlocked.call(ctx), true, '真正滑动后 320ms 内吞掉点击（防误触管理/行点按）');
+    assert.ok(/translateX\(-187\.5px\);opacity:\.25;transition:transform \.16s ease/.test(ctx.data.swipeStyle),
+      '旧内容先飞出：' + ctx.data.swipeStyle);
+    await new Promise((r) => setTimeout(r, 260));
+    assert.strictEqual(ctx.data.tab, 'league', '150ms 后切到团员分类');
+    assert.ok(/translateX\(187\.5px\);opacity:0;transition:none/.test(ctx.data.swipeStyle) ||
+      /translateX\(0\);opacity:1;transition:transform \.23s/.test(ctx.data.swipeStyle),
+      '新内容从右侧进场：' + ctx.data.swipeStyle);
+    await new Promise((r) => setTimeout(r, 320));
+    assert.strictEqual(ctx.data.swipeStyle, '', '动画结束清空内联样式');
+
+    // 边界：班委第一个分类左→右滑 = 阻尼 0.28 且不切
+    ctx.data.tab = 'committee';
+    def.onSwipeStart.call(ctx, T(120, 300));
+    def.onSwipeMove.call(ctx, T(200, 300));
+    assert.ok(/translateX\(22px\)/.test(ctx.data.swipeStyle), '边界 0.28 阻尼（80×0.28≈22）：' + ctx.data.swipeStyle);
+    def.onSwipeEnd.call(ctx, T(200, 300));
+    assert.strictEqual(ctx.data.tab, 'committee', '边界不切分类');
+    def._swClear.call(ctx);
+  });
 };
+
 /* 独立运行：node committee_unit_tests.js */
 if (require.main === module) {
   let passN = 0, failN = 0;

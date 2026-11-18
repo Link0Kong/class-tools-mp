@@ -31,6 +31,7 @@ Page({
 
   onLoad: function () {
     this._sessionId = '';
+    this._since = 0;
     this._pollTimer = 0;
     this._dead = false;
     this._refreshIng = false;
@@ -86,10 +87,14 @@ Page({
     this.setData({ loading: true, err: '' });
     cloudspace.mine().then(function (r) {
       if (that._dead) return null;
+      if (r && !r.ok) {
+        that.setData({ loading: false, err: cloudspace.failText(r, '云空间连接失败') });
+        return null;
+      }
       if (r && r.ok && r.session) return r.session;
       return cloudspace.open().then(function (r2) {
         if (!r2 || !r2.ok || !r2.session) {
-          that.setData({ loading: false, err: (r2 && r2.reason) || '云空间连接失败' });
+          that.setData({ loading: false, err: cloudspace.failText(r2, '云空间连接失败') });
           return null;
         }
         return r2.session;
@@ -100,6 +105,7 @@ Page({
     }).then(function (sess) {
       if (!sess || that._dead) return;
       that._sessionId = String(sess.id || '');
+      that._since = 0;
       that.startPoll();
       that.refresh(true);
     });
@@ -109,15 +115,16 @@ Page({
     var that = this;
     if (!this._sessionId || this._refreshIng) return Promise.resolve(false);
     this._refreshIng = true;
-    return cloudspace.state(this._sessionId).then(function (r) {
+    return cloudspace.state(this._sessionId, force ? 0 : (this._since || 0)).then(function (r) {
       that._refreshIng = false;
       if (that._dead) return false;
       if (!r || !r.ok) {
-        that.setData({ loading: false, err: (r && r.reason) || '连接中断' });
+        that.setData({ loading: false, err: cloudspace.failText(r, '连接中断') });
         return false;
       }
       if (r.session) that._sessionId = String(r.session.id || that._sessionId);
-      var view = cloudspace.spaceView(r.events || [], Date.now());
+      /* v2.5：文件列表以服务端 files（会话状态）为准；事件只用来触发「收到新文件」刷新提示 */
+      var view = cloudspace.respView(r, Date.now());
       var opened = that._opened || {};
       view.files = view.files.map(function (f) {
         var n = {};
@@ -125,6 +132,8 @@ Page({
         n.opened = !!opened[String(f.id)];
         return n;
       });
+      var cur = Number(r.cursor);
+      if (isFinite(cur) && cur > (that._since || 0)) that._since = cur;
       that.setData({
         loading: false, err: '',
         files: view.files, count: view.count, bytesText: view.bytesText, expired: view.expired
@@ -332,7 +341,8 @@ Page({
       success: function (r) {
         if (!r || !r.confirm) return;
         cloudspace.deleteFile(id, that._sessionId).then(function (rr) {
-          if (!rr || !rr.ok) { util.toast((rr && rr.reason) || '删除失败'); return; }
+          if (!rr || !rr.ok) { util.toast(cloudspace.failText(rr, '删除失败')); that.refresh(true); return; }
+          if (rr.deleted === false) { util.toast('该文件已不存在（可能已过期或在其他端删除）'); that.refresh(true); return; }
           util.toast('已删除');
           that.refresh(true);
         }).catch(function () { util.toast('网络不可用'); });
@@ -349,12 +359,18 @@ Page({
       success: function (r) {
         if (!r || !r.confirm) return;
         cloudspace.closeSpace(that._sessionId).then(function (rr) {
-          if (rr && rr.ok === false) { util.toast((rr && rr.reason) || '清空失败'); return; }
+          if (!rr || rr.ok === false) {
+            /* 删除失败：不假装已清空（以前无论如何都提示「已清空」，文件其实还在） */
+            util.toast(cloudspace.failText(rr, '清空失败'));
+            that.refresh(true);
+            return;
+          }
           that._sessionId = '';
+          that._since = 0;
           that.setData({ files: [], ups: [], count: 0, bytesText: '0 B', expired: 0 });
           util.toast('云空间已清空');
           that.boot();
-        }).catch(function () { util.toast('网络不可用'); });
+        }).catch(function () { util.toast('网络不可用，清空未完成'); });
       }
     });
   }

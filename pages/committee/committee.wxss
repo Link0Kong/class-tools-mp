@@ -1,12 +1,29 @@
 .page-head { padding: 40rpx 0 20rpx; }
 .rd-head { padding: 24rpx 26rpx; }
-.rd-tabs { display: flex; flex-direction: row; gap: 12rpx; }
+.rd-tabs { position: relative; display: flex; flex-direction: row; gap: 12rpx; isolation: isolate; }
 .rd-tab { flex: 1; min-height: 72rpx; border-radius: 20rpx; background: var(--md-surface-container-high);
-  color: var(--md-on-surface-variant); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10rpx; }
-.rd-tab--on { background: var(--md-primary); color: var(--md-on-primary); }
+  color: var(--md-on-surface-variant); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10rpx;
+  position: relative; z-index: 1; transition: color .2s ease; }
+/* 2026-11-19：选中态底色由「液体滑块」.rd-ind 承担，tab 只负责文字/数字颜色 */
+.rd-tab--on { background: transparent; color: var(--md-on-primary); }
+/* 液体滑块：位置/宽度由 roster.tabIndicator() 驱动，切换时弹性滑动（与顶部工具栏同款手感） */
+.rd-ind {
+  position: absolute; top: 0; bottom: 0; z-index: 0;
+  border-radius: 20rpx; background: var(--md-primary);
+  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, .12);
+  transition: left .32s cubic-bezier(.3, .9, .32, 1), width .32s cubic-bezier(.3, .9, .32, 1);
+  pointer-events: none;
+}
 .rd-tab__name { font-size: 28rpx; font-weight: 600; }
 .rd-tab__cnt { font-size: 22rpx; font-weight: 600; min-width: 28rpx; text-align: center;
   opacity: .8; font-variant-numeric: tabular-nums; }
+/* 计数加载中：数字占位（0）画成脉冲灰条，加载完成后自然变成真实人数（用户 2026-11-19 反馈） */
+.rd-tab__cnt--wait {
+  color: transparent; border-radius: 6rpx; overflow: hidden;
+  background: currentColor; opacity: .28;
+  animation: rd-cnt-pulse 1.1s ease-in-out infinite;
+}
+@keyframes rd-cnt-pulse { 0%, 100% { opacity: .18; } 50% { opacity: .42; } }
 .rd-meta { display: flex; flex-direction: row; align-items: center; gap: 12rpx; margin-top: 16rpx; }
 .rd-note { flex: 1; font-size: 24rpx; color: var(--md-on-surface-variant); line-height: 1.5; }
 .rd-manage { flex: none; font-size: 26rpx; font-weight: 600; color: var(--md-primary);
@@ -28,3 +45,11 @@
 .bz-pills { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 8rpx; }
 .bz-pill { height: 44rpx; font-size: 22rpx; padding: 0 18rpx; }
 .bz-foot { text-align: center; padding: 28rpx 0 8rpx; }
+
+/* ===================== 左右滑动切分类（与课表页 .ttswipe 同款） ===================== */
+/* 手势容器只覆盖名单内容（含空态/加载态），不包顶部 tab 头——头部「管理」按钮不会被滑动误触；
+   纵向滚动交给页面（不设 touch-action，纵向手势不 preventDefault）。 */
+.rd-swipe { margin-top: 16rpx; }
+.rd-swipe-track { will-change: transform, opacity; }
+/* 首行卡片不再叠加 margin-top（间距由 .rd-swipe 提供），保证滑动时内容块整体移动 */
+.rd-swipe-track > .bz-card:first-child { margin-top: 0; }

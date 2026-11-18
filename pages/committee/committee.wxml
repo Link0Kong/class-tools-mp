@@ -7,19 +7,21 @@
   </view>
 
   <view class="m3-card m3-card--filled enter enter-1 rd-head">
+    <!-- 三个分类：点击切换 + 左右滑动切换（液体滑块指示当前分类） -->
     <view class="rd-tabs">
       <view class="rd-tab {{tab === 'committee' ? 'rd-tab--on' : ''}}" data-tab="committee" bindtap="switchTab">
         <text class="rd-tab__name">班委</text>
-        <text class="rd-tab__cnt">{{counts.committee}}</text>
+        <text class="rd-tab__cnt {{counts.loading.committee ? 'rd-tab__cnt--wait' : ''}}">{{counts.committee}}</text>
       </view>
       <view class="rd-tab {{tab === 'league' ? 'rd-tab--on' : ''}}" data-tab="league" bindtap="switchTab">
         <text class="rd-tab__name">团员</text>
-        <text class="rd-tab__cnt">{{counts.leagueText}}</text>
+        <text class="rd-tab__cnt {{counts.loading.league ? 'rd-tab__cnt--wait' : ''}}">{{counts.leagueText}}</text>
       </view>
       <view class="rd-tab {{tab === 'all' ? 'rd-tab--on' : ''}}" data-tab="all" bindtap="switchTab">
         <text class="rd-tab__name">全班</text>
-        <text class="rd-tab__cnt">{{counts.all}}</text>
+        <text class="rd-tab__cnt {{counts.loading.all ? 'rd-tab__cnt--wait' : ''}}">{{counts.all}}</text>
       </view>
+      <view class="rd-ind" style="left:{{indicator.left}};width:{{indicator.width}}"></view>
     </view>
     <view class="rd-meta">
       <text class="rd-note">{{note}}</text>
@@ -31,35 +33,43 @@
     </view>
   </view>
 
-  <block wx:if="{{state === 'data'}}">
-    <view class="m3-card m3-card--outlined bz-card enter enter-2 {{item.canEditRole ? 'rd-row--edit' : ''}}"
-      wx:for="{{list}}" wx:key="key"
-      data-sid="{{item.sid}}" data-name="{{item.name}}" data-role="{{item.role}}"
-      bindtap="onRowTap">
-      <view class="bz-row">
-        <view class="bz-seat">{{item.seat || '—'}}</view>
-        <view class="grow">
-          <view class="bz-name">{{item.name}}<text wx:if="{{item.isAdmin}}" class="bz-admin">管理员</text></view>
+  <!-- 名单内容：左右滑动切分类（与课表页同款跟手 + 松手吸附/飞出飞入；首个/最后一个分类橡皮筋回弹） -->
+  <view class="rd-swipe" bindtouchstart="onSwipeStart" bindtouchmove="onSwipeMove"
+        bindtouchend="onSwipeEnd" bindtouchcancel="onSwipeCancel">
+    <view class="rd-swipe-track" style="{{swipeStyle}}">
+
+      <block wx:if="{{state === 'data'}}">
+        <view class="m3-card m3-card--outlined bz-card enter enter-2 {{item.canEditRole ? 'rd-row--edit' : ''}}"
+          wx:for="{{list}}" wx:key="key"
+          data-sid="{{item.sid}}" data-name="{{item.name}}" data-role="{{item.role}}"
+          bindtap="onRowTap">
+          <view class="bz-row">
+            <view class="bz-seat">{{item.seat || '—'}}</view>
+            <view class="grow">
+              <view class="bz-name">{{item.name}}<text wx:if="{{item.isAdmin}}" class="bz-admin">管理员</text></view>
+            </view>
+            <view class="bz-pills">
+              <text wx:if="{{item.role}}" class="pill pill--primary bz-pill">{{item.role}}</text>
+              <text wx:if="{{item.badge && item.badge !== item.role}}" class="pill pill--tertiary bz-pill">{{item.badge}}</text>
+              <text wx:if="{{item.showLeague}}" class="pill pill--tertiary bz-pill">团员</text>
+              <text wx:if="{{item.canEditRole && !item.role}}" class="rd-edit-hint">设置职务</text>
+            </view>
+          </view>
         </view>
-        <view class="bz-pills">
-          <text wx:if="{{item.role}}" class="pill pill--primary bz-pill">{{item.role}}</text>
-          <text wx:if="{{item.badge && item.badge !== item.role}}" class="pill pill--tertiary bz-pill">{{item.badge}}</text>
-          <text wx:if="{{item.showLeague}}" class="pill pill--tertiary bz-pill">团员</text>
-          <text wx:if="{{item.canEditRole && !item.role}}" class="rd-edit-hint">设置职务</text>
-        </view>
+        <view class="t-label-m muted bz-foot">名单由云端班级名单（class_members / class_league）下发 · 下拉可刷新</view>
+      </block>
+
+      <view wx:elif="{{state === 'empty'}}" class="m3-card m3-card--outlined enter enter-2">
+        <empty-state icon="🏅" title="{{emptyText}}"
+          text="{{err || (tab === 'league' ? '团员名单来自班级团员库；可下拉刷新重试' : (tab === 'all' ? '下拉刷新，或稍后重新进入本页' : '当前班级名单里还没有填写职务的成员'))}}"
+          action-text="刷新" bind:action="refresh"></empty-state>
       </view>
+
+      <view wx:else class="m3-card m3-card--filled enter enter-2">
+        <view class="sk sk-line sk-shimmer" style="width:40%"></view>
+        <view class="sk sk-card sk-shimmer" style="margin-top:20rpx"></view>
+      </view>
+
     </view>
-    <view class="t-label-m muted bz-foot">名单由云端班级名单（class_members / class_league）下发 · 下拉可刷新</view>
-  </block>
-
-  <view wx:elif="{{state === 'empty'}}" class="m3-card m3-card--outlined enter enter-2">
-    <empty-state icon="🏅" title="{{emptyText}}"
-      text="{{err || (tab === 'league' ? '团员名单来自班级团员库；可下拉刷新重试' : (tab === 'all' ? '下拉刷新，或稍后重新进入本页' : '当前班级名单里还没有填写职务的成员'))}}"
-      action-text="刷新" bind:action="refresh"></empty-state>
-  </view>
-
-  <view wx:else class="m3-card m3-card--filled enter enter-2">
-    <view class="sk sk-line sk-shimmer" style="width:40%"></view>
-    <view class="sk sk-card sk-shimmer" style="margin-top:20rpx"></view>
   </view>
 </view>

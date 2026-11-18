@@ -125,6 +125,48 @@ function run(outerTest) {
     assert.strictEqual(cs.safeName(''), 'file');
     assert.ok(cs.safeName('x'.repeat(300)).length <= 120);
   });
+  /* v2.5：文件列表以服务端 files 为准（事件被截断 / 只拉增量也不能丢文件） */
+  T('A8 listView：服务端文件清单 → 视图（倒序/字节/过期计数/带 at）', function () {
+    const now = 1700000000000;
+    const v = cs.listView([
+      { id: 'a', name: 'a.pdf', size: 1024, mime: 'application/pdf', downloadUrl: 'http://x/a', at: now - 5000 },
+      { id: 'b', name: 'b.jpg', size: 2048, mime: 'image/jpeg', downloadUrl: 'http://x/b', at: now - 1000 },
+      { id: 'c', name: 'gone.bin', size: 9, expired: true }
+    ], now, 1);
+    assert.strictEqual(v.count, 2);
+    assert.strictEqual(v.bytes, 3072);
+    assert.strictEqual(v.expired, 1);
+    assert.deepStrictEqual(v.files.map(function (f) { return f.id; }), ['b', 'a']);
+    assert.strictEqual(v.files[0].at, now - 1000);
+    assert.strictEqual(v.files[0].ico, '🖼');
+  });
+  T('A9 respView：优先服务端 files；旧服务端无 files 时回退事件合并', function () {
+    const now = 1700000000000;
+    const withFiles = cs.respView({
+      ok: true,
+      events: [],
+      files: [{ id: 'a', name: '清单也有.txt', size: 10, mime: 'text/plain', downloadUrl: 'http://x/a', at: now }],
+      expiredNotice: 0
+    }, now);
+    assert.strictEqual(withFiles.count, 1);
+    assert.strictEqual(withFiles.files[0].name, '清单也有.txt');
+    const legacy = cs.respView({
+      ok: true,
+      events: [{ seq: 1, kind: 'file', at: now, payload: { fileId: 'z', name: 'z.txt', size: 5, downloadUrl: 'http://x/z' } }],
+      cursor: 1
+    }, now);
+    assert.strictEqual(legacy.count, 1);
+    assert.strictEqual(legacy.files[0].id, 'z');
+  });
+  T('A10 fileIdsOf：只取 file 事件的 fileId（增量提示用）', function () {
+    const ids = cs.fileIdsOf([
+      { kind: 'file', payload: { fileId: 'f1' } },
+      { kind: 'text', payload: { text: 'x' } },
+      { kind: 'filedel', payload: { fileId: 'f2' } },
+      { kind: 'file', payload: { id: 'f3' } }
+    ]);
+    assert.deepStrictEqual(ids, ['f1', 'f3']);
+  });
 
   // B. 请求契约 -------------------------------------------------------------
   function lastReq() { return mockRequest.log[mockRequest.log.length - 1]; }
@@ -132,7 +174,7 @@ function run(outerTest) {
     mockRequest.log = []; mockRequest.impl = function (o) { o.success({ statusCode: 200, data: { ok: true, session: null } }); };
     cs.mine();
     const r = lastReq();
-    assert.ok(/\/mine$/.test(r.url), r.url);
+    assert.ok(r && /\/mine$/.test(r.url), r && r.url);
     assert.strictEqual(r.method, 'GET');
     assert.strictEqual(r.header['X-Device-Id'], 'tok-cloudspace');
   });
@@ -145,12 +187,15 @@ function run(outerTest) {
     assert.strictEqual(r.header['Content-Type'], 'application/json');
     assert.deepStrictEqual(r.data, {});
   });
-  T('B3 /state：GET 带 sessionId 与 since=0', function () {
+  T('B3 /state：GET 带 sessionId + all=1（服务端文件清单）与 since 游标', function () {
     mockRequest.log = [];
     cs.state('sess 1');
     const r = lastReq();
-    assert.ok(r.url.indexOf('/state?sessionId=sess%201&since=0') > 0, r.url);
+    assert.ok(r.url.indexOf('/state?sessionId=sess%201&all=1&since=0') > 0, r.url);
     assert.strictEqual(r.method, 'GET');
+    mockRequest.log = [];
+    cs.state('s', 7);
+    assert.ok(lastReq().url.indexOf('&since=7') > 0, lastReq().url);
   });
   T('B4 /upload/chunk：原始字节 + octet-stream + uploadId/index', function () {
     mockRequest.log = [];
@@ -177,6 +222,45 @@ function run(outerTest) {
       }).catch(reject);
     });
   });
+  let pending = Promise.resolve();
+  function TAsync(name, fn) {
+    pending = pending.then(function () { return fn(); }).then(function () {
+      console.log('PASS  ' + name);
+    }, function (e) {
+      console.log('FAIL  ' + name + ' :: ' + (e && e.message));
+      throw e;
+    });
+    return pending;
+  }
+  async function b7() {
+    /* 请求契约一律走测试基址；C 组用例可能把 wx.getAccountInfoSync 换成「正式版」，
+       正式版 + 未配置 dropBase 时 request() 直接返回「等待域名备案」而不发请求。
+       注意：本套件直接调用时以「正式版 + 空 dropBase」环境结束，后续用例需重新安装 wx.request。 */
+    cfg.dropBase = 'https://drop.test';
+    if (!global.wx) global.wx = {};
+    global.wx.request = function (o) { mockRequest.log.push(o); if (mockRequest.impl) mockRequest.impl(o); };
+    mockRequest.log = []; mockRequest.impl = function (o) {
+      o.success({ statusCode: 401, header: { 'X-Drop-Reason': 'token' }, data: { ok: false, reason: '身份已失效' } });
+    };
+    const r = await cs.mine();
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.dropReason, 'token');
+    assert.ok(cs.failText(r, 'x').indexOf('重新登录') >= 0);
+    mockRequest.impl = function (o) {
+      o.success({ statusCode: 503, header: { 'X-Drop-Reason': 'unavailable' }, data: { ok: false, reason: '鉴权服务暂不可用' } });
+    };
+    const r2 = await cs.mine();
+    assert.strictEqual(r2.dropReason, 'unavailable', JSON.stringify(r2) + ' base=' + cs.base());
+    assert.ok(cs.failText(r2, 'x').indexOf('暂不可用') >= 0);
+    mockRequest.impl = function (o) {
+      o.success({ statusCode: 507, data: { ok: false } });
+    };
+    const r3 = await cs.mine();
+    assert.strictEqual(r3.dropReason, undefined);
+    assert.strictEqual(cs.failText(r3, 'x'), '服务器空间不足');
+  }
+  /* B7 走队列：等队列轮到时才安装 mock 基址/包装器（直接调用 run() 时 C 组已改过 base 环境） */
+  TAsync('B7 X-Drop-Reason 透传为 dropReason；failText 区分身份失效/服务故障', b7);
 
   // C. 基址环境 -------------------------------------------------------------
   T('C1 正式版未配置 dropBase → 空基址（不发请求，等待域名备案）', function () {
@@ -260,17 +344,21 @@ function run(outerTest) {
     assert.ok(!REAL_SIDS.test(all), '发现真实账号/姓名');
   });
 
-  // 恢复配置 / wx mock
-  cfg.dropBase = savedDropBase;
-  try {
-    global.wx.getAccountInfoSync = saved.getAccountInfoSync;
-    global.wx.request = saved.request;
-    global.wx.chooseMessageFile = saved.chooseMessageFile;
-    global.wx.getFileSystemManager = saved.getFileSystemManager;
-    if (saved.getAccountInfoSync === undefined) delete global.wx.getAccountInfoSync;
-    if (saved.chooseMessageFile === undefined) delete global.wx.chooseMessageFile;
-    if (saved.getFileSystemManager === undefined) delete global.wx.getFileSystemManager;
-  } catch (e) {}
+  // 恢复配置 / wx mock（异步用例全部跑完后再还原，避免影响 B7）
+  const restoreWx = function () {
+    cfg.dropBase = savedDropBase;
+    try {
+      global.wx.getAccountInfoSync = saved.getAccountInfoSync;
+      global.wx.request = saved.request;
+      global.wx.chooseMessageFile = saved.chooseMessageFile;
+      global.wx.getFileSystemManager = saved.getFileSystemManager;
+      if (saved.getAccountInfoSync === undefined) delete global.wx.getAccountInfoSync;
+      if (saved.chooseMessageFile === undefined) delete global.wx.chooseMessageFile;
+      if (saved.getFileSystemManager === undefined) delete global.wx.getFileSystemManager;
+    } catch (e) {}
+  };
+  pending.then(restoreWx, function () { restoreWx(); });
+  return pending;
 }
 
 module.exports = { run: run };

@@ -245,7 +245,7 @@ function quickSeats(kind) {
 //   * 团员 tab：class_league 缓存 ∩ 班级名单（座号升序），行上显示团员 pill；
 //   * 全班 tab：全部成员按座号升序，仅姓名与座号。
 // opts: { members, league, leagueLoaded, leagueErr, edit }
-// 返回 { rows, counts:{committee,league,leagueText,all}, note, emptyText }
+// 返回 { rows, counts:{committee,league,leagueText,all,loading}, note, emptyText }
 const ROLE_RANK = {
   '班长': 1, '副班长': 2, '团支部书记': 3, '副团支部书记': 4, '学习委员': 5,
   '生活委员': 6, '纪律委员': 7, '文娱委员': 8, '劳动委员': 9, '体育委员': 10,
@@ -285,11 +285,15 @@ function listView(kind, opts) {
       });
   }
   const committeeCount = all.filter(function (m) { return !!(m.role || m.badge); }).length;
+  // 2026-11-19 用户反馈「团员名单在未打开时不显示数字」：三个 tab 的计数一律显示数字。
+  // 团员计数在未加载（本次进页首次拉取中）时为 0，页面用 `countsLoading.league` 画脉冲占位，
+  // 加载完成后自然变成真实人数——不再留空（留空会让 tab 宽度跳动、也看不出有这一项）。
   const counts = {
     committee: committeeCount,
     league: loaded ? league.length : 0,
-    leagueText: loaded ? String(league.length) : '',
-    all: all.length
+    leagueText: String(loaded ? league.length : 0),
+    all: all.length,
+    loading: { committee: false, league: !loaded, all: false }
   };
   let note = '仅显示姓名与座号；班委职务可在「管理」中设置';
   if (kind === 'all') note = '全班 ' + counts.all + ' 人 · 仅姓名与座号';
@@ -300,6 +304,38 @@ function listView(kind, opts) {
   return { rows: rows, counts: counts, note: note, emptyText: emptyText };
 }
 
+// ---------------------------------------------------------------- 名单页左右滑动切换（pages/committee）
+// 纯逻辑：tab 顺序 / 邻接 / 滑动指示条位置。页面（committee.js）只负责跟手位移与动画。
+const TAB_KEYS = ['committee', 'league', 'all'];
+const TAB_LABELS = { committee: '班委', league: '团员', all: '全班' };
+
+function tabIndex(kind) {
+  const i = TAB_KEYS.indexOf(String(kind || ''));
+  return i < 0 ? 0 : i;
+}
+function tabKeyOf(i) {
+  const n = Number(i);
+  return TAB_KEYS[Math.max(0, Math.min(TAB_KEYS.length - 1, isFinite(n) ? Math.round(n) : 0))];
+}
+// dir > 0 = 看下一边（右→左滑），dir < 0 = 看上一边（左→右滑）；到边界返回 null（页面按阻尼回弹）
+function tabNeighbor(kind, dir) {
+  const d = Number(dir) > 0 ? 1 : -1;
+  const i = tabIndex(kind) + d;
+  if (i < 0 || i >= TAB_KEYS.length) return null;
+  return { key: TAB_KEYS[i], dir: d };
+}
+// 滑动指示条（液体滑块）几何：3 段等宽，含段间距；返回左偏移百分比与宽度百分比
+function tabIndicator(kind) {
+  const n = TAB_KEYS.length;
+  const gapPct = 4;                             // 与 .rd-tabs 的 gap:12rpx 对应（≈ 单段宽度的 4%）
+  const segPct = (100 - gapPct * (n - 1)) / n;
+  const i = tabIndex(kind);
+  return {
+    left: (i * (segPct + gapPct)).toFixed(3) + '%',
+    width: segPct.toFixed(3) + '%'
+  };
+}
+
 module.exports = {
   SEL_VER, QUICK_KINDS, QUICK_LABELS,
   normSeats,
@@ -308,5 +344,6 @@ module.exports = {
   setSel, rollSet, poolFilter,
   committeeSeats, leagueSeats, quickSeats,
   ROLE_RANK, listView,
+  TAB_KEYS, TAB_LABELS, tabIndex, tabKeyOf, tabNeighbor, tabIndicator,
   migrate, parseNames, parseGroupNames
 };

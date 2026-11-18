@@ -54,6 +54,8 @@ function token() {
 }
 
 // 统一请求：返回 {ok, ...}；网络失败也 resolve（页面统一 toast），不抛异常
+// v2.5（2026-11-19）：服务端在失败响应头 X-Drop-Reason 给出类别（token / unavailable），
+// 这里透传为 j.dropReason —— 「身份失效」与「身份服务故障」要给出完全不同的提示。
 function request(method, path, data, opt) {
   opt = opt || {};
   const b = base();
@@ -74,6 +76,9 @@ function request(method, path, data, opt) {
         if (res && res.statusCode >= 400) {
           j.ok = false;
           if (!j.reason) j.reason = res.statusCode === 507 ? '服务器空间不足' : ('服务错误 ' + res.statusCode);
+          const rh = (res && res.header) || {};
+          const kind = rh['X-Drop-Reason'] || rh['x-drop-reason'] || '';
+          if (kind) j.dropReason = String(kind);
         }
         resolve(j);
       },
@@ -86,11 +91,21 @@ function request(method, path, data, opt) {
   });
 }
 
+// 失败提示文案（身份失效 / 身份服务故障 / 其它）
+function failText(r, fallback) {
+  if (r && r.dropReason === 'token') return '身份已失效，请重新登录';
+  if (r && r.dropReason === 'unavailable') return '身份服务暂不可用，稍后自动重试';
+  return (r && r.reason) || fallback || '云空间服务不可达';
+}
+
 // ---------------------------------------------------------------- API
 function mine() { return request('GET', '/mine'); }
 function open() { return request('POST', '/open', {}); }
-function state(sessionId) {
-  return request('GET', '/state?sessionId=' + encodeURIComponent(String(sessionId)) + '&since=0');
+// v2.5：all=1 → 服务端随事件返回**当前有效文件清单**（files / expiredNotice）。
+// 事件表只保留最近 500 条，只按事件渲染会在「重新打开 / 换端 / 事件被截断」时看不到文件。
+function state(sessionId, since) {
+  return request('GET', '/state?sessionId=' + encodeURIComponent(String(sessionId)) +
+    '&all=1&since=' + Number(since || 0));
 }
 function initUpload(sessionId, name, size, mime, totalChunks) {
   return request('POST', '/upload/init', {
@@ -171,7 +186,7 @@ function applyEvents(files, events) {
         mime: String(p.mime || ''),
         url: String(p.downloadUrl || ''),
         expired: !!p.expired || !p.downloadUrl,
-        at: Number(ev.at) || 0
+        at: Number(p.at || ev.at) || 0
       };
     } else if (String(ev.kind) === 'filedel') {
       delete map[id];
@@ -197,6 +212,7 @@ function fileView(f, now) {
     name: name,
     ico: ico,
     size: Number(f.size) || 0,
+    at: Number(f.at) || 0,
     sizeText: fmtSize(f.size),
     timeText: fullTime(f.at),
     ttlText: ttlText(f.at, now),
@@ -220,6 +236,45 @@ function spaceView(events, now) {
   };
 }
 
+// v2.5：服务端权威清单（/state?all=1 的 files）→ 与 spaceView 同形状。
+// 事件表会被截断（最近 500 条）且「since 之后没有新事件」不等于「没有文件」，
+// 因此文件列表必须以这里为准；事件只用于「本次增量」提示（如 toast「收到新文件」）。
+function listView(files, now, expiredNotice) {
+  const live = (files || []).filter(function (f) { return f && f.id && !f.expired; });
+  live.sort(function (a, b) { return (Number(b.at) || 0) - (Number(a.at) || 0); });
+  let bytes = 0;
+  live.forEach(function (f) { bytes += Number(f.size) || 0; });
+  const out = live.map(function (f) {
+    return fileView({ id: f.id, name: f.name, size: f.size, mime: f.mime,
+      url: f.downloadUrl, expired: false, at: Number(f.at) || 0 }, now);
+  });
+  return {
+    files: out,
+    count: live.length,
+    bytes: bytes,
+    bytesText: fmtSize(bytes),
+    expired: Math.max(0, Number(expiredNotice) || 0)
+  };
+}
+
+// 响应 → 视图（优先用服务端 files；旧服务端没有 files 时回退事件合并）
+function respView(resp, now) {
+  if (resp && resp.files instanceof Array) return listView(resp.files, now, resp.expiredNotice);
+  return spaceView((resp && resp.events) || [], now);
+}
+
+// 纯函数：某文件的 fileId 是否出现在本批增量事件里（用于「收到新文件」提示）
+function fileIdsOf(events) {
+  const ids = [];
+  (events || []).forEach(function (ev) {
+    if (!ev || String(ev.kind) !== 'file') return;
+    const p = ev.payload || {};
+    const id = String(p.fileId || p.id || '');
+    if (id) ids.push(id);
+  });
+  return ids;
+}
+
 function safeName(name) {
   const s = String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim();
   return s.slice(0, 120) || 'file';
@@ -227,10 +282,11 @@ function safeName(name) {
 
 module.exports = {
   CHUNK: CHUNK, TTL_MS: TTL_MS,
-  base: base, envVersion: envVersion, request: request,
+  base: base, envVersion: envVersion, request: request, failText: failText,
   mine: mine, open: open, state: state,
   initUpload: initUpload, chunkUpload: chunkUpload, finishUpload: finishUpload,
   deleteFile: deleteFile, closeSpace: closeSpace,
   chunkPlan: chunkPlan, fmtSize: fmtSize, fullTime: fullTime, ttlText: ttlText,
-  applyEvents: applyEvents, fileView: fileView, spaceView: spaceView, safeName: safeName
+  applyEvents: applyEvents, fileView: fileView, spaceView: spaceView, safeName: safeName,
+  listView: listView, respView: respView, fileIdsOf: fileIdsOf
 };
