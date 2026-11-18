@@ -217,7 +217,7 @@ function run(test) {
     });
 
     /* ---------- 2. notify.js：subscribe / list / cancel ---------- */
-    await test('提醒：subscribeNoticeReminder 参数契约（kind/ref/fireAt/tip/timeText/summary/dateText）', async () => {
+    await test('提醒：subscribeNoticeReminder 参数契约（kind/ref/fireAt/tip/timeText/summary/dateText/tmplId）', async () => {
       const env = createEnv();
       const M = loadUtils();
       const fireAt = Date.now() + 2 * 3600000;
@@ -233,8 +233,26 @@ function run(test) {
       assert.deepStrictEqual(env.calls[0].data, {
         action: 'subscribe', kind: 'ntremind', ref: 'auto_g1', fireAt: fireAt,
         label: '截止前 1 天', tip: '通知提醒',
-        timeText: M.notify.fmt(fireAt), summary: '测试通知', dateText: M.notify.fmt(deadline)
+        timeText: M.notify.fmt(fireAt), summary: '测试通知', dateText: M.notify.fmt(deadline),
+        tmplId: M.notify.TEMPLATE_ID
       });
+    });
+
+    await test('提醒：通知「地点」段落 → placeOf 截断 20 字并随订阅上报；无地点不带 place', async () => {
+      const env = createEnv();
+      const M = loadUtils();
+      const fireAt = Date.now() + 2 * 3600000;
+      const longPlace = '第一教学楼A座301教室（靠近东门，进楼右转）';
+      assert.strictEqual(M.notify.placeOf({ aiSegments: [{ type: '地点', text: longPlace }] }).length, 20);
+      await M.notify.subscribeNoticeReminder({
+        id: 'auto_p1', title: '地点通知',
+        aiSegments: [{ type: '时间', text: '明天' }, { type: '地点', text: '教学楼 A301' }]
+      }, fireAt, '');
+      assert.strictEqual(env.calls[0].data.place, '教学楼 A301');
+      assert.strictEqual(env.calls[0].data.tmplId, M.notify.TEMPLATE_ID);
+      env.calls.length = 0; env.subLog.length = 0;
+      await M.notify.subscribeNoticeReminder({ id: 'auto_p2', title: '无地点' }, fireAt, '');
+      assert.strictEqual('place' in env.calls[0].data, false);
     });
 
     await test('提醒：无截止通知 dateText 回退 fmt(fireAt)；无 id 直接拒绝且不授权', async () => {
@@ -497,7 +515,8 @@ function run(test) {
       assert.deepStrictEqual(env.calls[0].data, {
         action: 'subscribe', kind: 'ntremind', ref: 'auto_g1', fireAt: fireAt,
         label: '自定义', tip: '通知提醒',
-        timeText: M.notify.fmt(fireAt), summary: '测试通知', dateText: M.notify.fmt(due)
+        timeText: M.notify.fmt(fireAt), summary: '测试通知', dateText: M.notify.fmt(due),
+        tmplId: M.notify.TEMPLATE_ID
       });
       const saved = M.store.get().ntRemind.auto_g1;
       assert.ok(saved, '本机应写入 ntRemind');

@@ -1,5 +1,28 @@
 # 版本记录
 
+## 微信通知提醒改用「日程提醒（基础信息）」模板（2026-11-19，源码就绪；云函数待用户上传；小程序待用户发布；VERSION 仍 2.0.0）
+
+> 用户原话：「微信通知提醒改用基础信息」+ 模板信息：模版 ID `ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk`、
+> 模版编号 9109、标题「日程提醒」、类目「办公」、详细内容「日程 `thing1` / 时间 `time2` / 地点 `thing3` / 日程描述 `thing5`」。
+
+- **云端 `cloudfunctions/notify`**：默认模板改为新模板；新增 `LEGACY_TEMPLATE_ID`（旧「温馨提示」模板）兼容旧客户端——
+  订阅行没有 `tmplId` = 旧客户端，继续按旧模板/旧字段发送；新客户端订阅时写入 `tmplId`，发送按新模板字段。
+  **云函数可以先上线、小程序后发布，旧客户端提醒不中断。**
+- **新模板字段映射**：`thing1` 日程 = 通知标题/作业摘要（`summary`，≤20 字）；`time2` 时间 = 活动/截止时间
+  （`dateText`，缺省回退提醒时间 `timeText`、再回退 `fmt(fireAt)`；支持中文 / ISO / 纯日期 / 无年份中文格式，统一成
+  `YYYY年M月D日 HH:mm`）；`thing3` 地点 = 通知「地点」段落（`aiSegments`，缺省「班级工具」）；`thing5` 日程描述 =
+  提醒类型（`tip`：作业截止提醒 / 通知提醒 / 新通知，≤20 字）。
+- **小程序**：`utils/notify.js` 的 `TEMPLATE_ID` 改为新模板；作业/通知订阅均携带 `tmplId`；通知订阅从 `aiSegments`
+  提取「地点」并携带 `place`；新增 `placeOf()`；`pages/nt/nt.js` 把 `aiSegments` 传入订阅函数。未改 VERSION / UD v6。
+- **上线顺序（重要）**：① 先上传云函数 `notify`（双模板兼容代码）→ 旧客户端继续按旧模板送达；② 再上传/发布新版小程序
+  → 新设置的提醒走新模板；③ 切换前已存在的 active 提醒仍按旧模板发送（微信授权绑定旧模板），发送/过期后自然清空；
+  ④ 等新版全覆盖后再删 `LEGACY_TEMPLATE_ID` 分支（本次保留）。
+- **测试**：`cloudfunctions/notify.test.js` **40/0**（新增新模板字段映射/时间格式回退/地点回退/旧模板兼容/订阅 tmplId+place）、
+  `notify_ui_test.js` **28/0**（新增地点段落 → place、payload 带 tmplId）、`notify_fix_20261110.test.js` **18/0**、
+  `task7_unit_tests.js` **24/0**；`unit.js` **594 passed / 7 failed**（7 条为既有失败：合规域名/ko-link/期次/发布，不属于本次）；
+  `staticcheck.py` exit 0、`code_quality_check.js` exit 0。自动化未发送真实订阅消息。
+- **未做**：未上传云函数、未上传/发布小程序；未改 `VERSION`（仍 2.0.0）/ UD v6 契约 / 云端表结构。
+
 ## 名单左右滑动切分类 + 团员计数常显（2026-11-19，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户原话：「增加名单的滑动切换功能和对应动效，修复团员名单在为打开时不显示数字的问题」。

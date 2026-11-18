@@ -185,6 +185,9 @@ async function test(name, fn) {
 /* =================== 1. subscribe：kind / ref / fireAt 校验 =================== */
 const HOUR = 3600 * 1000;
 const DAY = 24 * HOUR;
+// 2026-11-19：新模板（日程提醒）+ 旧模板（兼容旧客户端）
+const NEW_TMPL = 'ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk';
+const LEGACY_TMPL = 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo';
 
 async function run() {
   await test('subscribe: kind 非法 -> bad-kind，不写库', async () => {
@@ -454,7 +457,7 @@ async function run() {
     assert.strictEqual(r.state.sent.length, 2);
     r.state.sent.forEach(function (p) {
       assert.strictEqual(p.page, 'pages/nt/nt');
-      assert.strictEqual(p.templateId, 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo');
+      assert.strictEqual(p.templateId, LEGACY_TMPL);
       assert.strictEqual(p.data.thing2.value, '新通知');
       assert.strictEqual(p.data.time1.value, '2026-11-05 13:30');
       assert.strictEqual(p.data.thing3.value, short('新通知：明天考试', 20));
@@ -537,7 +540,7 @@ async function run() {
 
     const ntr = r.state.sent.filter(function (p) { return p.page.indexOf('pages/nt/nt?gid=') === 0; })[0];
     assert.ok(ntr);
-    assert.strictEqual(ntr.templateId, 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo');
+    assert.strictEqual(ntr.templateId, LEGACY_TMPL);
     assert.strictEqual(ntr.data.thing2.value, '通知提醒');
     assert.strictEqual(ntr.data.time1.value, '2026年11月5日 08:00'); // fmt(fireAt)，上海时区
     assert.strictEqual(ntr.data.thing3.value, short(LONG_TITLE, 20));
@@ -619,6 +622,119 @@ async function run() {
     assert.strictEqual(rowsWhere(r.state, function (x) { return x.active === true; }).length, 0);
   });
 
+  /* =================== 5b. 2026-11-19 新模板（日程提醒） =================== */
+  await test('新模板：hw 字段映射 日程/时间/地点/日程描述（tmplId 决定模板）', async () => {
+    const r = newRun({
+      docs: [{
+        _id: 'n_hw', openid: 'openid-A', kind: 'hw', ref: 'h1',
+        fireAt: FIXED_NOW - 1000, tip: '作业截止提醒',
+        timeText: '2026年11月5日 13:00', summary: '数学：练习册第3章',
+        dateText: '2026-11-06 23:59', place: '自强楼 01105',
+        tmplId: NEW_TMPL, active: true, attempts: 0
+      }]
+    });
+    await r.main({ action: 'timer' });
+    assert.strictEqual(r.state.sent.length, 1);
+    const p = r.state.sent[0];
+    assert.strictEqual(p.templateId, NEW_TMPL);
+    assert.deepStrictEqual(Object.keys(p.data).sort(), ['thing1', 'thing3', 'thing5', 'time2']);
+    assert.strictEqual(p.data.thing1.value, short('数学：练习册第3章', 20));
+    assert.strictEqual(p.data.time2.value, '2026年11月6日 23:59');
+    assert.strictEqual(p.data.thing3.value, '自强楼 01105');
+    assert.strictEqual(p.data.thing5.value, '作业截止提醒');
+  });
+
+  await test('新模板：缺 dateText/place 时回退 timeText/班级工具；非法时间回退 fmt(fireAt)', async () => {
+    const r = newRun({
+      docs: [
+        {
+          _id: 'n_nt', openid: 'openid-A', kind: 'ntremind', ref: 'g1', fireAt: DUE,
+          tip: '通知提醒', timeText: '2026年11月5日 08:00', summary: LONG_TITLE,
+          tmplId: NEW_TMPL, active: true, attempts: 0
+        },
+        {
+          _id: 'n_bad', openid: 'openid-A', kind: 'ntremind', ref: 'g2', fireAt: DUE,
+          tip: '', timeText: 'bad-time', summary: '', dateText: 'not-a-date',
+          tmplId: NEW_TMPL, active: true, attempts: 0
+        }
+      ]
+    });
+    await r.main({ action: 'timer' });
+    const byGid = {};
+    r.state.sent.forEach(function (p) { byGid[p.page] = p; });
+    const a = byGid['pages/nt/nt?gid=g1'];
+    assert.ok(a);
+    assert.strictEqual(a.data.thing1.value, short(LONG_TITLE, 20));
+    assert.strictEqual(a.data.time2.value, '2026年11月5日 08:00');
+    assert.strictEqual(a.data.thing3.value, '班级工具');
+    assert.strictEqual(a.data.thing5.value, '通知提醒');
+    const b = byGid['pages/nt/nt?gid=g2'];
+    assert.ok(b);
+    assert.strictEqual(b.data.thing1.value, '通知提醒');
+    assert.strictEqual(b.data.time2.value, '2026年11月5日 08:00');
+    assert.strictEqual(b.data.thing5.value, '通知提醒');
+  });
+
+  await test('新模板：time2 支持中文/ISO/纯日期/无年份中文格式，值 ≤20 的 thing 字段', async () => {
+    const r = newRun({
+      docs: [
+        { _id: 't_cn', openid: 'openid-A', kind: 'hw', ref: 'c1', fireAt: FIXED_NOW, dateText: '2026年11月6日 23:59', summary: 'A', tmplId: NEW_TMPL, active: true },
+        { _id: 't_iso', openid: 'openid-A', kind: 'hw', ref: 'c2', fireAt: FIXED_NOW, dateText: '2026-11-07T01:02:00+08:00', summary: 'B', tmplId: NEW_TMPL, active: true },
+        { _id: 't_date', openid: 'openid-A', kind: 'hw', ref: 'c3', fireAt: FIXED_NOW, dateText: '2026-11-08', summary: 'C', tmplId: NEW_TMPL, active: true },
+        { _id: 't_md', openid: 'openid-A', kind: 'hw', ref: 'c4', fireAt: FIXED_NOW, dateText: '', timeText: '11月9日 07:30', summary: 'D', tmplId: NEW_TMPL, active: true }
+      ]
+    });
+    await r.main({ action: 'timer' });
+    const times = r.state.sent.map(function (p) { return p.data.time2.value; });
+    assert.deepStrictEqual(times, [
+      '2026年11月6日 23:59',
+      '2026年11月7日 01:02',
+      '2026年11月8日 00:00',
+      '2026年11月9日 07:30'
+    ]);
+    r.state.sent.forEach(function (p) {
+      ['thing1', 'thing3', 'thing5'].forEach(function (k) {
+        assert.ok(p.data[k].value.length <= 20, k + ' 超长：' + p.data[k].value);
+      });
+    });
+  });
+
+  await test('兼容：无 tmplId 的旧订阅行仍用旧模板旧字段（thing2/time1/time3/time26）', async () => {
+    const r = newRun({
+      docs: [{
+        _id: 'old1', openid: 'openid-A', kind: 'ntremind', ref: 'g_old', fireAt: DUE,
+        tip: '通知提醒', timeText: '2026年11月5日 08:00', summary: '旧摘要', dateText: '2026-11-06 23:59',
+        active: true, attempts: 0
+      }]
+    });
+    await r.main({ action: 'timer' });
+    const p = r.state.sent[0];
+    assert.strictEqual(p.templateId, LEGACY_TMPL);
+    assert.deepStrictEqual(Object.keys(p.data).sort(), ['thing2', 'thing3', 'time1', 'time26']);
+    assert.strictEqual(p.data.thing2.value, '通知提醒');
+    assert.strictEqual(p.data.thing3.value, '旧摘要');
+  });
+
+  await test('subscribe：记录 tmplId/place（非法 tmplId 清空；旧客户端不传 = 空）', async () => {
+    const r1 = newRun();
+    await r1.main({ action: 'subscribe', kind: 'ntremind', ref: 'g1', fireAt: FIXED_NOW + 2 * HOUR, tmplId: NEW_TMPL, place: '教学楼 A301', summary: 'S' });
+    let row = rowsOf(r1.state)[0];
+    assert.strictEqual(row.tmplId, NEW_TMPL);
+    assert.strictEqual(row.place, '教学楼 A301');
+
+    const r2 = newRun();
+    await r2.main({ action: 'subscribe', kind: 'ntremind', ref: 'g1', fireAt: FIXED_NOW + 2 * HOUR, tmplId: 'bogus', place: '' });
+    row = rowsOf(r2.state)[0];
+    assert.strictEqual(row.tmplId, '');
+    assert.strictEqual(row.place, '');
+
+    const r3 = newRun();
+    await r3.main({ action: 'subscribe', kind: 'hw', ref: 'h1', fireAt: FIXED_NOW + 2 * HOUR, tmplId: NEW_TMPL, tip: '作业截止提醒' });
+    row = rowsOf(r3.state)[0];
+    assert.strictEqual(row.tmplId, NEW_TMPL);
+    assert.strictEqual(row.place, '');
+  });
+
   /* =================== 6. 异常与鉴权兜底 =================== */
   await test('main: 数据库异常 -> {ok:false,reason:"cloud-error"}', async () => {
     const r = newRun({ forceError: true });
@@ -659,12 +775,13 @@ async function run() {
     assert.strictEqual(cfg.triggers[0].config, '0 */1 * * * * *');
   });
 
-  await test('index.js: 不含可选链/空值合并（Nodejs16.13 保守写法），page 常量存在', async () => {
+  await test('index.js: 不含可选链/空值合并（Nodejs16.13 保守写法），新/旧模板 ID 与 page 常量存在', async () => {
     const src = fs.readFileSync(INDEX, 'utf8');
     assert.ok(!/\?\./.test(src), '发现可选链 ?.');
     assert.ok(!/\?\?/.test(src), '发现空值合并 ??');
     assert.ok(src.indexOf('pages/nt/nt?gid=') >= 0);
-    assert.ok(src.indexOf('eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo') >= 0);
+    assert.ok(src.indexOf(NEW_TMPL) >= 0, '缺少新模板 ID');
+    assert.ok(src.indexOf(LEGACY_TMPL) >= 0, '缺少旧模板兼容 ID');
   });
 
   Date.now = REAL_NOW;

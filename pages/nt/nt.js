@@ -1412,7 +1412,9 @@ Page({
       id: gid,
       title: raw.title || '班级通知',
       baseTs: base ? base.ts : 0,
-      deadline: due != null ? due : raw.deadline
+      deadline: due != null ? due : raw.deadline,
+      // 新模板「地点」：取通知原文的地点段落（utils/notify.placeOf；缺失时云函数回落「班级工具」）
+      aiSegments: raw.aiSegments
     }, fireAt, label || '').then(() => {
       this.setLocalRemind(gid, fireAt, label || '');
       util.toast('已设置提醒');

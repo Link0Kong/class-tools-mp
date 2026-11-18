@@ -1,7 +1,13 @@
 // cloudfunctions/notify —— 微信订阅消息发送
-// 模板关键词：温馨提示 thing2 / 时间 time1 / 摘要 thing3 / 日期 time26
+// 模板（2026-11-19 起）：日程提醒（基础信息）—— 日程 thing1 / 时间 time2 / 地点 thing3 / 日程描述 thing5
+// 旧模板（温馨提示 thing2 / 时间 time1 / 摘要 thing3 / 日期 time26）仅为「未更新客户端」保留兼容发送。
 // 前端只负责 requestSubscribeMessage 授权；本函数负责保存 openid 与发送。
 // 支持 kind：hw（作业截止提醒）、nt（下一条通知）、ntremind（单条通知提醒）。
+//
+// 模板选择（2026-11-19）：
+//   * 新客户端订阅时把本次授权的模板 ID 写入 tmplId（= 新模板）；发送按该模板形状组装字段；
+//   * 旧订阅行没有 tmplId = 旧客户端（授权的是旧模板）→ 继续用旧模板 + 旧字段发送；
+//   * 因此云函数可以先上线、小程序后发布：旧客户端的提醒不中断，新客户端发布后自动切换到新模板。
 //
 // 2026-11-11 需求 11（「开启新通知提醒后收不到」根治）：
 //   * kind='nt' 订阅此前只由 action='publishNotice' 消费，但全仓库没有任何调用方 → 永不发送；
@@ -19,12 +25,15 @@ const scan = require('./scan.js');
 const REST = require('./rest-config.js');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
-const TEMPLATE_ID = 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo';
-// 第二模板（可选）：环境变量 NOTIFY_TMPL2（推荐，部署时在云函数配置里加）或 rest-config.js 默认值。
-// 未配置 = 只用 TEMPLATE_ID，与旧版完全一致（向后兼容）。
+// 新模板「日程提醒」（模板编号 9109）：日程 thing1 / 时间 time2 / 地点 thing3 / 日程描述 thing5
+const TEMPLATE_ID = 'ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk';
+// 旧模板「温馨提示」：温馨提示 thing2 / 时间 time1 / 摘要 thing3 / 日期 time26（旧客户端专用，勿删）
+const LEGACY_TEMPLATE_ID = 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo';
+// 第二模板（可选，历史能力）：环境变量 NOTIFY_TMPL2（推荐，部署时在云函数配置里加）或 rest-config.js 默认值。
+// 配置后按新模板字段发送；未配置 = 只用 TEMPLATE_ID（新客户端）。
 const TEMPLATE2 = String(process.env.NOTIFY_TMPL2 || REST.secondTmplId || '').trim();
 const TEMPLATES = (function () {
-  const arr = [TEMPLATE_ID];
+  const arr = [TEMPLATE_ID, LEGACY_TEMPLATE_ID];
   if (TEMPLATE2 && arr.indexOf(TEMPLATE2) < 0) arr.push(TEMPLATE2);
   return arr;
 })();
@@ -86,8 +95,48 @@ function pageFor(row) {
   }
   return PAGE[row.kind] || 'pages/index/index';
 }
-// 模板数据：ntremind 与 hw/nt 文案分开，避免覆盖既有行为
-function templateData(row) {
+// 时间字段：微信 time 类型只接受时间/日期文案，不能把任意字符串直接塞进去。
+// 依次尝试 dateText（活动/截止时间）→ timeText（提醒时间）→ fmt(fireAt)。
+function normalizeTimeText(v, refMs) {
+  const s = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  let m = s.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})$/);
+  if (m) return m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日 ' + pad2(+m[4]) + ':' + m[5];
+  m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::\d{2})?)?$/);
+  if (m) return m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日 ' + pad2(+(m[4] || 0)) + ':' + (m[5] || '00');
+  m = s.match(/^(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})$/);
+  if (m) {
+    const d = new Date((Number(refMs) || Date.now()) + 8 * 3600 * 1000);
+    return d.getUTCFullYear() + '年' + (+m[1]) + '月' + (+m[2]) + '日 ' + pad2(+m[3]) + ':' + m[4];
+  }
+  // 带时区的 ISO（如 2026-11-06T23:59:00+08:00）走 Date.parse；纯日期已在上面处理，避免被当成 UTC
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
+    const t = Date.parse(s);
+    if (!isNaN(t)) return fmt(t);
+  }
+  return '';
+}
+function eventTimeOf(row) {
+  const fireAt = Number(row.fireAt) || 0;
+  const ref = fireAt || Date.now();
+  return normalizeTimeText(row.dateText, ref) || normalizeTimeText(row.timeText, ref) || fmt(ref);
+}
+// 地点：通知页传入的 place 优先（来自通知「地点」段落），没有则用「班级工具」
+function placeOf(row) {
+  return short((row && row.place) || '班级工具', 20);
+}
+// 新模板（日程提醒）：日程 / 时间 / 地点 / 日程描述
+function scheduleTemplateData(row) {
+  const tip = short(row.tip || (row.kind === 'hw' ? '作业截止提醒' : '通知提醒'), 20);
+  return {
+    thing1: { value: short(row.summary || tip, 20) },
+    time2: { value: eventTimeOf(row) },
+    thing3: { value: placeOf(row) },
+    thing5: { value: short(row.tip || tip, 20) }
+  };
+}
+// 旧模板（2026-11-19 前）：字段与文案逐字节保持原样，旧客户端/旧订阅行继续用
+function legacyTemplateData(row) {
   const fireAt = Number(row.fireAt) || 0;
   const timeText = row.timeText || (fireAt ? fmt(fireAt) : '');
   if (row.kind === 'ntremind') {
@@ -105,18 +154,21 @@ function templateData(row) {
     time26: { value: row.dateText || timeText }
   };
 }
+function templateData(row, tplId) {
+  return tplId === LEGACY_TEMPLATE_ID ? legacyTemplateData(row) : scheduleTemplateData(row);
+}
 async function send(row) {
   const wx = cloud.getWXContext();
   const openid = row.openid || wx.OPENID;
   if (!openid) throw new Error('no-openid');
-  // 模板选择（需求 11）：row.tmplId 合法（默认模板或已配置的第二模板）→ 用它；否则默认模板。
+  // 模板选择：row.tmplId 合法 → 用它；没有 tmplId = 旧客户端授权的是旧模板（兼容旧版）。
   const want = String(row.tmplId || '');
-  const tplId = (want && TEMPLATES.indexOf(want) >= 0) ? want : TEMPLATE_ID;
+  const tplId = (want && TEMPLATES.indexOf(want) >= 0) ? want : LEGACY_TEMPLATE_ID;
   const payload = {
     touser: openid,
     templateId: tplId,
     page: pageFor(row),
-    data: templateData(row),
+    data: templateData(row, tplId),
     miniprogramState: MINI_STATE,
     lang: 'zh_CN'
   };
@@ -124,9 +176,12 @@ async function send(row) {
     await cloud.openapi.subscribeMessage.send(payload);
     return true;
   } catch (e) {
-    // 第二模板发送失败（字段不匹配/模板被删/未开通）→ 回落默认模板（保证提醒仍能送达）
-    if (tplId !== TEMPLATE_ID) {
-      await cloud.openapi.subscribeMessage.send(Object.assign({}, payload, { templateId: TEMPLATE_ID }));
+    // 历史第二模板失败 → 回落新模板（第二模板必须使用新模板字段）；旧模板不回落（旧客户端没有新模板授权）
+    if (tplId !== TEMPLATE_ID && tplId !== LEGACY_TEMPLATE_ID) {
+      await cloud.openapi.subscribeMessage.send(Object.assign({}, payload, {
+        templateId: TEMPLATE_ID,
+        data: scheduleTemplateData(row)
+      }));
       return true;
     }
     throw e;
@@ -249,7 +304,7 @@ async function sendToNt(msg) {
   for (const row of list) {
     try {
       await send({
-        openid: row.openid, kind: 'nt', tmplId: row.tmplId,
+        openid: row.openid, kind: 'nt', tmplId: row.tmplId, place: row.place,
         tip: '新通知', timeText: msg.timeText, summary: msg.summary, dateText: msg.dateText
       });
       await markDone(row._id);
@@ -361,6 +416,9 @@ async function subscribe(event, openid) {
   const fireAt = Number(event.fireAt) || 0;
   // ref 统一 trim：空白串视为空；ntremind 必须 ref 非空（契约 §2.1）
   const ref = String(event.ref == null ? '' : event.ref).trim();
+  // 2026-11-19：记录本次授权用的模板 ID（新客户端 = 新模板；旧客户端不传 → 空 = 旧模板兼容）
+  const wantTmpl = String(event.tmplId || '');
+  const tmplId = (wantTmpl && TEMPLATES.indexOf(wantTmpl) >= 0) ? wantTmpl : '';
 
   if (kind === 'ntremind') {
     if (!ref) return { ok: false, reason: 'missing-ref' };
@@ -385,6 +443,9 @@ async function subscribe(event, openid) {
       timeText: String(event.timeText || fmt(fireAt)),
       summary: short(event.summary || '', 20),
       dateText: String(event.dateText || ''),
+      // 新模板「地点」：通知页传入通知原文的地点段落（没有时发送侧回落「班级工具」）
+      place: short(event.place || '', 20),
+      tmplId: tmplId,
       active: true,
       attempts: 0,
       createdAt: now,
@@ -397,9 +458,6 @@ async function subscribe(event, openid) {
 
   // hw / nt：保持既有逻辑（hw 的 fireAt 必须在未来；nt 的 fireAt 可为 0）
   if (kind === 'hw' && fireAt <= now) return { ok: false, reason: 'time-passed' };
-  // 需求 11：kind='nt' 记录本次授权的模板 ID（第二模板配置时优先用它发送；非法/未配置 → 空 = 默认模板）
-  const wantTmpl = String(event.tmplId || '');
-  const tmplId = (kind === 'nt' && wantTmpl && TEMPLATES.indexOf(wantTmpl) >= 0) ? wantTmpl : '';
   const row = {
     openid: openid,
     kind: kind,
@@ -410,6 +468,7 @@ async function subscribe(event, openid) {
     summary: short(event.summary || '', 20),
     dateText: String(event.dateText || ''),
     label: String(event.label || ''),
+    place: short(event.place || '', 20),
     tmplId: tmplId,
     active: true,
     attempts: 0,
@@ -479,7 +538,7 @@ async function publishNotice(event) {
   for (const row of list) {
     try {
       await send({
-        openid: row.openid, kind: 'nt',
+        openid: row.openid, kind: 'nt', tmplId: row.tmplId, place: row.place,
         tip: '新通知',
         timeText: event.timeText || row.timeText,
         summary: event.summary || row.summary,

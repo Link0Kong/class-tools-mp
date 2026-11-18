@@ -10,7 +10,8 @@
 //   idKeys(rows)          ['<id>:<ts>'] 基线键（用于找出新增 id）
 //   detectNew(prev, rows) 返回 { baseline, changed, newRows, sig, ids }
 //   pickLatest(rows)      最新一条（按 ts 升序表的最后一条；排除 hidden）
-//   messageOf(row, fmt)   组装订阅消息文案（thing2/time1/thing3/time26 所需文本）
+//   messageOf(row, fmt)   组装订阅消息文案（title/tip/timeText/summary/dateText 原始字段；
+//                         新模板「日程/时间/地点/日程描述」的映射在 index.js templateData 里做）
 //   normCfg(raw)          云端 __notify_cfg 文档归一（坏数据宽容）
 //   mergeCfg(raw, patch)  配置增量合并（保留 token/lastSig 等未提及字段；2026-11-15）
 //   cfgView(cfg, now)     诊断用脱敏视图（绝不含 token 明文）

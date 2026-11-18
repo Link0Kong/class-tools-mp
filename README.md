@@ -913,11 +913,19 @@ node tt_swipe_preview.js  # 2026-11-06 课表 6/7 天同页缩放回归：mock �
 
 > `e2e.js` 里的旧登录 / pages/verify / 课表管理用例在 v12 身份系统下已不适用（标注为 v13 待重写）；本次回归以 `unit.js` + `staticcheck.py` + 开发者工具预览截图为准。
 
-## 九、订阅消息（作业截止提醒 / 通知提醒，1.4.7）
+## 九、订阅消息（作业截止提醒 / 通知提醒，1.4.7；2026-11-19 模板切换）
 
-- 模板 ID：`eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo`
-- 关键词映射：温馨提示 `thing2` / 时间 `time1` / 摘要 `thing3` / 日期 `time26`
-- 云函数：`cloudfunctions/notify`（微信云开发环境 `fengdan-d6g7hnk4gf35685b3`，已部署 Active，Nodejs16.13，timeout 3s）。
+- **当前模板：日程提醒（基础信息，模板编号 9109）** `ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk`
+- 关键词映射：日程 `thing1` / 时间 `time2` / 地点 `thing3` / 日程描述 `thing5`
+  - 日程 = 通知标题 / 作业摘要（`summary`，≤20 字）
+  - 时间 = 活动/截止时间（`dateText`；缺省回退提醒时间 `timeText`，再回退 `fmt(fireAt)`）
+  - 地点 = 通知「地点」段落（`aiSegments`，缺省「班级工具」）
+  - 日程描述 = 提醒类型（`tip`：作业截止提醒 / 通知提醒 / 新通知，≤20 字）
+- **旧模板兼容**：`eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo`（温馨提示 `thing2` / 时间 `time1` /
+  摘要 `thing3` / 日期 `time26`）在云函数中保留——订阅行没有 `tmplId` = 旧客户端，继续按旧模板/旧字段发送；
+  新客户端订阅时写入 `tmplId=新模板`，发送按新模板字段。**这样云函数可以先上线、小程序后发布，旧提醒不中断。**
+- 云函数：`cloudfunctions/notify`（微信云开发环境 `fengdan-d6g7hnk4gf35685b3`，函数已部署 Active，Nodejs16.13，timeout 3s；
+  **2026-11-19 模板切换代码需重新上传**，见下方上线顺序）。
   接口：`subscribe`（kind = `hw` 作业 / `ntremind` 单条通知提醒）、`list`（本人 active 提醒）、
   `cancel`（取消本人提醒）、`timer`（定时触发器**每分钟**，处理到点的作业 + 通知提醒）、
   `flush`（前端 catch-up：只补发调用者本人到点提醒，2026-11-10 新增）、`diag`（只读诊断：定时器心跳/积压/历史 lastError，不含 openid，2026-11-10 新增）。
@@ -926,6 +934,11 @@ node tt_swipe_preview.js  # 2026-11-06 课表 6/7 天同页缩放回归：mock �
   改完 `config.json`（triggers）或新建云函数后，必须在开发者工具里**右键 `cloudfunctions/notify/config.json` →「上传触发器」**
   （或右键 `notify` 文件夹 →「上传触发器」）；否则云函数可调用、但 `timer` **永远不跑**，所有提醒都不会送达。
   验证：部署后任意时刻调 `notify {action:'diag'}`，`diag.hb.ts` 应在 2 分钟内不断刷新（source=`timer`）。
+- **2026-11-19 模板切换的上线顺序（重要）**：
+  1. 先上传部署云函数 `notify`（含新/旧双模板兼容逻辑）：此时旧客户端订阅的旧模板提醒仍照常送达；
+  2. 再上传/发布新版小程序（`utils/notify.js` 请求新模板并在订阅时携带 `tmplId`）：新设置的提醒自动走新模板；
+  3. 切换前已存在的 active 提醒仍按旧模板发送（微信授权绑定旧模板），发送/过期后自然清空；
+  4. 等确认新版已覆盖全部使用者后，才可删除云函数里的 `LEGACY_TEMPLATE_ID` 兼容分支（本次不删）。
 - **作业**：作业卡片「提醒」→ 选提前 1 天 / 2 小时 / 自定义时间 → 授权 → 云函数记录，定时器到点发送。
 - **通知（1.4.7 新增；2026-11-18 修正提醒基准）**：
   - 通知卡片底部「提醒」：**有活动报名开始 `signupStart` 且未开始 → 以报名开始为基准**
@@ -943,11 +956,12 @@ node tt_swipe_preview.js  # 2026-11-06 课表 6/7 天同页缩放回归：mock �
 - **2026-11-10 修复**：真实云端 `subscriptions` 里 2026-10-21～11-07 的 4 条 active 提醒从未发送（`sentEver=0`、无心跳），
   根因即上面的「触发器从未上传」。云函数已加：定时器心跳、`action='diag'`、**陈旧提醒守卫**（到点 >6h 不再补发，标 `skippedAt`），
   `action='flush'` + 小程序回前台自动补发本人到点提醒（触发器之外的送达保障）。旧积压已按 stale 清理（不发陈旧消息）。
-- 测试：`mp-class-tools-tests/notify_ui_test.js`（前端 25 项）、`mp-class-tools-tests/notify_flush_ui_test.js`（flush/diag 契约 10 项）、
-  `mp-class-tools-tests/cloudfunctions/notify.test.js`（云函数 mock 35 项）、
-  `mp-class-tools-tests/cloudfunctions/notify_fix_20261110.test.js`（修复回归 18 项：心跳/陈旧守卫/flush/diag）；
+- 测试：`tests/notify_ui_test.js`（前端 28 项）、`tests/notify_flush_ui_test.js`（flush/diag 契约 10 项）、
+  `tests/cloudfunctions/notify.test.js`（云函数 mock 40 项，含新/旧模板字段映射）、
+  `tests/cloudfunctions/notify_fix_20261110.test.js`（修复回归 18 项：心跳/陈旧守卫/flush/diag）；
   2026-11-11 新增 `task7_unit_tests.js` B 组（scan.js 签名/基线/新增检测/门控/诊断 + 第二模板 + 失败归因）；
-  真实消息禁止用于自动化测试。
+  2026-11-19 模板切换用例：新模板 `thing1/time2/thing3/thing5`、时间格式回退、地点回退「班级工具」、
+  无 `tmplId` 旧订阅行仍走旧模板；真实消息禁止用于自动化测试。
 
 ## 九·补、新通知提醒链路修复与部署配置（2026-11-11，task-7 需求 11）——**客户端功能已于 2026-11-18 移除**
 
@@ -985,12 +999,13 @@ node tt_swipe_preview.js  # 2026-11-06 课表 6/7 天同页缩放回归：mock �
 
 **第二模板 ID（可选，配置数组）**：
 - 现只配置 1 个默认模板时行为与旧版完全一致（授权只请求 1 个 tmplIds，发送只用默认模板）。
-- 微信后台新增第二个模板（建议关键词与默认模板一致：`thing2`/`time1`/`thing3`/`time26`）后，二选一配置：
-  1) `utils/notify.js` 里 `SECOND_TEMPLATE_ID = '<模板ID>'`（授权侧会一次请求 `[默认, 第二]`，接受者优先）；
-  2) 云函数环境变量 `NOTIFY_TMPL2=<模板ID>`（发送侧按订阅行 `tmplId` 选择；第二模板发送失败自动回落默认模板）。
-  两侧都建议配置（授权侧决定"能否发"，发送侧决定"用哪个模板发"）。未配置即只用现有默认模板。
+- **注意**：当前客户端 `utils/notify.js` 的 `templateIds()` 只返回默认模板 1 个；`NOTIFY_TMPL2` 是云函数的
+  历史「第二模板」发送侧能力，未配置即不启用。客户端未请求第二模板时，仅配置云函数环境变量不会产生授权。
+- 微信后台新增第二模板（关键词必须与新默认模板一致：`thing1`/`time2`/`thing3`/`thing5`）后，
+  在云函数环境变量配置 `NOTIFY_TMPL2=<模板ID>`；如需真正使用，还要在客户端 `templateIds()` 中加该模板并重新发布。
+  第二模板发送失败会回落新默认模板。
 - 微信后台配置步骤：微信公众平台 → 订阅消息 → 我的模板 → 选用/新增模板 → 复制模板 ID；
-  关键词必须与本项目模板数据字段同义（温馨提示/时间/摘要/日期），否则发送会报 47003（此时自动回落默认模板）。
+  关键词必须与本项目模板数据字段同义（日程/时间/地点/日程描述），否则发送会报 47003（此时自动回落默认模板）。
 
 ### 2026-11-15 修复：`notify_cfg` 整文档覆盖（token/基线丢失）
 

@@ -1,5 +1,6 @@
 // utils/notify.js —— 微信订阅消息（一次性模板）
-// 模板：温馨提示 thing2 / 时间 time1 / 摘要 thing3 / 日期 time26
+// 模板（2026-11-19 起）：日程提醒 —— 日程 thing1 / 时间 time2 / 地点 thing3 / 日程描述 thing5
+// 旧模板（温馨提示 thing2 / 时间 time1 / 摘要 thing3 / 日期 time26）由云函数为旧客户端兼容保留。
 // 授权只在小程序端完成；真正发送由 cloudfunctions/notify 云函数执行。
 // v20 / 1.4.7：新增「通知提醒」per-notice（kind='ntremind'）：subscribe/list/cancel。
 //   契约见 _notify_task/CONTRACT.md §1/§2/§3：
@@ -14,7 +15,7 @@
 //   * diag()：提醒通道诊断（定时器心跳 / active 数 / lastError），诊断页展示。
 //   * classify(err)：把失败归因为可读原因（denied / unsupported / disabled-setting / cloud-missing / network），
 //     页面据此 toast「已拒绝 / 未开启微信订阅消息 / 云函数未部署 / 网络不可用」。
-const TEMPLATE_ID = 'eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo';
+const TEMPLATE_ID = 'ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk';
 // 云函数名（微信云开发「云函数」里必须是 notify；未部署时调用失败会归因 cloud-missing）
 const CLOUD_FN = 'notify';
 // 云开发环境：只在真正要发订阅消息/提醒时初始化（2026-11-17 从 app.onLaunch 移出，避免启动首帧加载 SDK）。
@@ -38,6 +39,23 @@ function fmt(d) {
   d = new Date(d || Date.now());
   return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
     ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+}
+// 新模板 thing 字段（日程/地点/日程描述）≤20 字
+function short(s, n) {
+  s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+// 通知「地点」段落 → 新模板 thing3；没有则空（云函数回落「班级工具」）
+function placeOf(group) {
+  const g = group && typeof group === 'object' ? group : {};
+  const direct = short(g.place || '', 20);
+  if (direct) return direct;
+  const segs = Array.isArray(g.aiSegments) ? g.aiSegments : [];
+  for (let i = 0; i < segs.length; i++) {
+    const s = segs[i] || {};
+    if (s.text && String(s.type || '').indexOf('地点') >= 0) return short(s.text, 20);
+  }
+  return '';
 }
 // 失败归因（页面 toast 用；不打印 token / openid）
 function classify(err) {
@@ -100,7 +118,8 @@ function subscribeHomework(h, fireAt, label) {
       tip: '作业截止提醒',
       timeText: fmt(fireAt),
       summary: ((h && h.subject) ? h.subject + '：' : '') + ((h && h.content) || '作业'),
-      dateText: h && h.date ? fmt(new Date(String(h.date).replace(/-/g, '/') + ' ' + (h.time || '00:00') + ':00')) : fmt(fireAt)
+      dateText: h && h.date ? fmt(new Date(String(h.date).replace(/-/g, '/') + ' ' + (h.time || '00:00') + ':00')) : fmt(fireAt),
+      tmplId: TEMPLATE_ID
     });
   });
 }
@@ -133,7 +152,7 @@ function subscribeNoticeReminder(group, fireAt, label) {
   // 模板里的「日期」应显示提醒所依据的那个时间，而不是永远显示截止。
   var base = Number(group && group.baseTs) || deadlineTsOf(group);
   return ask().then(function () {
-    return call({
+    var payload = {
       action: 'subscribe', kind: 'ntremind',
       ref: gid,
       fireAt: Number(fireAt) || 0,
@@ -141,8 +160,12 @@ function subscribeNoticeReminder(group, fireAt, label) {
       tip: '通知提醒',
       timeText: fmt(fireAt),
       summary: title,
-      dateText: base ? fmt(base) : fmt(fireAt)
-    });
+      dateText: base ? fmt(base) : fmt(fireAt),
+      tmplId: TEMPLATE_ID
+    };
+    var place = placeOf(group);
+    if (place) payload.place = place;
+    return call(payload);
   });
 }
 // 云端 active 提醒列表（默认只查 ntremind）；返回数组，失败 reject（页面静默）。
@@ -176,6 +199,7 @@ module.exports = {
   templateIds: templateIds,
   classify: classify,
   fmt: fmt,
+  placeOf: placeOf,
   deadlineTsOf: deadlineTsOf,
   subscribeHomework: subscribeHomework,
   subscribeNoticeReminder: subscribeNoticeReminder,

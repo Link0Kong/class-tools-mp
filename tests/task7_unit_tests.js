@@ -382,6 +382,7 @@ function run(test) {
     await test('B4 notify.templateIds / classify：默认只用 1 个模板；第二模板未配置不请求；失败原因可读', function () {
       purge();
       const notify = R('utils/notify.js');
+      assert.strictEqual(notify.TEMPLATE_ID, 'ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk', '新模板（日程提醒）');
       assert.deepStrictEqual(notify.templateIds(), [notify.TEMPLATE_ID], '默认只请求默认模板（向后兼容）');
       assert.strictEqual(notify.templateIds().length, 1);
       assert.strictEqual(notify.classify(new Error('denied')), 'denied');
@@ -425,6 +426,9 @@ function run(test) {
       assert.ok(/if \(event\.action === 'ntStatus'\)/.test(js), '有 ntStatus action（按钮反馈 active 数）');
       assert.ok(/if \(event\.action === 'scan'\)/.test(js), '有 scan action（排查/自测）');
       assert.ok(/NOTIFY_TMPL2/.test(js), '支持第二模板（环境变量 NOTIFY_TMPL2）');
+      assert.ok(/ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk/.test(js), '新模板 ID（日程提醒）');
+      assert.ok(/eYDRJDSTJdRL-gvE0rM8EbuSZX6mA9L2U-UTA8MwSmo/.test(js), '旧模板 ID 兼容保留（旧客户端）');
+      assert.ok(/thing1/.test(js) && /time2/.test(js) && /thing3/.test(js) && /thing5/.test(js), '新模板字段映射');
       assert.ok(/NOTICE_SCAN_Q/.test(js) && /select=id,ts,title,hidden,edited_at/.test(js), '轮询 notices 轻量表（同签名口径）');
       assert.ok(/X-Class-Token/.test(js), '轮询带班级 token（X-Class-Token）');
       assert.ok(!/console\.(log|info|warn|error)\([^)]*token/i.test(js), '不得打印 token');
