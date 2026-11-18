@@ -57,6 +57,23 @@
 > **VERSION 仍 2.0.0、零新依赖、待用户上传发布**；
 > 云端 RPC 见 `web/deploy/cloudbase/2026-11-12_draw_proof.sql`，发布前确认 `webBase` 域名与微信后台合法域名。
 >
+> **2026-11-19（待上传；代码版本仍 2.0.0）· 名单左右滑动切分类 + 团员计数常显**：用户要求「增加名单的滑动切换功能和对应动效」
+> 与「修复团员名单在未打开时不显示数字的问题」。
+> ① **滑动切分类**（`pages/committee` + `utils/roster.js tabNeighbor/tabIndicator`）：与课表页同一套手感——横向锁定 12px
+> （|dx|>|dy|×1.35）→ 1:1 跟手 → 松手过 56px 提交（旧内容 `translateX(±W) opacity .25` 飞出 150ms → 换分类 → 新内容从另一侧
+> 进场 20ms 后 `.23s cubic-bezier(.22,.8,.3,1)` 弹回）；未过阈值回弹 `.2s`；首个/最后一个分类 0.28 橡皮筋阻尼；真正滑动后
+> 320ms 内吞掉点击（防误触「管理」/行点按）；纵向手势不抢页面滚动。手势容器 `.rd-swipe` 只包名单内容，不包顶部 tab 头。
+> 分类 tab 改为 **liquid 指示条**（`.rd-ind` 绝对定位 + `left/width` 过渡，位置由 `tabIndicator()` 的 3 段百分比驱动），
+> 点击 tab 与滑动共存。
+> ② **团员计数常显**：`listView().counts.leagueText` 未加载时由 `''` 改为 `'0'`，并新增 `counts.loading`（`league: !loaded`）；
+> 加载中数字照常显示、只用 1.1s opacity 脉冲（35%–70%）示意，**不用 `color:transparent`**（否则数字会被一起隐藏——
+> 截图实测曾踩到）。加载完成后自然变为真实人数。
+> 测试：`committee_unit_tests.js` **10/10**（新增「滑动切分类纯逻辑：邻接/边界/指示条几何」与「页面滑动手势接线：
+> 横向锁定/提交切换/边界回弹/滑动后吞点击」）+ `committee_swipe_preview.js` **22/22**（automator 真实渲染：计数节点宽度、
+> 跟手 ±40/±100px、飞出 opacity .25、切换后指示条 34.667%/69.333%/0%、末段 0.28 阻尼、右滑回退、点击 tab、0 console error）；
+> 全量 `node unit.js` **593 passed / 7 failed**（7 项与改动前基线完全一致：合规域名/ko-link/draw×4/期次/发布）；
+> `staticcheck.py` handlers/分享 0 缺失；`code_quality_check.js` 全部规则通过。**VERSION 仍 2.0.0、待用户上传发布**。
+>
 > **2026-11-12（待上传；代码版本仍 2.0.0）· 名单三分类与网页版同步**：`pages/committee` 从「班委名单」升级为「名单」——
 > 三 tab「班委 / 团员 / 全班」+ 计数徽标：班委（role/badge，按职务权重排序）、团员（`class_league` RPC 6h 缓存 ∩ 班级名单，
 > 行上显示「团员」pill）、全班（仅姓名与座号）；管理员在班委 tab 点「管理」可逐人设置/清除职务

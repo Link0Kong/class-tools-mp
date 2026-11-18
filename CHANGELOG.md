@@ -1,5 +1,15 @@
 # 版本记录
 
+## 名单左右滑动切分类 + 团员计数常显（2026-11-19，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户原话：「增加名单的滑动切换功能和对应动效，修复团员名单在为打开时不显示数字的问题」。
+
+- **滑动切分类**（`pages/committee/*` + `utils/roster.js`）：与课表页（`pages/tt`）同一套动效参数——横向锁定 12px / |dx|>|dy|×1.35、1:1 跟手、提交阈值 56px、边界 0.28 橡皮筋、滑动后 320ms 吞点击；提交流程为「旧内容飞出（±W, opacity .25, .16s）150ms → 换分类 → 新内容从另一侧进场 → 20ms 后 .23s cubic-bezier(.22,.8,.3,1) 弹回」。手势容器 `.rd-swipe` 只包名单内容（含空态/加载态），不包顶部 tab 头，纵向手势不 `preventDefault`。新增 `roster.TAB_KEYS/tabIndex/tabKeyOf/tabNeighbor/tabIndicator` 纯逻辑；`_swClear()` 在 onHide/onUnload 统一清定时器。
+- **liquid 指示条**：三个 tab 的选中底色改由 `.rd-ind` 滑块承担（`left/width` 由 `tabIndicator()` 的百分比驱动，`.32s cubic-bezier(.3,.9,.32,1)` 过渡），tab 只负责文字/数字配色。
+- **团员计数常显（bug 修复）**：`listView().counts.leagueText` 未加载时原为 `''` → 改为 `'0'`，新增 `counts.loading`（`league: !loaded`）；加载中数字照常显示、仅 1.1s opacity 脉冲。**注意**：占位不能用 `color:transparent`+`background:currentColor`（截图实测数字会一起消失）。
+- **测试**：`committee_unit_tests.js` **10/10**（新增滑动纯逻辑 + 页面手势接线两组）；`committee_swipe_preview.js` **22/22**（automator 真实渲染，含跟手位移/飞出/进场/指示条百分比/边界阻尼/右滑回退/点击 tab/0 console error）；全量 `unit.js` **593 passed / 7 failed**（7 项为既有失败，与本次无关）；`staticcheck.py` handlers 0 缺失；`code_quality_check.js` 退出 0。
+- **未做**：未上传/发布；未改 VERSION、UD v6 契约、云端表结构。
+
 ## 水量图标重绘：实心绿水滴 → 白色线性水滴（2026-11-19，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户原话：「优化微信小程序水量图标」。
