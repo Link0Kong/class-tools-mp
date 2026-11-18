@@ -4,7 +4,8 @@
 //   1) 有真实截止时间（deadline，含 extensions 最后一次延期）→ 只按真实截止判断与展示；
 //      expireAt 只是「多久后不再显示为进行中」的自动归档兜底，绝不拿来当截止时间展示；
 //   2) 没有截止但有活动/事件时间（eventAt）→ 活动结束（archiveAt || eventAt）才算结束；
-//   3) 两者都没有 → 只作知悉，显示「无时间」，不算过期。
+//   3) 两者都没有 → 契约 2026-11-18：时间 = 发布时间、动作 =「发布」，参与排序/待处理统一计算；
+//      连发布时间都没有（极旧缓存/空 items）才显示「无时间」，归「资料 / 无时间」兜底栏。
 // 自动通知结构来自 public.notices.body 里的 [[CLASS_NOTICE_V1]] JSON。
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
 function fmt(ts) {
@@ -166,6 +167,12 @@ function statusOf(g, nowTs) {
     const lab = fmtWhen(eventAt, now) + ' ' + action;
     if (now > end) return { key: 'expired', label: lab, cls: 'expired', expired: true };
     return { key: 'active', label: lab, cls: 'active', expired: false };
+  }
+  // 契约 2026-11-18 §2：既无截止/活动/报名等真实时间锚点（长期安排与已过期在上面已优先返回）→
+  // 时间 = 发布时间、动作 =「发布」，参与主列表排序与待处理统计；旧缓存没有 publishedAt 时按组内最新消息时间回退。
+  const pubTs = publishedTsOf(g, now);
+  if (pubTs != null) {
+    return { key: 'published', label: fmtWhen(pubTs, now) + ' ' + ((g && g.publishAction) || '发布'), cls: 'active', expired: false };
   }
   return { key: 'none', label: '无时间', cls: 'none', expired: false };
 }
@@ -375,12 +382,15 @@ function hasTimeAnchor(g) {
   if (Array.isArray(g.signupWindows) && g.signupWindows.length) return true;
   return false;
 }
-// '' = 普通通知；'recur' = 进行中的长期安排；'info' = 资料 / 无时间
+// '' = 普通通知；'recur' = 进行中的长期安排；'info' = 资料 / 无时间（仅兜底，正常为 0 条）
 // 契约 2026-11-14 §1.2/§1.3：无时间 → 资料栏；until 已过 → 归已过期区（不再是长期通知）。
+// 契约 2026-11-18 §3：有发布时间（publishedAt / 可回退推算）→ 发布卡进主列表，不再进资料栏；
+// 只有「既无真实时间锚点、又无发布时间」的兜底卡才留在资料栏。
 function longtermSubtypeOf(g, nowTs) {
   if (!g) return '';
   if (isRecurGroup(g)) return isRecurEnded(g, nowTs) ? '' : 'recur';
   if (hasTimeAnchor(g)) return '';
+  if (publishedTsOf(g, nowTs) != null) return '';
   const k = statusOf(g, nowTs).key;
   if (k === 'expired' || k === 'extended_past' || k === 'alert') return '';
   return 'info';
@@ -388,7 +398,7 @@ function longtermSubtypeOf(g, nowTs) {
 function isLongterm(g, nowTs) { return !!longtermSubtypeOf(g, nowTs); }
 
 // 主列表档位（网页 orderRank 同口径）：0 alert / 1 urgent·today / 2 extended / 3 soon·active /
-// 4 无时间 / 7 延期已截止 / 8 已截止 / 9 已处理（主列表最后；长期通知本就不在主列表）
+// 4 发布时间卡·无时间兜底 / 7 延期已截止 / 8 已截止 / 9 已处理（主列表最后；长期通知本就不在主列表）
 function listRankOf(g, done) {
   if (doneOf(done, g && g.id)) return 9;
   const st = statusOf(g);
@@ -397,14 +407,25 @@ function listRankOf(g, done) {
   if (st.key === 'extended') return 2;
   if (st.key === 'soon' || st.key === 'active') return 3;
   if (st.key === 'none') return 4;
+  if (st.key === 'published') return 4;        // 契约 2026-11-18 §4：发布卡排 active 之后
   if (st.key === 'extended_past') return 7;
   if (st.key === 'expired') return 8;
   return 5;
 }
-// 主列表比较：先档位，档内按主显示时间（报名优先）升序、无时间最后；相等返回 0（调用方按数据源顺序稳定排序）
+// 档 4 内排序（契约 2026-11-18 §4）：有发布时间的按发布时间倒序（新的在上），无发布时间排最后
+function rank4Compare(a, b, nowTs) {
+  const pa = publishedTsOf(a, nowTs), pb = publishedTsOf(b, nowTs);
+  if (pa != null && pb != null) return pb - pa;
+  if (pa != null) return -1;
+  if (pb != null) return 1;
+  return 0;
+}
+// 主列表比较：先档位，档 4 按发布时间倒序；其余档内按主显示时间（报名优先）升序、无时间最后；
+// 相等返回 0（调用方按数据源顺序稳定排序）
 function mainListCompare(a, b, done, nowTs) {
   const ra = listRankOf(a, done), rb = listRankOf(b, done);
   if (ra !== rb) return ra - rb;
+  if (ra === 4) return rank4Compare(a, b, nowTs);
   const ta = whenOf(a, nowTs), tb = whenOf(b, nowTs);
   if (ta == null && tb == null) return 0;
   if (ta == null) return 1;
@@ -616,6 +637,7 @@ function fmtDisplayDates(text, anchor, nowTs) {
 
 // ---------------------------------------------------------------- 契约 2026-11-14 §2.4：最新发布
 // 发布时间 = 通知组内最新一条消息时间（items[].time），有 updatedAt（补充/更正）时取较晚者。
+// 契约 2026-11-18 起：优先读数据字段 publishedAt（见 publishedTsOf），本函数仅作旧缓存/旧数据的兜底推算。
 function pubTsOf(g, nowTs) {
   if (!g) return null;
   let best = null;
@@ -627,6 +649,14 @@ function pubTsOf(g, nowTs) {
     if (t != null && (best == null || t > best)) best = t;
   }
   return best;
+}
+// 契约 2026-11-18 §1/§6：发布时间。优先数据字段 publishedAt（ISO +08:00，管线对所有组写入）；
+// 旧缓存/旧数据缺字段 → 回退 pubTsOf（组内最新 items[].time 与 updatedAt 的较晚者）。
+function publishedTsOf(g, nowTs) {
+  if (!g) return null;
+  const t = parseTs(g.publishedAt);
+  if (t != null && t > 0) return t;
+  return pubTsOf(g, nowTs);
 }
 function hmOf(ts) { const d = new Date(ts); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
 // 最新发布相对文案：今天/昨天 HH:MM；更早 → `M月D日（相对周） HH:MM`
@@ -643,7 +673,7 @@ function latestOf(all, nowTs) {
   let best = null;
   (all || []).forEach(function (g) {
     if (!g || g._hidden) return;
-    const t = pubTsOf(g, nowTs);
+    const t = publishedTsOf(g, nowTs);
     if (t != null && (best == null || t > best)) best = t;
   });
   return { ts: best, text: latestTextOf(best, nowTs) };
@@ -658,11 +688,12 @@ function entryRankOf(g, done, occ) {
 function entryWhenOf(g, nowTs, occ) {
   return occ ? occ.next : whenOf(g, nowTs);
 }
-// a/b = { g, occ }（occ 可空）；档位 → 主显示时间升序 → 稳定（调用方按数据源顺序兜底）
+// a/b = { g, occ }（occ 可空）；档位 → 档 4 发布时间倒序 / 其余主显示时间升序 → 稳定（调用方按数据源顺序兜底）
 function mainEntryCompare(a, b, done, nowTs) {
   const ra = entryRankOf(a && a.g, done, a && a.occ);
   const rb = entryRankOf(b && b.g, done, b && b.occ);
   if (ra !== rb) return ra - rb;
+  if (ra === 4) return rank4Compare(a && a.g, b && b.g, nowTs);
   const ta = entryWhenOf(a && a.g, nowTs, a && a.occ);
   const tb = entryWhenOf(b && b.g, nowTs, b && b.occ);
   if (ta == null && tb == null) return 0;
@@ -674,11 +705,12 @@ function mainEntryCompare(a, b, done, nowTs) {
 // 「已处理」映射（marks kind='ntdone' 的本机镜像）：传给 statOf / mostUrgent 时排除已处理的通知
 function doneOf(done, id) { return !!(done && id && done[id]); }
 
-// 简报统计（契约 2026-11-14 §2.4；done 可选，已处理不计入待处理；now 可注入便于单测）：
-//   待处理 = 未过期、非长期定义、非资料/无时间、未已处理、actionable!==false、且有时间锚点（期次计入）
-//   24h/7 天内 = 上述待处理中主显示时间剩余 ≤24h / ≤7 天（期次窗口必然 ≤24h）
+// 简报统计（契约 2026-11-14 §2.4 + 2026-11-18 §5；done 可选，已处理不计入待处理；now 可注入便于单测）：
+//   待处理 = 未过期、非长期定义、非资料兜底、未已处理、actionable!==false、且有时间锚点
+//            （发布卡视为有时间锚点；期次计入）
+//   24h/7 天内 = 上述待处理中主显示时间剩余 ≤24h / ≤7 天（发布卡主显示时间为空 → 不进未来窗口；期次窗口必然 ≤24h）
 //   长期通知 = 进行中的 recurrence 条数（until 已过/下一次越过 until → 不计）
-//   最新发布 = 全部未隐藏通知（含过期/资料/长期定义）中发布时间最新者
+//   最新发布 = 全部未隐藏通知（含过期/资料/长期定义）中 publishedAt（缺字段回退 pubTsOf）最新者
 function statOf(all, done, nowTs) {
   const now = numNow(nowTs);
   const day = 86400000;
@@ -700,12 +732,14 @@ function statOf(all, done, nowTs) {
       week += 1;
       return;
     }
-    if (isLongterm(g)) return;                  // 资料 / 无时间：不参与待处理统计
+    if (isLongterm(g)) return;                  // 资料兜底卡（无锚点且无发布时间，正常 0 条）：不参与待处理统计
     if (!isActionable(g)) return;
     if (doneOf(done, g && g.id)) return;
-    if (!hasTimeAnchor(g)) return;              // 双保险：没有时间锚点不计待处理
+    // 契约 2026-11-18 §5：发布卡视为有时间锚点；既无锚点又无发布时间才不计（双保险）
+    if (!hasTimeAnchor(g) && publishedTsOf(g, now) == null) return;
     pending += 1;
-    // 「24h 内截止 / 7 天内截止」按卡片主显示时间（报名优先）统计，与 chip 同口径
+    // 「24h 内截止 / 7 天内截止」按卡片主显示时间（报名优先）统计，与 chip 同口径；
+    // 发布卡 whenOf 为 null（发布已过去）→ 不进入未来窗口统计
     const whenTs = whenOf(g, now);
     if (whenTs != null && whenTs >= now) {
       const left = whenTs - now;
@@ -987,7 +1021,7 @@ module.exports = {
   relLabelOf: relLabelOf, dateCnOf: dateCnOf, dateTimeCnOf: dateTimeCnOf,
   fmtDatesCn: fmtDatesCn, fmtDisplayDates: fmtDisplayDates,
   // 契约 2026-11-14 §2.4：最新发布（发布时间戳 / 相对文案）+ 主列表「期次」排序
-  pubTsOf: pubTsOf, latestTextOf: latestTextOf, latestOf: latestOf,
+  pubTsOf: pubTsOf, publishedTsOf: publishedTsOf, latestTextOf: latestTextOf, latestOf: latestOf,
   entryRankOf: entryRankOf, entryWhenOf: entryWhenOf, mainEntryCompare: mainEntryCompare,
   // 需求 12：管理员编辑 override
   applyOverride: applyOverride, OVERRIDE_KEYS: OVERRIDE_KEYS,

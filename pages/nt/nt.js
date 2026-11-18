@@ -370,8 +370,9 @@ function mapGroup(rawG, nowTs) {
     isOcc: false,
     isInfo: false,
     recurEnded: ended,
-    // 契约 §2.4：发布时间戳（items 最新消息 / updatedAt 取较晚），用于「最新发布」按发布时间倒序
-    pubTs: notice.pubTsOf(g, now),
+    // 契约 2026-11-18 §1/§5：发布时间戳（publishedAt 优先，旧缓存回退 items 最新消息 / updatedAt），
+    // 用于「最新发布」倒序与发布卡状态 chip
+    pubTs: notice.publishedTsOf(g, now),
     // 需求 12：管理员软删除（hidden）/ 被管理员编辑过（override 或补充通知更新）
     hidden: !!(rawG && rawG._hidden),
     updated: !!(g.updatedAt || (rawG && rawG._editedAt)),
@@ -1107,7 +1108,8 @@ Page({
       }
       if (notice.isLongterm(go, now)) return;
       if (doneMap[card ? card.id : go.id]) return;
-      if (!notice.hasTimeAnchor(go)) return;
+      // 契约 2026-11-18 §5：发布卡（无真实锚点但有发布时间）也属待处理；主显示时间为空 → 排最后
+      if (!notice.hasTimeAnchor(go) && notice.publishedTsOf(go, now) == null) return;
       list.push({
         id: card ? card.id : go.id,
         ts: notice.whenOf(go, now),

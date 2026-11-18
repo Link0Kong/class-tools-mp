@@ -1,5 +1,28 @@
 # 版本记录
 
+## 通知「发布时间」统一：无时间锚点通知 → 发布时间 / 动作「发布」/ 参与排序与统计（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户原话（2026-11-18 12:45）：「将通知中不含时间的时间设定为发布时间，动作设为发布，并参与排序等等统一计算」。
+> 唯一契约 `web/通知三端_发布时间统一_契约_20261118.md`（数据字段 `publishedAt` / `publishAction` 已由数据管线生成，云端 body 已带）。
+> 只改 `mp-class-tools/**` 与 `mp-class-tools-tests/**`；**未上传发布、VERSION 仍 2.0.0、UD v6 契约不变、无新增网络请求/依赖**。
+
+- **`utils/notice.js`**：新增 `publishedTsOf(g, nowTs)`（优先 `publishedAt`，旧缓存回退 `pubTsOf`：items 最新消息时间 / updatedAt 较晚者）；
+  `statusOf` 在最终 `none` 之前新增 `published` 分支（`{key:'published', label: fmtWhen(...)+' '+(publishAction||'发布'), cls:'active', expired:false}`，
+  长期安排 / `expired:true` / 既有过期规则优先不变）；`longtermSubtypeOf` 的 info 判定加「有发布时间 → 不再归资料栏」；
+  `listRankOf` 发布卡档 4，`mainListCompare` / `mainEntryCompare` 档 4 内按发布时间倒序（无发布时间最后，其余档位规则不变）；
+  `statOf` 发布卡视为有时间锚点按 `actionable` 计入待处理（24h/7 天窗口仍只看主显示时间，发布卡不进未来窗口），
+  `latestOf` 改用 `publishedTsOf`。
+- **`pages/nt/nt.js`**：卡片 `pubTs` 改走 `publishedTsOf`（「最新发布」倒序）；简报 `_briefNextOf` 计入发布卡（主显示时间空 → 排最后，chip 文案「<时间> 发布」）。
+- **`pages/index/index.js`**：工作台待办数走 `statOf`（自动含发布卡），轮换列表同步计入发布卡。
+- **`pages/nt/nt.wxml`**：无需改动——资料栏原本就是 `wx:if="{{filter === 'all' && infoCount}}"`，发布卡移出后 0 条自动隐藏；
+  仍保留「既无时间锚点又无发布时间」的兜底卡（正常数据 0 条）。
+- **兼容**：旧缓存没有 `publishedAt` 时按组内 items 时间 / updatedAt 现场推算，不退回「无时间」；真实 board 104 组新增字段口径与旧缓存回退口径统计完全一致
+  （pending 23 / urgent 9 / week 14 / expired 77 / longterm 2，资料栏 0 条；`publishAction` 9 组 + 1 组仅有 `signupStart` 且已开始的边界组按 statusOf 同口径显示「发布」）。
+- **测试**：`notice_publish_unit.js`（新增）**8/0**；`unit.js` **569/7**（7 条均为本任务前既有失败：quickList/toolOrder、长期安排时间、ko-link 旧断言、抽签核验链接、期次时间依赖；
+  改动前基线 561/7，现 +8 全过）；`notice_occ_unit.js` 8/1（既有期次时间依赖）、`notice_longterm_unit.js` 13/0、`notice_time_test.js` 20/0、
+  `nt_attach_url_tests.js` 10/0、`sync_contract_test.js` 34/0、`staticcheck.py` / `code_quality_check.js` 退出 0。
+- **未做**：未上传/发布小程序（需用户在微信开发者工具上传发布后生效）；未改版本号；安卓/网页按同一契约由各自会话处理，本轮未触碰。
+
 ## 通知弱网/无网兜底：单 key 快照 + 离线文案（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户反馈：微信小程序在弱网或无网时不显示之前加载好的通知。分块缓存（`utils/cache.js`）本身支持 SWR，但旧版本 14MB 整表会因超预算不落盘；分块索引损坏、配额淘汰或请求失败时页面可能只剩空态/「同步中」。

@@ -53,8 +53,9 @@ function shortTitle(h) {
   return s.length > 18 ? s.slice(0, 18) + '…' : s;
 }
 
-// 需求 11 + 契约 2026-11-14 §2.4：通知卡轮换用的「待处理」列表（与 utils/notice.statOf 同口径）
-//   · 无时间资料（longtermSubtypeOf='info'）不计；长期安排定义卡不计；
+// 需求 11 + 契约 2026-11-14 §2.4 + 2026-11-18 §5：通知卡轮换用的「待处理」列表（与 utils/notice.statOf 同口径）
+//   · 资料兜底卡（longtermSubtypeOf='info'：无锚点且无发布时间，正常 0 条）不计；长期安排定义卡不计；
+//   · 发布卡（无真实时间锚点但有发布时间）计入，主显示时间为空 → 排最后；
 //   · 长期安排的期次（窗口内、未处理，ref=<gid>@occ:<YYYYMMDD>）计入，按 next 参与排序；
 //   · 已过期 / actionable=false / 已处理 不计。
 function ntOpenItems(groups, done, nowArg) {
@@ -72,9 +73,10 @@ function ntOpenItems(groups, done, nowArg) {
       out.push({ title: String(g.title || '班级通知'), sub: occ.label, ts: occ.next, alert: !!g.alert });
       return;
     }
-    if (notice.isLongterm(g, now)) return;             // 资料 / 无时间：不占待办
+    if (notice.isLongterm(g, now)) return;             // 资料兜底卡（无锚点且无发布时间）：不占待办
     if (done && done[g.id]) return;
-    if (!notice.hasTimeAnchor(g)) return;
+    // 契约 2026-11-18 §5：发布卡视为有时间锚点（主显示时间为空 → 轮换排序排最后）
+    if (!notice.hasTimeAnchor(g) && notice.publishedTsOf(g, now) == null) return;
     const w = notice.whenInfo(g, now);
     out.push({ title: String(g.title || '班级通知'), sub: st.label || '', ts: w ? w.ts : null, alert: !!g.alert });
   });
