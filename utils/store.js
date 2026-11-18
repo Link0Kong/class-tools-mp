@@ -57,9 +57,6 @@ const DEF = {
   //   * waterSyncAt = 上次云端同步时间（ms，页脚状态展示用）。
   water: { rooms: {} },
   waterPend: [], waterSyncAt: 0,
-  // 2026-11-11 提醒（需求 11）：检测到云端通知签名变化时写 newNtAt（ms）；通知页打开后清零。
-  // 用于工作台「新通知」角标（应用内提醒，低成本）；不进 userdata v6。
-  newNtAt: 0,
   settings: { kind: 'webhook', url: '' }
 };
 
@@ -201,7 +198,6 @@ function mkD(raw) {
     }).filter(Boolean).slice(0, 200)
     : [];
   d.classLeagueAt = Number(raw.classLeagueAt) || 0;
-  d.newNtAt = Number(raw.newNtAt) || 0;
   return d;
 }
 

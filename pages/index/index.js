@@ -118,7 +118,6 @@ Page({
     today: null,            // utils/ttplan.plan() 的结果
     hw: { open: 0, items: [], idx: 0, title: '', sub: '', anim: '' },
     nt: { state: 'syncing', pending: 0, items: [], idx: 0, title: '', sub: '', anim: '' },
-    ntNew: false,           // 2026-11-11 需求 11：检测到新通知且开启过提醒 → 角标（通知页打开后清零）
     // 关注宿舍电费卡片（v2.0.0）：未选择时只做引导、0 请求；选择后读 store.power + power 行
     powerCard: { has: false, sel: '', label: '', qText: '—', unit: '度', stateKey: 'idle', stateText: '未选择', updText: '', loading: false }
   },
@@ -224,7 +223,6 @@ Page({
         quick: quick,
         quickEmpty: quick.length === 0,
         today: plan,
-        ntNew: !!d.newNtAt,          // 需求 11：应用内新通知角标
         hw: Object.assign({ open: open.length }, hwView)
       };
       // 需求 9：只把变化的顶层字段 setData（避免每次 onShow 整页重渲染；首次 state 不同 → 全量下发）

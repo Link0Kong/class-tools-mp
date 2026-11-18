@@ -114,9 +114,6 @@
   background: var(--nt-brief-chip); color: var(--nt-cy-ink);
 }
 .nt-sync { font-size: 20rpx; color: var(--nt-ink-2); }
-/* 2026-11-11 需求 11：新通知提醒状态（已开启 · 收到后自动关闭 · 云端 N 人已订阅） */
-.nt-substate { color: var(--nt-cy-deep); font-weight: 600; }
-.nt-btn--busy { opacity: .6; }
 .nt-date { margin-left: auto; font-size: 20rpx; color: var(--nt-ink-2); }
 
 /* 契约 2026-11-14 §2.1：顶部 5 张可点数据卡（3+2 两行，360px 无横向溢出；点按区 96rpx ≈ 48px ≥ 40px） */

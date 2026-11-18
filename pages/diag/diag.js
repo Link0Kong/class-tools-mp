@@ -52,8 +52,8 @@ Page({
     diagStats: { show: false, text: '', autoFixN: 0, fixedN: 0 },
     diagBusy: false,
     diagAtText: '--:--:--',
-    // 2026-11-11 需求 11：提醒通道诊断（定时器心跳 / active 数 / 新通知扫描 lastError）
-    notifyDiag: { show: false, ok: false, hbText: '—', activeText: '', scanText: '—', errText: '' }
+    // 2026-11-18：提醒通道诊断（手动提醒：作业 / 单条通知；新通知提醒已移除）
+    notifyDiag: { show: false, ok: false, hbText: '—', activeText: '', errText: '' }
   },
 
   onLoad(options) {
@@ -402,20 +402,20 @@ Page({
     this._relink();
   },
 
-  /* ================= 提醒通道诊断（2026-11-11 需求 11） =================
+  /* ================= 提醒通道诊断（手动提醒：作业 / 单条通知；2026-11-18 移除新通知提醒） =================
      数据来自云函数 notify action='diag'（只读，不含 openid/ref/token）：
-       hb              定时器心跳 {ts, agoMs, source}（判断触发器有没有在跑）
-       active/ntActive 云端 active 订阅数（新通知 = kind='nt'）
-       notify          新通知扫描状态 {lastScanAt, lastSentAt, hasToken, lastError, sentCount, baselineAt}
+       hb        定时器心跳 {ts, agoMs, source}（判断触发器有没有在跑）
+       active    云端 active 提醒数（hw + ntremind）
+       lastError 最近错误
      失败静默显示「诊断不可用」（未部署云函数 / 未开通云开发），不影响其它诊断行。 */
   loadNotifyDiag() {
     if (!identity.has() || !cloud.isEnabled() || !wx.cloud || !wx.cloud.callFunction) {
-      this.setData({ notifyDiag: { show: true, ok: false, hbText: '—', activeText: '', scanText: '未启用云开发 / 云函数未部署', errText: '' } });
+      this.setData({ notifyDiag: { show: true, ok: false, hbText: '—', activeText: '', errText: '' } });
       return Promise.resolve(false);
     }
     return notify.diag().then((d) => {
       if (!d) {
-        this.setData({ notifyDiag: { show: true, ok: false, hbText: '—', activeText: '', scanText: '云函数未部署或未返回诊断', errText: '' } });
+        this.setData({ notifyDiag: { show: true, ok: false, hbText: '—', activeText: '', errText: '' } });
         return false;
       }
       const hb = d.hb || null;
@@ -424,27 +424,19 @@ Page({
         ? ((hbAgo < 60000 ? '刚刚' : (hbAgo < 3600000 ? Math.round(hbAgo / 60000) + ' 分钟前' : Math.round(hbAgo / 3600000) + ' 小时前')) +
           '（' + String(hb.source || 'timer') + '）')
         : '从未运行（触发器未生效或云函数未部署）';
-      const scan = d.notify || {};
-      const lastScan = Number(scan.lastScanAt) || 0;
-      const lastSent = Number(scan.lastSentAt) || 0;
-      const scanText = (scan.hasToken ? '已配置班级 token' : '缺少班级 token（等待客户端 bootstrap）') +
-        ' · 上次扫描 ' + (lastScan ? diag.fmtHMS(lastScan) : '—') +
-        (lastSent ? ' · 上次发送 ' + diag.fmtHMS(lastSent) : '') +
-        (scan.sentCount ? ' · 累计 ' + scan.sentCount + ' 条' : '');
-      const errText = String(scan.lastError || d.lastError || '');
+      const errText = String(d.lastError || '');
       this.setData({
         notifyDiag: {
           show: true,
           ok: !errText,
           hbText: hbText,
-          activeText: 'active ' + (Number(d.active) || 0) + ' 条（新通知 ' + (Number(d.ntActive) || 0) + ' 条）',
-          scanText: scanText,
+          activeText: 'active ' + (Number(d.active) || 0) + ' 条提醒',
           errText: errText ? ('lastError：' + errText.slice(0, 120)) : ''
         }
       });
       return true;
     }).catch(() => {
-      this.setData({ notifyDiag: { show: true, ok: false, hbText: '—', activeText: '', scanText: '云函数未部署或调用失败', errText: '' } });
+      this.setData({ notifyDiag: { show: true, ok: false, hbText: '—', activeText: '', errText: '' } });
       return false;
     });
   },

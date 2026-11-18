@@ -1,5 +1,24 @@
 # 版本记录
 
+## 移除「新通知提醒」+ 手动提醒改以活动报名开始为基准（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户原话：「移除微信新通知提醒功能，另外我发现手动设置提醒不是以活动报名开始时间为基准而是以截止为基准」。
+
+- **移除「新通知提醒」客户端功能**：删除通知页简报区按钮/云端 active 状态/授权反馈、工作台「新通知」角标、
+  `utils/notify.js` 的 `subscribeNotice/publishNotice/status/bootstrap/clearStatusCache`、`app.js` 的 bootstrap 调用、
+  `utils/cloud.js` 的 `newNtAt` 写入、`utils/store.js` 的 `newNtAt` 字段、诊断页「新通知扫描」行；
+  `ntSub/ntSubAt` 仍保留在 userdata v6 prefs 里做旧数据兼容，但新版不再读写/展示。
+  云函数 `notify` 的 `kind='nt'` / `publishNotice` / `bootstrap` / `ntStatus` **保留**，仅服务已发布的旧版客户端。
+- **手动提醒基准修正**：新增 `remindBaseOf(raw)`——活动有未开始的 `signupStart` → 以**报名开始**为基准；
+  报名开始已过/无报名窗口 → 回退截止；快捷项变为「报名开始前 1 天 / 2 小时 / 30 分钟 / 报名开始时」，
+  自定义默认「报名开始前 2 小时」、提示显示「报名开始 …」；`subscribeNoticeReminder` 新增 `baseTs`，
+  订阅消息模板的日期显示报名开始而不是截止。作业/单条通知提醒链路不变。
+- **测试**：`unit.js` **571/7**（7 条均为既有失败：quickList/toolOrder、长期安排时间、ko-link 旧断言、抽签核验链接、期次时间依赖）；
+  新增「快捷项以报名开始为基准」「自定义默认按报名开始」「新通知提醒已移除」用例；`notify_ui_test`/`task7_unit_tests`/`task7_preview` 同步更新；
+  `staticcheck.py` / `code_quality_check.js` 退出 0。
+- **本机验证**：devtools 通知页无「新通知提醒」按钮/状态；构造 `signupStart=+3d` 的活动，快捷项为报名开始前 1 天/2 小时/30 分钟/报名开始时；
+  `subscribeNoticeReminder` 的 `dateText=报名开始时间`。
+- **未做**：未上传/发布小程序；未改云函数（旧客户端兼容）；未改 VERSION / UD v6 契约。
 ## 身份名/通知缓存乱码防护 + 水费副标 `undefined` 修复（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户反馈「微信小程序出现了很多异常字符」。排查结论：**正常登录链路（class_verify → identity.save → storage）中文名正确**；
@@ -1956,4 +1975,3 @@ PATCH），不上传发布。**审核相关：按用户指示不实现审核模�
 - **WXML 限制兜底（2026-11-09 实测）**：微信 WXML 对**嵌套数组的 `.length` 与 `wx:for`** 在部分基础库返回异常（页面数据有、DOM 不渲染）→ 展开体的建议/flow 由 JS 预渲染为 `suggestionsText\n· …` / `flowText`（`white-space:pre-line`），模板只传对象；`dg-flow-t--run` 高亮进行中。
 - **测试**：`node unit.js` **259/0**、`node v3_power_diag_tests.js` **62/0**、`node sync_contract_test.js` **33/0**、`python staticcheck.py` exit 0、`code_quality_check.js` 全通过；automator `diag_v21_preview.js` Lead 实跑 devtools：**23 PASS / 0 FAIL / 0 console error**（下挂映射/正常行无 AI/其它诊断/折叠 31px/胶囊 running·fixed·⚙/展开 cause+建议+flow+关联修复/收起/10s 轮询 running→fixed/无横向溢出），截图 `mp-class-tools-tests/_shots_diag_v21/`。
 - **上传后待真机复核**：真机基础库的嵌套数组表现可能与 devtools 不同；若真机渲染正常可简化为模板数组渲染。
-

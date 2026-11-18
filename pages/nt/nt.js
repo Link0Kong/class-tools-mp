@@ -544,9 +544,7 @@ Page({
     remindClock: '',
     remindStart: '',
     remindEnd: '',
-    remindHint: '',
-    // 2026-11-11 需求 11：新通知提醒按钮反馈（云端 kind='nt' active 数 / 本人状态 / 可读原因）
-    ntSubOn: false, ntActive: 0, ntStatusText: '', subBusy: false
+    remindHint: ''
   },
   onLoad(options) {
     scrollmem.attach(this);
@@ -588,15 +586,10 @@ Page({
     this.setData({ cloudEnabled: cloud.isEnabled(), isAdmin: identity.isAdmin() });
     // 需求 16：进页强制拉一次 marks（绕过 2min TTL）——通知「已处理」跨端状态立即生效
     cloud.marksPull(true).catch(function () { /* 离线保留本机状态 */ });
-    // 2026-11-11 需求 11：打开通知页 = 已看到新通知 → 清工作台角标；并刷新云端提醒状态
-    try { const dd0 = store.get(); if (dd0.newNtAt) { dd0.newNtAt = 0; store.save(); } } catch (e) { /* ignore */ }
-    this.setData({ ntSubOn: !!store.get().ntSub });
-    this.refreshNotifyStatus(false);
     this.pull();
   },
   onPullDownRefresh() {
     cloud.marksPull(true).catch(function () { /* 离线保留本机状态 */ });
-    this.refreshNotifyStatus(true);
     this.pull(true);
     wx.stopPullDownRefresh();
   },
@@ -1318,25 +1311,44 @@ Page({
     else util.toast('提醒服务不可用');
   },
 
-  // 快捷提醒项（契约 §1.3）：有截止 → 截止前 1 天 / 2 小时 / 30 分钟（过滤 <= now+60s）；
-  // 无截止 → 今天 20:00 / 明天 20:00（已过的项被过滤即顺延）。
+  // 2026-11-18：手动提醒的基准时间——**活动报名开始时间优先**，其次截止。
+  // 报名开始已过（<= now+60s）或没有报名窗口时回退截止；都没有 → null（下方走 20:00 兜底）。
+  remindBaseOf(raw) {
+    const min = Date.now() + MIN_AHEAD;
+    const su = notice.signupOf(raw);
+    if (su.start != null && su.start > min) {
+      return { ts: su.start, action: '报名开始', kind: 'signup' };
+    }
+    const due = notice.deadlineOf(raw);
+    if (due != null) return { ts: due, action: '截止', kind: 'deadline' };
+    return null;
+  },
+
+  // 快捷提醒项（契约 §1.3 + 2026-11-18）：活动有报名开始 → 以报名开始为基准
+  // （报名开始前 1 天 / 2 小时 / 30 分钟 / 报名开始时）；否则有截止 → 截止前 1 天 / 2 小时 / 30 分钟；
+  // 都没有 → 今天 20:00 / 明天 20:00（已过的项被过滤即顺延）。
   remindOptionsFor(raw) {
     const min = Date.now() + MIN_AHEAD;
-    const due = notice.deadlineOf(raw);
+    const base = this.remindBaseOf(raw);
     const opts = [];
-    if (due != null) {
+    if (base && base.kind === 'signup') {
+      [['报名开始前 1 天', 86400000], ['报名开始前 2 小时', 7200000], ['报名开始前 30 分钟', 1800000], ['报名开始时', 0]].forEach(function (d) {
+        const at = base.ts - d[1];
+        if (at > min) opts.push({ label: d[0], at: at });
+      });
+    } else if (base) {
       [['截止前 1 天', 86400000], ['截止前 2 小时', 7200000], ['截止前 30 分钟', 1800000]].forEach(function (d) {
-        const at = due - d[1];
+        const at = base.ts - d[1];
         if (at > min) opts.push({ label: d[0], at: at });
       });
     } else {
       // 今天 20:00 / 明天 20:00；已过则顺延到下一个 20:00（始终给 2 个未来项：今天→明天→后天）
       const midnight = new Date();
       midnight.setHours(0, 0, 0, 0);
-      const base = midnight.getTime() + 20 * 3600000;   // 今天 20:00
+      const base20 = midnight.getTime() + 20 * 3600000;   // 今天 20:00
       const names = ['今天', '明天', '后天'];
       for (let i = 0; i < 3 && opts.length < 2; i++) {
-        const at = base + i * 86400000;
+        const at = base20 + i * 86400000;
         if (at <= min) continue;
         opts.push({ label: names[i] + ' 20:00', at: at });
       }
@@ -1395,9 +1407,11 @@ Page({
     const due = notice.deadlineOf(raw);
     if (!fireAt || fireAt <= now + MIN_AHEAD) { util.toast('提醒需晚于现在 1 分钟'); return; }
     if (due != null && fireAt > due) { util.toast('提醒不能晚于截止'); return; }
+    const base = this.remindBaseOf(raw);
     notify.subscribeNoticeReminder({
       id: gid,
       title: raw.title || '班级通知',
+      baseTs: base ? base.ts : 0,
       deadline: due != null ? due : raw.deadline
     }, fireAt, label || '').then(() => {
       this.setLocalRemind(gid, fireAt, label || '');
@@ -1420,12 +1434,20 @@ Page({
     if (notice.statusOf(raw).expired) { util.toast('通知已过期'); return; }
     const now = Date.now(), min = now + MIN_AHEAD;
     const due = notice.deadlineOf(raw);
+    const base = this.remindBaseOf(raw);
     let suggest;
-    if (due != null) {
-      if (due <= min) { util.toast('距离截止太近，无法设置'); return; }
-      suggest = due - 7200000;                       // 默认提前 2 小时
+    if (base && base.kind === 'signup') {
+      // 默认提前 2 小时；报名开始太近时退到最近可用时间
+      suggest = base.ts - 7200000;
       if (suggest <= min) suggest = min + 60000;
-      if (suggest > due) suggest = due - 60000;
+      if (due != null && suggest > due - 60000) suggest = due - 60000;
+      if (suggest > base.ts) suggest = base.ts - 60000;
+      if (suggest <= min) { util.toast('距离报名开始太近，无法设置'); return; }
+    } else if (base) {
+      if (base.ts <= min) { util.toast('距离截止太近，无法设置'); return; }
+      suggest = base.ts - 7200000;                   // 默认提前 2 小时
+      if (suggest <= min) suggest = min + 60000;
+      if (suggest > base.ts) suggest = base.ts - 60000;
       if (suggest <= min) { util.toast('距离截止太近，无法设置'); return; }
     } else {
       const t20 = new Date();
@@ -1435,8 +1457,12 @@ Page({
     }
     const sd = new Date(suggest);
     const startDate = ymd(new Date(now));
-    const endDate = due != null ? ymd(new Date(due)) : ymd(new Date(now + 30 * 86400000));
-    const dueText = due != null ? ('截止 ' + ymd(new Date(due)) + ' ' + hhmm(new Date(due))) : '';
+    const cap = due != null ? due : (base ? base.ts : null);
+    const endDate = cap != null ? ymd(new Date(cap)) : ymd(new Date(now + 30 * 86400000));
+    const baseText = base ? (base.action + ' ' + ymd(new Date(base.ts)) + ' ' + hhmm(new Date(base.ts))) : '';
+    const hint = baseText
+      ? (baseText + ' · 提醒需晚于现在 1 分钟' + (due != null ? '且不晚于截止' : ''))
+      : '提醒需晚于现在至少 1 分钟（30 天内）';
     this.setData({
       remindSheet: true,
       remindForGid: gid,
@@ -1445,7 +1471,7 @@ Page({
       remindClock: hhmm(sd),
       remindStart: startDate,
       remindEnd: endDate < startDate ? startDate : endDate,
-      remindHint: dueText ? (dueText + ' · 提醒需晚于现在 1 分钟且不晚于截止') : '提醒需晚于现在至少 1 分钟（30 天内）'
+      remindHint: hint
     });
   },
   closeRemind() { this.setData({ remindSheet: false }); },
@@ -1470,63 +1496,6 @@ Page({
     if (fireAt <= now + MIN_AHEAD) { util.toast('提醒需晚于现在 1 分钟'); return; }
     if (due != null && fireAt > due) { util.toast('提醒不能晚于截止'); return; }
     this.doRemind(gid, fireAt, '自定义');
-  },
-
-  // 简报区「新通知提醒」（云端 kind='nt', ref='next'；定时器发现新通知后发送并消耗本次授权）。
-  // 2026-11-11 需求 11（用户反馈「开启后收不到」）：
-  //   * 修复根因在云函数：notify 定时器通过 PostgREST 轮询 notices 新签名后向 active kind='nt' 发送；
-  //   * 按钮反馈：授权成功 toast「已开启 · 收到后自动关闭」；失败按 classify 给出可读原因；
-  //   * 一次性订阅消耗后仍可再次开启：不再因为本机 24h 标记直接 return，点击即重新授权；
-  //   * 显示云端 active 订阅数（同班级已开启提醒的人数）与本人状态。
-  subscribeNextNotice() {
-    if (this.data.subBusy) return;
-    this.setData({ subBusy: true });
-    // 必须在本次点击的同步调用链里先执行 requestSubscribeMessage（notify.subscribeNotice 第一步即 ask）
-    notify.subscribeNotice().then(() => {
-      const dd = store.get();
-      dd.ntSub = true; dd.ntSubAt = Date.now();
-      store.save();
-      this.setData({ subBusy: false, ntSubOn: true, ntStatusText: '已开启 · 收到后自动关闭' });
-      util.toast('已开启 · 收到后自动关闭');
-      this.refreshNotifyStatus(true);
-    }).catch((err) => {
-      this.setData({ subBusy: false });
-      const code = notify.classify(err);
-      const map = {
-        denied: '已拒绝提醒授权',
-        unsupported: '未开启微信订阅消息（当前微信不支持）',
-        'disabled-setting': '未开启微信订阅消息（系统设置里关闭）',
-        'cloud-missing': '云函数未部署，提醒暂不可用',
-        network: '网络不可用，请稍后重试'
-      };
-      util.toast(map[code] || '提醒服务不可用');
-      this.refreshNotifyStatus(false);
-    });
-  },
-  // 云端提醒状态（2026-11-11 需求 11）：kind='nt' active 订阅数 + 本人是否已开启；失败给可读原因。
-  refreshNotifyStatus(force) {
-    if (!wx.cloud || !wx.cloud.callFunction) {
-      this.setData({ ntStatusText: '未启用云开发（提醒不可用）' });
-      return Promise.resolve(false);
-    }
-    return notify.status(!!force).then((v) => {
-      const on = !!v.mine || !!store.get().ntSub;
-      const text = on
-        ? ('已开启 · 收到后自动关闭' + (v.active ? (' · 云端 ' + v.active + ' 人已订阅') : ''))
-        : (v.active ? ('云端 ' + v.active + ' 人已开启') : '未开启');
-      this.setData({ ntSubOn: on, ntActive: Number(v.active) || 0, ntStatusText: text });
-      return true;
-    }).catch((err) => {
-      const code = notify.classify(err);
-      const map = {
-        'cloud-missing': '云函数未部署（提醒不可用）',
-        network: '提醒状态同步失败（网络）',
-        unsupported: '当前微信不支持订阅消息',
-        'disabled-setting': '微信订阅消息未开启（系统设置）'
-      };
-      this.setData({ ntStatusText: map[code] || '提醒状态不可用' });
-      return false;
-    });
   },
 
   // 从订阅消息进入：数据 ready 后切「全部」→ 展开 → 滚动定位（只执行一次，找不到静默）

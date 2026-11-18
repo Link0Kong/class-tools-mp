@@ -868,12 +868,6 @@ function ntSync(notifyOnChange) {
         return { changed: false };
       }
       return ntFullFetch().then(function (r) {
-        // 2026-11-11 需求 11：检测到云端通知签名变化且用户开过「新通知提醒」→ 本机记 newNtAt，
-        // 工作台通知卡显示「新通知」角标（应用内提醒，低成本；通知页 onShow 清零）。
-        try {
-          const d = store.get();
-          if (d.ntSub) { d.newNtAt = Date.now(); store.save(); }
-        } catch (e) { /* 角标失败不影响通知刷新 */ }
         if (notifyOnChange) notifyPagesSoon();   // 真的变了才通知页面重绘；直接调用方无需
         return { changed: true, autos: r.autos };
       });

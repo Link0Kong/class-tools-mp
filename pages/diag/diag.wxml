@@ -67,8 +67,7 @@
       </view>
     </view>
 
-    <!-- 提醒通道诊断（2026-11-11 需求 11）：微信订阅消息 / 新通知扫描的排查入口
-         定时器心跳时间 · 云端 active 订阅数 · 新通知扫描 lastScanAt/sentCount · lastError -->
+    <!-- 提醒通道诊断（手动提醒）：定时器心跳时间 · 云端 active 提醒数 · lastError -->
     <view wx:if="{{notifyDiag.show}}" class="m3-card m3-card--outlined dg-agent dg-notify">
       <view class="dg-agent-main">
         <view class="dg-dot {{notifyDiag.ok ? 'dg-dot--ok' : 'dg-dot--warn'}}"></view>
@@ -79,7 +78,6 @@
           </view>
           <view class="dg-detail">定时器心跳：{{notifyDiag.hbText}}</view>
           <view class="dg-detail" wx:if="{{notifyDiag.activeText}}">{{notifyDiag.activeText}}</view>
-          <view class="dg-detail">{{notifyDiag.scanText}}</view>
           <view class="dg-detail dg-notify-err" wx:if="{{notifyDiag.errText}}">{{notifyDiag.errText}}</view>
         </view>
       </view>

@@ -125,7 +125,7 @@
     <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-b enter enter-4" bindtap="goNT" hover-class="wb-task--tap">
       <view class="wb-task-ico wb-task-ico--primary">📢</view>
       <view class="grow">
-        <view class="wb-task-t">通知待处理<text wx:if="{{nt.pending}}" class="wb-task-n">{{nt.pending}}</text><text wx:if="{{ntNew}}" class="wb-task-new">新通知</text></view>
+        <view class="wb-task-t">通知待处理<text wx:if="{{nt.pending}}" class="wb-task-n">{{nt.pending}}</text></view>
         <view class="wb-task-s" wx:if="{{nt.state === 'ok' && nt.pending}}">
           <text class="wb-rot wb-rot--{{nt.anim}}">{{nt.title}}<text wx:if="{{nt.sub}}"> · {{nt.sub}}</text></text>
         </view>

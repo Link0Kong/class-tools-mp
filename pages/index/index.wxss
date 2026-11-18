@@ -74,12 +74,6 @@
 .wb-task-ico--primary { background: var(--md-primary); }
 .wb-task-t { font-size: 30rpx; font-weight: 600; color: var(--md-on-surface); }
 .wb-task-n { margin-left: 10rpx; font-size: 30rpx; font-weight: 700; color: var(--md-primary); }
-/* 2026-11-11 需求 11：应用内「新通知」角标（低成本指示，点开通知页后清除） */
-.wb-task-new {
-  margin-left: 10rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
-  font-size: 19rpx; font-weight: 700; vertical-align: middle;
-  background: var(--md-error-container); color: var(--md-on-error-container);
-}
 .wb-task-s {
   margin-top: 4rpx; font-size: 26rpx; color: var(--md-on-surface-variant);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;

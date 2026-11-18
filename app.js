@@ -233,13 +233,8 @@ App({
     try { d = require('./utils/store.js').get(); } catch (e) { /* ignore */ }
     const remindCount = d ? Object.keys(d.ntRemind || {}).length : 0;
     const hwRemindCount = d ? Object.keys(d.hwRemind || {}).length : 0;
-    if (d && (d.ntSub || remindCount || hwRemindCount)) {
+    if (d && (remindCount || hwRemindCount)) {
       const notify = notifyMod();
-      // 需求 11（2026-11-11）：把当前班级 token 上报云函数 __notify_cfg（30 分钟节流，失败静默），
-      // 供 notify 定时器通过 PostgREST 轮询新通知；token 过期由任一小程序客户端再次 bootstrap 刷新。
-      if (d.ntSub) {
-        try { notify.bootstrap(identity.token()).catch(function () { /* 静默 */ }); } catch (e) { /* 静默 */ }
-      }
       // 通知提醒 catch-up（2026-11-10 修复）：定时触发器之外的送达保障——回前台时补发本人已到点的提醒；
       // 云函数只处理调用者 openid，失败静默（离线/未授权不影响启动）。
       try { notify.flushReminders().catch(function () { /* 静默 */ }); } catch (e) { /* 静默 */ }

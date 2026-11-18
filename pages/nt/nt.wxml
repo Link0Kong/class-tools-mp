@@ -235,9 +235,8 @@
       </view>
     </view>
     <view class="nt-brief-ft">
-      <text class="nt-sync">{{syncText}}<text wx:if="{{ntStatusText}}" class="nt-substate"> · {{ntStatusText}}</text></text>
+      <text class="nt-sync">{{syncText}}</text>
       <view class="nt-brief-acts">
-        <view class="nt-btn nt-btn--sm nt-btn--ghost {{subBusy ? 'nt-btn--busy' : ''}}" bindtap="subscribeNextNotice">{{subBusy ? '授权中…' : (ntSubOn ? '再次开启' : '新通知提醒')}}</view>
         <view class="nt-btn nt-btn--sm nt-btn--ghost" bindtap="refresh">刷新</view>
       </view>
     </view>
