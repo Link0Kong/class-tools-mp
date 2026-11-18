@@ -62,7 +62,7 @@ const CONFIG = {
 };
 
 // 云端连通状态：hw = 作业表通、nt = 通知表通、ud = 个人数据表通
-const NET = { hw: false, nt: false, ud: false, tested: false, lastOk: 0, lastFail: 0, failStreak: 0, retryAt: 0 };
+const NET = { hw: false, nt: false, ud: false, tested: false, lastOk: 0, lastFail: 0, failStreak: 0, retryAt: 0, ntCached: false };
 // 网络失败退避（2026-11-17）：离线/弱网时 30s 轮询曾每轮重试所有过期表，放大错误率与耗电。
 // 连续失败后指数退避（最长 60s）只影响后台轮询；页面 onShow/下拉刷新等 force 调用不受影响。
 function noteNetOk() {
@@ -683,10 +683,59 @@ function ntParseOverride(s) {
 function ntVisible(list, includeHidden) {
   return (list || []).filter(function (g) { return !!includeHidden || !(g && g._hidden); });
 }
+// 2026-11-18：告诉页面「本次返回的是缓存/旧数据」（不阻塞渲染，页面据此显示缓存文案）。
+function ntMarkStale(list) {
+  try { if (list && list.length) list._stale = true; } catch (e) { /* ignore */ }
+  return list;
+}
 
 // 内存热缓存：同一身份下反复进通知页不再重复读 2MB storage + JSON.parse（切身份自动失效）
 var _ntMem = { sid: '', at: 0, g: null, sig: '' };
 var _ntSync = null;
+// 2026-11-18 弱网/无网兜底快照：分块缓存（cache.js）可能因索引损坏、配额、旧版本超限而读不到；
+// 这里额外用**单 key**（≤900KB）保存最近一次成功通知列表，冷启动断网时优先用它渲染。
+// 按 sid 命名，切号/退出由 cache.clearAll / clearOtherSids 清理；不进 zq_tools_v2。
+var NT_SNAP_PREFIX = 'zq_nt_snap_v1_';
+function ntSnapshotKey() {
+  const sid = currentSid();
+  return sid ? (NT_SNAP_PREFIX + sid) : '';
+}
+function ntSnapGet() {
+  const key = ntSnapshotKey();
+  if (!key || typeof wx === 'undefined' || !wx.getStorageSync) return null;
+  try {
+    const raw = wx.getStorageSync(key);
+    if (!raw) return null;
+    const o = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+    if (!o || o.sid !== currentSid() || !Array.isArray(o.g) || !o.g.length) return null;
+    return { g: o.g, sig: String(o.sig || ''), at: Number(o.at) || 0 };
+  } catch (e) { return null; }
+}
+function ntSnapSet(groups, sig, at) {
+  const key = ntSnapshotKey();
+  if (!key || typeof wx === 'undefined' || !wx.setStorageSync) return false;
+  if (!groups || !groups.length) { ntSnapClear(); return false; }
+  try {
+    const base = { v: 1, sid: currentSid(), at: Number(at) || Date.now(), sig: String(sig || ''), g: groups };
+    let text = JSON.stringify(base);
+    // 微信单 key 约 1MB：超限时只保留最近的通知组（宁可少几条，也保证断网有内容）。
+    if (text.length > 900 * 1024) {
+      let keep = groups.slice(-Math.min(groups.length, 80));
+      while (keep.length > 1 && JSON.stringify({ v: 1, sid: base.sid, at: base.at, sig: base.sig, g: keep }).length > 900 * 1024) {
+        keep = keep.slice(1);
+      }
+      base.g = keep;
+      text = JSON.stringify(base);
+    }
+    wx.setStorageSync(key, text);
+    return true;
+  } catch (e) { return false; }
+}
+function ntSnapClear() {
+  const key = ntSnapshotKey();
+  if (!key || typeof wx === 'undefined' || !wx.removeStorageSync) return;
+  try { wx.removeStorageSync(key); } catch (e) { /* ignore */ }
+}
 
 function ntMemValid() { return !!(_ntMem.g && _ntMem.sid && _ntMem.sid === currentSid()); }
 function ntLoad() {
@@ -696,7 +745,12 @@ function ntLoad() {
   if (v && v.g) {
     _ntMem = { sid: currentSid(), at: Number(v.at) || c.at, g: v.g, sig: String(v.sig || '') };
   } else {
-    _ntMem = { sid: '', at: 0, g: null, sig: '' };
+    // 分块缓存不可用（旧版本超限 / 索引损坏 / 配额淘汰）时读单 key 快照；
+    // 这是弱网/无网仍能看到「上次加载好的通知」的最后一道保障。
+    const snap = ntSnapGet();
+    _ntMem = snap
+      ? { sid: currentSid(), at: snap.at, g: snap.g, sig: snap.sig }
+      : { sid: '', at: 0, g: null, sig: '' };
   }
   return _ntMem;
 }
@@ -742,6 +796,9 @@ function ntApplyRows(rows) {
   const sig = ntSigOf(rows);
   const at = Date.now();
   cache.set('ntAuto', { at: at, sig: sig, g: autos }, TTL.notices);
+  // 单 key 快照：分块缓存失效/冷启动断网时仍能显示上次成功拉到的通知。
+  ntSnapSet(autos, sig, at);
+  NET.ntCached = false;
   mergeNotices(normal);
   touchSync('ntAuto', at);
   touchSync('nt', at);
@@ -785,6 +842,7 @@ function ntSync(notifyOnChange) {
   } else {
     p = ntLiteFetch().then(function (sig) {
       if (sig === mem.sig) {
+        NET.ntCached = false;
         touchSync('ntAuto'); touchSync('nt');
         return { changed: false };
       }
@@ -814,18 +872,32 @@ function ntAutoPull(force, includeHidden) {
     return Promise.resolve(ntVisible((m && m.g) || [], includeHidden));
   }
   const mem = ntLoad();
-  // 首次（本机无缓存）：只能整表拉一次
+  // 首次（本机无缓存）：只能整表拉一次；失败时再看一次快照（可能在拉取期间被写入/读取）
   if (!mem.g) {
-    return ntSync(false).then(function () { return ntVisible(ntLoad().g || [], includeHidden); }).catch(function () { return []; });
+    return ntSync(false).then(function () { return ntVisible(ntLoad().g || [], includeHidden); })
+      .catch(function () {
+        const m = ntLoad();
+        NET.ntCached = !!(m && m.g && m.g.length);
+        return ntMarkStale(ntVisible((m && m.g) || [], includeHidden));
+      });
   }
-  if (!force && syncFresh('ntAuto', TTL.notices)) return Promise.resolve(ntVisible(mem.g, includeHidden));
+  if (!force && syncFresh('ntAuto', TTL.notices)) {
+    return Promise.resolve(ntVisible(mem.g, includeHidden));
+  }
   if (force) {
     // 下拉刷新 / 手动同步：跳过 TTL 等待，但仍先做 ~2KB 签名校验（变了才拉 2MB）
-    return ntSync(false).then(function () { return ntVisible(ntLoad().g || mem.g, includeHidden); }).catch(function () { return ntVisible(mem.g, includeHidden); });
+    return ntSync(false).then(function () {
+      NET.ntCached = false;
+      return ntVisible(ntLoad().g || mem.g, includeHidden);
+    }).catch(function () {
+      NET.ntCached = true;
+      return ntMarkStale(ntVisible(mem.g, includeHidden));
+    });
   }
   // 缓存过期：先给页面旧数据（秒开），后台校验/刷新，变了由 notifyPages → onCloudSync 重绘
+  NET.ntCached = true;
   ntSync(true).catch(function () { /* 静默回退到缓存 */ });
-  return Promise.resolve(ntVisible(mem.g, includeHidden));
+  return Promise.resolve(ntMarkStale(ntVisible(mem.g, includeHidden)));
 }
 function ntRow(it) {
   return {
@@ -2198,7 +2270,11 @@ function netState() {
   return {
     enabled: isEnabled(), verified: !!id, sid: id ? id.sid : '', name: id ? id.name : '',
     admin: !!(id && id.is_admin), members: memberCount(),
-    hw: NET.hw, nt: NET.nt, ud: NET.ud, pending: pendCount()
+    hw: NET.hw, nt: NET.nt, ud: NET.ud, pending: pendCount(),
+    // 2026-11-18：页面据此显示「缓存 / 离线」，不再在断网时误报「云端已同步」
+    cached: !!NET.ntCached,
+    offline: !!(NET.lastFail && NET.lastFail > NET.lastOk),
+    lastOk: NET.lastOk, lastFail: NET.lastFail
   };
 }
 

@@ -618,7 +618,12 @@ Page({
       if (typeof this.jumpPendingFilter === 'function') this.jumpPendingFilter();
       return;
     }
-    this.setData({ state: this.data.cards.length ? this.data.state : 'loading', syncText: onlyLocal ? '仅本机' : '同步中' });
+    const hasCards = this.data.cards.length > 0;
+    this.setData({
+      state: hasCards ? this.data.state : 'loading',
+      // 弱网下已有缓存时不要显示「同步中」把内容遮住：先展示旧列表，刷新完成后再更新文案。
+      syncText: onlyLocal ? '仅本机' : (hasCards ? '缓存 · 上次同步' : '同步中')
+    });
     // 需求 12：管理员需要拿到 hidden=true 的行（供「已隐藏」筛选恢复）；非管理员由 cloud 过滤掉
     const isAdmin = identity.isAdmin();
     cloud.ntAutoPull(force, isAdmin).then((groups) => {
@@ -636,12 +641,19 @@ Page({
       if (curCat !== '全部' && cats.indexOf(curCat) < 0) curCat = '全部';
       const hiddenN = this._all.filter(function (c) { return c.hidden; }).length;
       const now = new Date();
+      // 2026-11-18：弱网/无网时明确显示「离线 · 显示上次同步」，不再误报「云端已同步」。
+      const ns = (typeof cloud.netState === 'function' ? cloud.netState() : null) || {};
+      const offline = !!ns.offline;
+      const stale = !!(groups && groups._stale && groups.length);
+      const syncText = onlyLocal ? '仅本机'
+        : (offline ? ((groups && groups.length) ? '离线 · 显示上次同步' : '离线 · 无缓存')
+          : (stale ? '缓存 · 上次同步' : '云端已同步'));
       this.setData({
         state: 'ready',
         isAdmin: isAdmin,
         hasHidden: hiddenN,
         cat: curCat,
-        syncText: onlyLocal ? '仅本机' : '云端已同步',
+        syncText: syncText,
         briefDate: (now.getMonth() + 1) + ' 月 ' + now.getDate() + ' 日 ' + pad(now.getHours()) + ':' + pad(now.getMinutes()),
         cats: cats
       }, () => {
@@ -650,7 +662,13 @@ Page({
         if (typeof this.jumpPendingFilter === 'function') this.jumpPendingFilter();
       });
     }).catch((e) => {
-      this.setData({ state: 'error', errorText: String(e && e.message || e), syncText: '同步失败' });
+      // 已有缓存卡片时保留列表（断网不能把上次内容清空），只更新状态文案。
+      const keep = this.data.cards.length > 0;
+      this.setData({
+        state: keep ? 'ready' : 'error',
+        errorText: String(e && e.message || e),
+        syncText: keep ? '离线 · 显示上次同步' : '同步失败'
+      });
     });
   },
 

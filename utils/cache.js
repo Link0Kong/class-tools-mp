@@ -22,6 +22,9 @@
 var VER = 1;
 var PREFIX = 'zqc1_';
 var IDX_KEY = 'zqc1_idx';
+// 2026-11-18：通知单 key 兜底快照（utils/cloud.js 写，弱网/无网用）；不属于分块缓存，
+// 但切身份/退出时必须一起清，避免下一任同学读到上一位的通知。
+var NT_SNAP_PREFIX = 'zq_nt_snap_v1_';
 var CHUNK_MAX_BYTES = 600 * 1024;      // 单块上限（UTF-8 估算字节 & 字符数）
 var CHUNK_MAX_CHARS = 600 * 1024;
 var MAX_BYTES = 5 * 1024 * 1024;       // 总预算（估算字节）
@@ -278,6 +281,7 @@ function clearAll() {
   Object.keys(idx.items).forEach(function (k) { removeEntry(k, idx.items[k]); });
   try { wx.removeStorageSync(IDX_KEY); } catch (e) { /* ignore */ }
   sweepOrphans({});
+  sweepSnapshots('');
   return true;
 }
 
@@ -292,7 +296,20 @@ function clearOtherSids() {
     if (k.indexOf(sid + '/') !== 0) { removeEntry(k, idx.items[k]); delete idx.items[k]; hit = true; }
   });
   if (hit) writeIdx(idx);
+  sweepSnapshots(sid);
   return hit;
+}
+// 清掉非 keepSid 的通知快照（keepSid 为空 = 全清）
+function sweepSnapshots(keepSid) {
+  if (!hasWx() || typeof wx.getStorageInfoSync !== 'function') return;
+  var keys = [];
+  try { keys = (wx.getStorageInfoSync() || {}).keys || []; } catch (e) { return; }
+  keys.forEach(function (k) {
+    k = String(k);
+    if (k.indexOf(NT_SNAP_PREFIX) !== 0) return;
+    if (keepSid && k === NT_SNAP_PREFIX + keepSid) return;
+    try { wx.removeStorageSync(k); } catch (e) { /* ignore */ }
+  });
 }
 
 function stats() {
