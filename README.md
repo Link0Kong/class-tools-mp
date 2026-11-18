@@ -1,5 +1,24 @@
 # 班级工具站小程序 · 测试与修复工程
 
+## 通知「发布时间」统一（2026-11-18，未发版；待用户上传发布）
+
+对应契约 `web/通知三端_发布时间统一_契约_20261118.md`（用户原话：「将通知中不含时间的时间设定为发布时间，动作设为发布，并参与排序等等统一计算」）。
+只改 `mp-class-tools/**` 与 `mp-class-tools-tests/**`；**未上传发布、VERSION 仍 2.0.0、UD v6 不变、无新增网络请求/依赖**。
+
+| 文件 | 覆盖 | 复跑 |
+| --- | --- | --- |
+| `notice_publish_unit.js`（**新增**，8 项） | 发布§1 `publishedTsOf`（publishedAt 优先 / 坏字段与旧缓存回退 pubTsOf / updatedAt 较晚 / 无时间 null）；§2 `statusOf` published 分支（label「MM-DD HH:MM 发布」/cls active/expired false/动作取 publishAction/未来相对时间/过期·长期·真实锚点优先/none 兜底）；§3 `hasTimeAnchor` 只看真实锚点 + `longtermSubtypeOf` 发布卡移出资料栏；§4 `listRankOf` 档 4 + `mainListCompare`/`mainEntryCompare` 档内发布时间倒序、none 最后；§5 `statOf` 发布卡按 actionable 计入待处理、24h/7 天不进、latest 用 publishedAt、mostUrgent 排除资料兜底；§6 `pages/nt` applyFilter 发布卡进主列表 / 资料栏 0 条 / chip 格式 / 简报计入 / 最新发布倒序；§7 工作台 `ntView` 待办数与轮换计入；§8 静态接线（导出/页面使用/资料栏 infoCount 条件/版本/无新增请求依赖） | `node notice_publish_unit.js`（独立运行写 `notice_publish_result.json`）或 `node unit.js`（末尾已挂载，并入总表） |
+| `notice_occ_unit.js`（**改**） | 页面§2.1 夹具：items 时间 → 发布卡（契约 2026-11-18）；待处理 4→5、发布卡进主列表、资料栏 0 条、24h/7 天仍不含发布卡、分类筛选/资料栏折叠断言同步；`cardOf.pubTs` 改走 `publishedTsOf` | `node notice_occ_unit.js` / `node unit.js` |
+| `v3_power_diag_tests.js`（**改**） | 「nt 附件 archive 自愈」夹具无锚点有 items 时间 → 发布卡：默认待处理视图即按需补完整 body（不再等「全部」资料栏）、资料栏 0 条、卡在主列表且 chip 以「发布」结尾 | `node v3_power_diag_tests.js` / `node unit.js` |
+| `unit.js`（**改**） | 末尾挂载 `notice_publish_unit.js`（总断言 561 → **569**，既有 7 项失败不变） | `node unit.js` |
+
+**实测（本机 2026-11-18）**：`node unit.js` **569 passed / 7 failed**（7 项均为本任务前既有失败：quickList 1 + 需求12 长期时间 1 + draw ko-link 4 + 期次时间依赖 1）、
+`node notice_publish_unit.js` **8/0**、`node notice_occ_unit.js` **8/1（既有期次时间依赖）**、`node notice_longterm_unit.js` **13/0**、
+`node notice_time_test.js` **20/0**、`node nt_attach_url_tests.js` **10/0**、`node sync_contract_test.js` **34/0**、
+`python staticcheck.py` **exit 0（30 页）**、`node code_quality_check.js` **全部规则通过（退出码 0）**。
+真实 board 对拍：104 组 `publishedAt` 全量存在；新增字段口径与旧缓存回退口径统计完全一致（pending 23 / urgent 9 / week 14 / expired 77 / longterm 2），
+`publishAction` 9 组 + 1 组「仅有 signupStart 且已开始」按 statusOf 同口径显示「发布」，资料栏 0 条。
+
 ## 性能专项：通知 14MB→0.30MB + 启动/请求错误率（2026-11-17，未发版；待用户上传发布）
 
 对应微信后台性能报告（打开率 93.85%、启动 1638ms、请求错误率 45.45%）。只改 `mp-class-tools/**`

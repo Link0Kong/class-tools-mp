@@ -111,7 +111,7 @@ function cardOf(g, now) {
     nextText: (rec && !ended) ? n.nextTextOf(g, now) : '',
     nextCnText: (rec && !ended) ? n.nextCnTextOf(g, now) : '',
     isOcc: false, isInfo: false, recurEnded: ended,
-    pubTs: n.pubTsOf(g, now),
+    pubTs: n.publishedTsOf(g, now),
     hidden: !!g._hidden, updated: false, admin: false,
     deadlineTs: n.deadlineOf(g), canRemind: !st.expired && !rec, reminded: false,
     remindText: '', remindLabel: '提醒', imgs: []
@@ -333,20 +333,25 @@ async function run(test) {
     const occKey = occRefOf('occ', occTs);
     ctx.data.filter = 'all'; ctx.data.cat = '全部'; ctx.data.isAdmin = false;
     def.applyFilter.call(ctx);
-    // 统计：pending = urgent/week/active/occ；urgent=2（urgent+occ）；week=3；longterm=2（occ/rec2）；expired=2
-    assert.strictEqual(ctx.data.stats.pending, 4, '待处理 = 4：' + JSON.stringify(ctx.data.stats));
+    // 统计：pending = urgent/week/active/occ/info（契约 2026-11-18：info 无锚点但有 items 时间 → 发布卡计入）；
+    // urgent=2（urgent+occ）；week=3（发布卡主显示时间为空不进未来窗口）；longterm=2（occ/rec2）；expired=2
+    assert.strictEqual(ctx.data.stats.pending, 5, '待处理 = 5：' + JSON.stringify(ctx.data.stats));
     assert.strictEqual(ctx.data.stats.urgent, 2);
     assert.strictEqual(ctx.data.stats.week, 3);
     assert.strictEqual(ctx.data.stats.longterm, 2, '长期通知 = 进行中的长期安排条数');
     assert.strictEqual(ctx.data.stats.expired, 2, '已过期 = expired + until 已结束');
     assert.strictEqual(ctx.data.stats.latestText, n.latestTextOf(now - H, now), '最新发布文案 = 最新发布时间相对文案：' + ctx.data.stats.latestText);
-    // 全部视图分区：主列表 = 普通（含已处理置后）+ 期次卡；资料 → 资料栏；过期 → 已过期区
+    // 全部视图分区：主列表 = 普通（含已处理置后）+ 期次卡 + 发布卡；资料栏为空；过期 → 已过期区
     assert.ok(idsOf(ctx.data.cards).indexOf(occKey) >= 0, '期次卡进入主列表：' + idsOf(ctx.data.cards).join(','));
     assert.strictEqual(ctx.data.cards.filter(function (c) { return c.isOcc; }).length, 1);
-    assert.ok(idsOf(ctx.data.cards).indexOf('info') < 0, '资料/无时间不在主列表');
-    assert.deepStrictEqual(idsOf(ctx.data.infoCards), ['info'], '资料/无时间栏');
+    assert.ok(idsOf(ctx.data.cards).indexOf('info') >= 0, '发布卡（无锚点有发布时间）进主列表：' + idsOf(ctx.data.cards).join(','));
+    const infoCard = ctx.data.cards.filter(function (c) { return c.id === 'info'; })[0];
+    assert.strictEqual(infoCard.statusCls, 'active', '发布卡状态胶囊样式 = active');
+    assert.ok(/发布$/.test(infoCard.statusLabel), '发布卡状态胶囊以「发布」结尾：' + infoCard.statusLabel);
+    assert.deepStrictEqual(idsOf(ctx.data.infoCards), [], '资料/无时间栏 = 0（发布卡不再进资料栏）');
+    assert.strictEqual(ctx.data.infoCount, 0);
     assert.deepStrictEqual(idsOf(ctx.data.expiredCards), ['expired', 'ended'], '已过期区（含长期安排已结束）');
-    assert.strictEqual(ctx.data.showInfo, true, '资料栏默认展开');
+    assert.strictEqual(ctx.data.showInfo, true, '资料栏折叠态默认展开（0 条时 wxml 不渲染）');
     assert.strictEqual(ctx.data.showExpiredWrap, true);
     assert.strictEqual(ctx.data.showExpired, false, '已过期区默认折叠');
     assert.strictEqual(ctx.data.listCount, ctx.data.cards.length, '「N 组」= 当前主列表条目数（期次计 1 条）');
@@ -363,14 +368,14 @@ async function run(test) {
     def.pickCard.call(ctx, { currentTarget: { dataset: { k: 'pending' } } });
     assert.strictEqual(ctx.data.filter, 'active');
     assert.strictEqual(ctx.data.cardKey, 'pending');
-    assert.deepStrictEqual(idsOf(ctx.data.cards).sort(), ['active', occKey, 'urgent', 'week'].sort(), '待处理筛选=主列表（含期次）');
-    assert.ok(idsOf(ctx.data.cards).indexOf('info') < 0 && idsOf(ctx.data.cards).indexOf('rec2') < 0);
+    assert.deepStrictEqual(idsOf(ctx.data.cards).sort(), ['active', 'info', occKey, 'urgent', 'week'].sort(), '待处理筛选=主列表（含期次/发布卡）');
+    assert.ok(idsOf(ctx.data.cards).indexOf('rec2') < 0);
     def.pickCard.call(ctx, { currentTarget: { dataset: { k: 'urgent' } } });
     assert.strictEqual(ctx.data.filter, 'urgent');
-    assert.deepStrictEqual(idsOf(ctx.data.cards).sort(), [occKey, 'urgent'].sort(), '24h 卡 = 待处理中 ≤24h');
+    assert.deepStrictEqual(idsOf(ctx.data.cards).sort(), [occKey, 'urgent'].sort(), '24h 卡 = 待处理中 ≤24h（发布卡不进未来窗口）');
     def.pickCard.call(ctx, { currentTarget: { dataset: { k: 'week' } } });
     assert.strictEqual(ctx.data.filter, 'week');
-    assert.deepStrictEqual(idsOf(ctx.data.cards).sort(), [occKey, 'urgent', 'week'].sort(), '7 天卡 = ≤7 天');
+    assert.deepStrictEqual(idsOf(ctx.data.cards).sort(), [occKey, 'urgent', 'week'].sort(), '7 天卡 = ≤7 天（发布卡不计入）');
     def.pickCard.call(ctx, { currentTarget: { dataset: { k: 'longterm' } } });
     assert.strictEqual(ctx.data.filter, 'longterm');
     assert.strictEqual(ctx.data.cards.length, 0, '长期通知筛选不显示期次卡/普通卡');
@@ -399,16 +404,17 @@ async function run(test) {
     // 分类筛选对所有视图生效
     ctx.data.filter = 'all'; ctx.data.cat = '教务';
     def.applyFilter.call(ctx);
-    assert.deepStrictEqual(idsOf(ctx.data.cards), ['urgent'], '分类筛选主列表');
-    assert.deepStrictEqual(idsOf(ctx.data.infoCards), ['info'], '分类筛选资料栏');
+    assert.deepStrictEqual(idsOf(ctx.data.cards), ['urgent', 'info'], '分类筛选主列表（含发布卡）');
+    assert.deepStrictEqual(idsOf(ctx.data.infoCards), [], '分类筛选后资料栏仍为空');
     assert.deepStrictEqual(idsOf(ctx.data.expiredCards), ['expired'], '分类筛选已过期区');
     ctx.data.cat = '团务';
     ctx.data.filter = 'longterm';
     def.applyFilter.call(ctx);
     assert.deepStrictEqual(idsOf(ctx.data.longtermCards).sort(), ['occ', 'rec2'].sort(), '分类筛选长期清单');
-    // 折叠「资料 / 无时间」栏（仅全部视图）
+    // 「资料 / 无时间」栏：0 条时 wxml 不渲染（wx:if="{{filter === 'all' && infoCount}}"），折叠态仅会话内
     ctx.data.cat = '全部'; ctx.data.filter = 'all';
     def.applyFilter.call(ctx);
+    assert.strictEqual(ctx.data.infoCount, 0, '发布卡不再进资料栏 → 资料栏 0 条');
     def.toggleInfo.call(ctx);
     assert.strictEqual(ctx.data.showInfo, false);
     def.toggleInfo.call(ctx);

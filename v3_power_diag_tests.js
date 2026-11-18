@@ -846,13 +846,17 @@ function run(test) {
       def.onLoad.call(ctx, {});
       def.onShow.call(ctx);
       await sleep(60);
-      // 契约 2026-11-14 §1.2/§2.2：该通知无任何时间锚点 → 「资料 / 无时间」栏（默认展开）；只有「全部」视图渲染后才按需补 body
-      assert.strictEqual(gidAsked, '', '非「全部」视图不预拉资料栏 body');
+      // 契约 2026-11-18 §2/§3：该通知无真实时间锚点但有 items 时间（旧缓存回退推算）→ 发布卡进主列表；
+      // 默认「待处理」视图即展开 → 按需补完整 body（archive 自愈链不变）；「资料 / 无时间」栏 0 条。
+      assert.strictEqual(gidAsked, 'g_qqfile_8b01d25799', '发布卡在主列表（默认待处理）展开即按需拉完整 body');
+      assert.strictEqual(ctx.data.infoCount, 0, '发布卡不再进「资料 / 无时间」栏');
       ctx.data.filter = 'all';
       def.applyFilter.call(ctx);
       await sleep(60);
-      assert.strictEqual(gidAsked, 'g_qqfile_8b01d25799', '资料栏展开后应按 gid 拉一次完整 body');
-      const card = (ctx.data.infoCards || []).filter(function (c) { return c.id === fresh.id; })[0];
+      assert.strictEqual(gidAsked, 'g_qqfile_8b01d25799', '全部视图仍按 gid 拉一次完整 body（不重复 dead loop）');
+      const card = (ctx.data.cards || []).filter(function (c) { return c.id === fresh.id; })[0];
+      assert.ok(card, '发布卡在主列表');
+      assert.ok(/发布$/.test(card.statusLabel), '发布卡状态胶囊以「发布」结尾：' + card.statusLabel);
       const it = card && card.items.filter(function (x) { return x.kind === 'file'; })[0];
       assert.ok(it && it.archiveOk === true && it.archiveFiles.length === 5, '刷新后卡片应出现 archive 清单');
       assert.strictEqual(it.pending, false);

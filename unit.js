@@ -2212,6 +2212,9 @@ const fakeCanvas = (() => {
   /* ---------------- 2026-11-14 契约：期次长期通知 + 5 卡可点筛选 + 资料栏 + 时间格式（断言在 notice_occ_unit.js） ---------------- */
   await require('./notice_occ_unit.js').run(test);
 
+  /* ---------------- 2026-11-18 契约：通知「发布时间」统一（发布卡进主列表/排序/统计；断言在 notice_publish_unit.js） ---------------- */
+  await require('./notice_publish_unit.js').run(test);
+
   /* ---------------- 2026-11-15 外观（跟随系统/浅色/深色）+ 电费比较独立行（断言在 appearance_unit_tests.js） ---------------- */
   await require('./appearance_unit_tests.js').run(test);
 
