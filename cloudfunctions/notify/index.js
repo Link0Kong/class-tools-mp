@@ -123,16 +123,16 @@ function eventTimeOf(row) {
 }
 // 地点：通知页传入的 place 优先（来自通知「地点」段落），没有则用「班级工具」
 function placeOf(row) {
-  return short((row && row.place) || '班级工具', 20);
+  return short((row && row.place) || '', 20) || '班级工具';
 }
 // 新模板（日程提醒）：日程 / 时间 / 地点 / 日程描述
 function scheduleTemplateData(row) {
-  const tip = short(row.tip || (row.kind === 'hw' ? '作业截止提醒' : '通知提醒'), 20);
+  const tip = short(row.tip || '', 20) || (row.kind === 'hw' ? '作业截止提醒' : '通知提醒');
   return {
-    thing1: { value: short(row.summary || tip, 20) },
+    thing1: { value: short(row.summary || '', 20) || tip },
     time2: { value: eventTimeOf(row) },
     thing3: { value: placeOf(row) },
-    thing5: { value: short(row.tip || tip, 20) }
+    thing5: { value: short(row.tip || '', 20) || tip }
   };
 }
 // 旧模板（2026-11-19 前）：字段与文案逐字节保持原样，旧客户端/旧订阅行继续用

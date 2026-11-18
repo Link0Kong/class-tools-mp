@@ -654,7 +654,7 @@ async function run() {
         },
         {
           _id: 'n_bad', openid: 'openid-A', kind: 'ntremind', ref: 'g2', fireAt: DUE,
-          tip: '', timeText: 'bad-time', summary: '', dateText: 'not-a-date',
+          tip: '   ', timeText: 'bad-time', summary: '   ', dateText: 'not-a-date', place: '   ',
           tmplId: NEW_TMPL, active: true, attempts: 0
         }
       ]
