@@ -98,6 +98,7 @@ async function pageData(mp) {
             sid: '3260707' + ('00' + (u + 20)).slice(-3),
             name: names[u],
             did: 'dev' + u,
+            client: ['web', 'mp', 'android', 'win', 'harmony'][u % 5],
             ts: now - d * 86400e3 + hh * 3600e3
           });
         }
@@ -115,7 +116,7 @@ async function pageData(mp) {
     await mp.reLaunch('/pages/stats/stats');
     await sleep(1500);
     let d = await pageData(mp);
-    check('统计页打开（管理员）→ 数据态', d && d.path === 'pages/stats/stats' && d.state === 'data' && d.accounts > 0, JSON.stringify(d));
+    check('统计页打开（管理员）→ 数据态、默认今天', d && d.path === 'pages/stats/stats' && d.state === 'data' && d.accounts > 0 && d.range === 'today', JSON.stringify(d));
     const s1 = await shot(mp, '01_stats_account');
 
     // 2) 筛选两组：模式组/范围组各自保持单行；允许整组换行，但组内不拆行

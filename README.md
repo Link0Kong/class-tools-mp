@@ -1,5 +1,13 @@
 # 班级工具站小程序 · 测试与修复工程
 
+## 访问统计「最新登录」口径（2026-11-18，未发版）
+
+对应契约 `web/统计多端_最新登录_契约_20261118.md`：按最近登录倒序、默认今天、分钟时间、登录端、忽略测试账号。
+- `unit.js`：`visitLog` 断言 `client=mp`/`id=sid|slot|mp`；statsPull 断言 `ts,client`；统计页断言默认 today、最近登录排序、`MM/DD HH:mm`、端标签、过滤 `3260799999`/9999 段/匿名。
+- `ai_unit_account.js`：`getVisitStats` 断言 `lastClient`、最近登录排序、过滤测试账号、limit 5000；夹具改用 9000 段（不再用 9999 段冒充真实成员）。
+- `stats_preview.js`：mock 行补 `client`，打开断言默认 `range=today`。
+- 实测 `node unit.js` **597/0**、`node ai_unit_account.js` **41/0**、`staticcheck.py` exit 0、`code_quality_check.js` 退出码 0。
+
 ## 移除「新通知提醒」+ 手动提醒以报名开始为基准（2026-11-18，未发版）
 
 - **移除新通知提醒**：删除 `pages/nt` 简报区按钮/状态、`pages/index` 工作台「新通知」角标、`utils/notify.js`

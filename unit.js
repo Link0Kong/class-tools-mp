@@ -379,7 +379,7 @@ const fakeCanvas = (() => {
     // 迁移：前 4 个 = 勾选；全量顺序 = 本机 toolOrder
     assert.deepStrictEqual(tools.quickList(4).map((t) => t.key), ['draw', 'hw', 'tt', 'nt']);
     assert.strictEqual(tools.quickList(99).length, 4, 'quickList 最多 4 个（勾选集合本身 ≤4）');
-    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'stats', 'diag', 'ppt']);
+    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
     assert.strictEqual(tools.toolOf('stats').admin, true, '统计仍是管理工具，不进首页勾选');
     // 2026-11-08 诊断 v2：全班可见（不再是 admin 工具），但仍不进首页勾选（noHome）
     assert.strictEqual(tools.toolOf('diag').admin, undefined, '诊断对全班可见，不再是仅管理员工具');
@@ -986,7 +986,7 @@ const fakeCanvas = (() => {
   /* ============================================================
      6. 访问统计（visits，按账号）
      ============================================================ */
-  await test('统计：visitLog 写 {id:sid|slot, slot, sid, name, did, ts}，每小时按账号去重', async () => {
+  await test('统计：visitLog 写 {id:sid|slot|mp, slot, sid, name, did, client, ts}，按账号+端每小时去重', async () => {
     const { cloud, store } = cloudFresh();
     setIdentity(ID);
     reqImpl = ok([]);
@@ -998,7 +998,8 @@ const fakeCanvas = (() => {
     assert.strictEqual(row.sid, ID.sid);
     assert.strictEqual(row.name, ID.name);
     assert.ok(/^\d{4}-\d{2}-\d{2}-\d{2}$/.test(row.slot));
-    assert.strictEqual(row.id, ID.sid + '|' + row.slot);
+    assert.strictEqual(row.id, ID.sid + '|' + row.slot + '|mp');
+    assert.strictEqual(row.client, 'mp', '记录具体登录端');
     assert.strictEqual(row.did, store.get().did);
     assert.ok(row.ts > 0);
     reqLog = [];
@@ -1018,6 +1019,7 @@ const fakeCanvas = (() => {
     const req = reqLog[0];
     assert.strictEqual(req.header['X-Class-Token'], ID.token);
     assert.ok(urlOf(req).indexOf('slot=gte.2026-10-29-00') >= 0);
+    assert.ok(urlOf(req).indexOf('ts,client') >= 0, '统计查询需带 ts/client');
   });
 
   await test('统计：canDelete 管理员全可删，发布者按 owner=学号，其余不可删', () => {
@@ -1030,33 +1032,57 @@ const fakeCanvas = (() => {
     assert.strictEqual(cloud.canDelete({ content: '本机未上云' }), true);
   });
 
-  await test('统计页：旧匿名行（sid 为空）不参与聚合，只按账号统计', () => {
+  await test('统计页：按最近登录排序、分钟时间、登录端，忽略匿名行与测试账号', () => {
     const captured = {};
     global.Page = (def) => { captured.def = def; };
     try { require(path.join(ROOT, 'pages/stats/stats.js')); } finally { delete global.Page; }
     const def = captured.def;
     assert.ok(def && typeof def.render === 'function', 'stats 页未注册 Page');
+    assert.strictEqual(def.data.range, 'today', '默认打开今天');
     setIdentity(ID);
+    const now = new Date();
+    const p2 = (n) => ('0' + n).slice(-2);
+    const day = (off) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - off); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); };
+    const at = (off, h, m) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - off, h, m, 0, 0).getTime();
+    const today = day(0), yest = day(1);
+    const mmdd = p2(now.getMonth() + 1) + '/' + p2(now.getDate());
     const ctx = {
       data: JSON.parse(JSON.stringify(def.data)),
       _rows: [
-        { slot: '2026-11-04-10', sid: '', name: '', did: 'dev1', ts: 1 },          // v12 之前的历史匿名行
-        { slot: '2026-11-04-09', sid: '', name: '未知账号', did: 'dev1', ts: 2 },
-        { slot: '2026-11-04-09', sid: '3260799999', name: '测试账号', ts: 3 },
-        { slot: '2026-11-04-08', sid: '3260799999', name: '测试账号', ts: 4 }
+        { slot: today + '-10', sid: '', name: '', did: 'dev1', ts: at(0, 10, 1) },                 // 历史匿名行
+        { slot: today + '-09', sid: '', name: '未知账号', did: 'dev1', ts: at(0, 9, 2) },
+        { slot: today + '-09', sid: '3260799999', name: '测试账号', ts: at(0, 9, 3) },             // 官方测试
+        { slot: today + '-08', sid: '9999000001', name: '测试同学', ts: at(0, 8, 4) },             // QA 测试
+        { slot: today + '-09', sid: '9000000002', name: '李四', ts: at(0, 9, 7), client: 'mp' },
+        { slot: today + '-10', sid: '9000000001', name: '张三', ts: at(0, 10, 42), client: 'web' },
+        { slot: today + '-11', sid: '9000000001', name: '张三', ts: at(0, 11, 5), client: 'android' },
+        { slot: yest + '-20', sid: '9000000003', name: '王五', ts: at(1, 20, 15), client: 'win' }
       ],
       setData(o) { Object.assign(this.data, o); }
     };
     ctx.data.range = 'week';
     def.render.call(ctx);
-    assert.strictEqual(ctx.data.accounts.length, 1);
-    assert.strictEqual(ctx.data.accounts[0].name, '测试账号');
+    assert.strictEqual(ctx.data.accounts.length, 3, '忽略测试账号后 3 个账号');
+    assert.strictEqual(ctx.data.accounts[0].name, '张三', '按最近登录排序（今天 11:05）');
+    assert.strictEqual(ctx.data.accounts[0].clientText, '安卓', '同一账号取最近登录端');
+    assert.strictEqual(ctx.data.accounts[0].lastText, mmdd + ' 11:05', '时间精确到分钟');
+    assert.strictEqual(ctx.data.accounts[1].name, '李四');
+    assert.strictEqual(ctx.data.accounts[2].name, '王五');
+    assert.strictEqual(ctx.data.accounts[2].clientText, 'Windows');
     assert.strictEqual(ctx.data.accounts[0].sidMask, undefined, '统计页不再展示学号');
     assert.strictEqual(ctx.data.accounts[0].sid, undefined, '统计页不再展示学号');
     assert.strictEqual(ctx.data.accounts[0].count, 2);
-    assert.strictEqual(ctx.data.summary.visits, 2);
-    assert.strictEqual(ctx.data.summary.accounts, 1);
+    assert.strictEqual(ctx.data.summary.visits, 4);
+    assert.strictEqual(ctx.data.summary.accounts, 3);
+    assert.ok(ctx.data.accounts.every((a) => a.name !== '测试账号' && a.name !== '测试同学'));
     assert.ok(ctx.data.accounts.every((a) => a.name !== '未知账号'));
+
+    /* 今天口径：只保留今天的行（王五昨天不出现） */
+    ctx.data.range = 'today';
+    ctx.data.accounts = [];
+    def.render.call(ctx);
+    assert.strictEqual(ctx.data.accounts.length, 2);
+    assert.ok(ctx.data.accounts.every((a) => a.name !== '王五'));
   });
 
   /* ============================================================
@@ -1602,7 +1628,9 @@ const fakeCanvas = (() => {
 
     // 2) 失败：仍显示缓存（当前周），不退回骨架/不报错
     ttSeedStore({ c: TT_ENTRY_C, t: term, at: Date.now() - 7 * 3600 * 1000, meta: null });
-    reqImpl = failReq;
+    // 2026-11-18 网络层加固后：网络错误会自动重试一次（350ms 退避）。这里用「非 2xx」失败（不触发重试）
+    // 验证同样的失败语义，避免在途重试请求被后续用例合并（生产行为不变：都会保留缓存）。
+    reqImpl = (o) => o.success({ statusCode: 404, data: {} });
     ctx = ttShowCtx(def);
     def.onShow.call(ctx);
     assert.strictEqual(ctx.data.state, 'data', '失败前（同步）应为缓存 data');
@@ -2217,6 +2245,12 @@ const fakeCanvas = (() => {
 
   /* ---------------- 2026-11-15 外观（跟随系统/浅色/深色）+ 电费比较独立行（断言在 appearance_unit_tests.js） ---------------- */
   await require('./appearance_unit_tests.js').run(test);
+
+  /* ---------------- 2026-11-18 PPT 在线媒体 ECS /pptfiles 映射（断言在 ppt_ecs_unit_tests.js） ---------------- */
+  await require('./ppt_ecs_unit_tests.js').run(test);
+
+  /* ---------------- 2026-11-18 自建后端切流（三档 base）+ 网络层体验优化（断言在 net_layer_tests.js） ---------------- */
+  await require('./net_layer_tests.js').run(test);
 
   /* ---------------- 汇总 ---------------- */
   const summary = { total: passN + failN, pass: passN, fail: failN, results, at: new Date().toISOString() };

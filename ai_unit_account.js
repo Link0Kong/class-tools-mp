@@ -516,15 +516,16 @@ function withFeedback(fx) {
     const today = ymd(now);
     const yest = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
     return [
-      { id: SID + '|' + today + '-13', slot: today + '-13', sid: SID, name: '测试账号', ts: fx.now },
-      { id: '9999000001|' + today + '-12', slot: today + '-12', sid: '9999000001', name: '李学盈', ts: fx.now - 3600000 },
-      { id: '9999000002|' + today + '-12', slot: today + '-12', sid: '9999000002', name: '王梓萱', ts: fx.now - 4000000 },
-      { id: '9999000001|' + yest + '-09', slot: yest + '-09', sid: '9999000001', name: '李学盈', ts: fx.now - 20 * 3600000 },
+      { id: SID + '|' + today + '-13|mp', slot: today + '-13', sid: SID, name: '测试账号', ts: fx.now, client: 'mp' },
+      { id: '9000000001|' + today + '-12|web', slot: today + '-12', sid: '9000000001', name: '李学盈', ts: fx.now - 3600000, client: 'web' },
+      { id: '9000000002|' + today + '-12|mp', slot: today + '-12', sid: '9000000002', name: '王梓萱', ts: fx.now - 4000000, client: 'mp' },
+      { id: '9000000001|' + yest + '-09|android', slot: yest + '-09', sid: '9000000001', name: '李学盈', ts: fx.now - 20 * 3600000, client: 'android' },
+      { id: '9000000003|' + today + '-11|win', slot: today + '-11', sid: '9000000003', name: '赵六', ts: fx.now - 2 * 3600000, client: 'win' },
       { id: 'anon|' + today + '-08', slot: today + '-08', sid: '', name: '', ts: fx.now - 30 * 3600000 }
     ];
   }
 
-  await H.test('getVisitStats：管理员成功 → 总访问/按姓名/按天/按小时（不含学号）', async function () {
+  await H.test('getVisitStats：管理员成功 → 按最近登录/端/忽略测试账号（不含学号）', async function () {
     const fx = H.mkFixture();
     const rows = visitRows(fx);
     const wx = H.createWx({ storage: fx.storage, routes: visitRoutes(fx, rows) });
@@ -532,19 +533,25 @@ function withFeedback(fx) {
     const res = await H.call(wx, apis, 'getVisitStats', { days: 7 });
     H.isOk(res);
     const sc = res.structuredContent;
-    H.eq(sc.total, 4, '匿名行不参与统计');
+    H.eq(sc.total, 4, '匿名行与测试账号不参与统计');
     H.eq(sc.accounts, 3);
-    H.eq(sc.byName[0].name, '李学盈');
+    H.eq(sc.byName[0].name, '李学盈', '按最近登录排序');
     H.eq(sc.byName[0].visits, 2);
+    H.eq(sc.byName[0].lastClient, '网页');
+    H.eq(sc.byName[1].name, '王梓萱');
+    H.eq(sc.byName[1].lastClient, '小程序');
+    H.eq(sc.byName[2].name, '赵六');
+    H.eq(sc.byName[2].lastClient, 'Windows');
     H.eq(sc.byDay.length, 7);
     H.eq(sc.byHour.length, 24);
     H.match(sc.rangeText, /^近 7 天/);
     H.eq(sc.pagePath, '/pages/stats/stats');
     H.eq(H.handoffOf(res).query, 'days=7');
-    // 隐私：输出中不得有学号/设备号
+    // 隐私/过滤：输出中不得有学号，也不得出现测试账号
     H.notIncludes(JSON.stringify(sc), SID, '统计不得出现学号');
-    H.notIncludes(JSON.stringify(sc), '9999000001', '统计不得出现学号');
-    H.ok(H.lastRequest(wx, 'visits').url.indexOf('limit=2000') >= 0, '访问统计查询应限量');
+    H.notIncludes(JSON.stringify(sc), '9000000001', '统计不得出现学号');
+    H.notIncludes(JSON.stringify(sc), '测试账号', '统计不得出现测试账号');
+    H.ok(H.lastRequest(wx, 'visits').url.indexOf('limit=5000') >= 0, '访问统计查询应限量');
   });
 
   await H.test('getVisitStats：days=30 与空结果', async function () {
