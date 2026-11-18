@@ -320,6 +320,7 @@ async function run(test) {
     ctx.onLoad();
     ctx._render();
     assert.strictEqual(ctx.data.state, 'ready');
+    assert.strictEqual(ctx.data.tiles[2].sub, '水费 ÷ 0.58', '折合扣电副标必须是单价，不能显示 undefined');
     assert.strictEqual(ctx.data.hasSel, true);
     assert.strictEqual(ctx.data.selLabel, '13号楼324');
     assert.strictEqual(ctx.data.personsLocked, false, '13 号楼人数可改');

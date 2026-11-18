@@ -45,12 +45,17 @@ function post(p, body, headers) {
 (async () => {
   const v = await post('/rpc/class_verify', { p_sid: SID, p_name: NAME });
   if (v.status !== 200 || !v.data || !v.data.token) throw new Error('测试身份验证失败（网络/网关不可用）');
-  const identity = { token: v.data.token, sid: v.data.sid, name: v.data.name, role: v.data.role || '', badge: v.data.badge || '', is_admin: false, ts: Date.now() };
+  const identity = { token: v.data.token, sid: v.data.sid, name: '', role: v.data.role || '', badge: v.data.badge || '', is_admin: false, ts: Date.now() };
+
 
   const mp = await automator.connect({ wsEndpoint: WS });
   try {
     await mp.evaluate(() => { try { wx.clearStorageSync(); } catch (e) {} });
-    await mp.evaluate((id) => { wx.setStorageSync('zq_class_identity', id); }, identity);
+    await mp.evaluate((id) => {
+      // 中文名不能经 automator 参数直接传（桥接层会按非 UTF-8 传成乱码）；用码点在小程序内构造。
+      id.name = String.fromCharCode(27979, 35797, 36134, 21495); // 测试账号
+      wx.setStorageSync('zq_class_identity', id);
+    }, identity);
     await mp.evaluate(() => {
       wx.__perfProbe = { req: [], t0: Date.now() };
       const orig = wx.request;
