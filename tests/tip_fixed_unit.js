@@ -13,8 +13,7 @@ const fs = require('fs');
 const path = require('path');
 
 const HERE = __dirname;
-const ROOT = path.resolve(HERE, '..');
-const MP = path.join(ROOT, 'mp-class-tools');
+const MP = path.resolve(HERE, '..'); // tests/ 已并入小程序仓库，上一级即小程序根目录
 const results = [];
 
 function test(name, fn) {

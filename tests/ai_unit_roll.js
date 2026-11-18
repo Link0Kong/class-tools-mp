@@ -463,7 +463,7 @@ function emptyDraw(wx) {
   await H.test('契约：SKILL.md ≤ 16000B、mcp.json 去 outputSchema/空白 ≤ 24000B', async () => {
     const fs = require('fs');
     const path = require('path');
-    const dir = path.resolve(__dirname, '..', 'mp-class-tools', 'ai', 'skills', 'roll');
+    const dir = path.resolve(__dirname, '..', 'ai', 'skills', 'roll');
     const skillSize = fs.statSync(path.join(dir, 'SKILL.md')).size;
     H.ok(skillSize <= 16000, 'SKILL.md 大小 ' + skillSize);
     const raw = JSON.parse(fs.readFileSync(path.join(dir, 'mcp.json'), 'utf8'));

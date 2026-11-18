@@ -887,8 +887,10 @@ function run(test) {
 
     await test('需求10：合规静态扫描（无 web-view / 支付 / 抽奖 / 外部小程序导流 / 第三方广告）', function () {
       const files = walk(ROOT, []).filter(function (f) {
+        const norm = f.replace(/\\/g, '/');
         return /\.(js|json|wxml|wxss)$/.test(f) &&
-          f.replace(/\\/g, '/').indexOf('/ai/') < 0 &&          // AI 独立分包由各自的契约测试覆盖（发版前整体关闭）
+          norm.indexOf('/ai/') < 0 &&                            // AI 独立分包由各自的契约测试覆盖（发版前整体关闭）
+          norm.indexOf('/tests/') < 0 &&                         // tests/ 是测试代码（2026-11-18 并入，不算小程序源码）
           f.indexOf('cloudfunctions') < 0;                       // 云函数（订阅消息）不属于客户端界面
       });
       const forbidden = [

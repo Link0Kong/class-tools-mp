@@ -203,14 +203,14 @@ let lastReport = null;
 
 const PROJECT = (function () {
   const cands = [
-    path.resolve(__dirname, '..', 'mp-class-tools'),
+    path.resolve(__dirname, '..'),
     path.resolve(process.cwd(), 'mp-class-tools'),
     'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools'
   ];
   for (let i = 0; i < cands.length; i++) {
     try { if (fs.statSync(cands[i]).isDirectory()) return cands[i]; } catch (e) { /* next */ }
   }
-  return path.resolve(__dirname, '..', 'mp-class-tools');
+  return path.resolve(__dirname, '..');
 })();
 
 // 原子接口环境（CONTRACT §0）不可用的 API：被调用时记录违规
@@ -730,7 +730,7 @@ function loadSkill(wxOrPath, skillPathOrOpts, opts) {
   const mcp = readMcp(mcpPath, warnings, opts);
 
   if (opts.fresh !== false) {
-    clearRequireCache(path.resolve(__dirname, '..', 'mp-class-tools'));
+    clearRequireCache(path.resolve(__dirname, '..'));
     clearRequireCache(skillDir);   // 同一进程反复 loadSkill 时技能 index.js 必须重新执行，才能重新注册
   }
   let mod;

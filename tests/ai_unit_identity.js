@@ -402,7 +402,7 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
   await H.test('原子组件：5 个卡片四件套齐全，监听 Result 且调用 setRelatedPage', function () {
     const fs = require('fs');
     const path = require('path');
-    const dir = path.resolve(__dirname, '..', 'mp-class-tools', SKILL, 'components');
+    const dir = path.resolve(__dirname, '..', SKILL, 'components');
     const cards = ['profile-card', 'roster-card', 'overview-card', 'tools-card', 'workspace-card'];
     cards.forEach(function (name) {
       ['index.js', 'index.json', 'index.wxml', 'index.wxss'].forEach(function (f) {

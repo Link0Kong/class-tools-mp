@@ -1,7 +1,7 @@
 'use strict';
 // 验证：小程序不依赖 PATCH，软删/更新走 GET 整行 + POST upsert。
 const path = require('path');
-const ROOT = path.join(__dirname, '..', 'mp-class-tools');
+const ROOT = path.join(__dirname, '..');
 const calls = [];
 const store = {};
 global.wx = {

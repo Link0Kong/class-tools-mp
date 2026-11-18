@@ -18,8 +18,7 @@ const path = require('path');
 const assert = require('assert');
 
 const HERE = __dirname;
-const ROOT = path.resolve(HERE, '..');
-const MP = path.join(ROOT, 'mp-class-tools');
+const MP = path.resolve(HERE, '..'); // tests/ 已并入小程序仓库，上一级即小程序根目录
 const REAL_SIDS = /3260707024|3260707001|3260707002|3260707003|3260707026|陈子麒/;
 
 function src(rel) { return fs.readFileSync(path.join(MP, rel), 'utf8'); }

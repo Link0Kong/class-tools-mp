@@ -11,7 +11,7 @@ const Module = require('module');
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace';
 const FN_DIR = ROOT + '/mp-class-tools/cloudfunctions/notify';
 const INDEX = FN_DIR + '/index.js';
-const MOCK = ROOT + '/mp-class-tools-tests/cloudfunctions/_mock/wx-server-sdk.js';
+const MOCK = ROOT + '/mp-class-tools/tests/cloudfunctions/_mock/wx-server-sdk.js';
 
 /* ---------- 固定时间：2026-11-05 13:15 上海时间 ---------- */
 const REAL_NOW = Date.now;

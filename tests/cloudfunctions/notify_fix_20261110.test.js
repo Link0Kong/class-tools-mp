@@ -14,7 +14,7 @@ const Module = require('module');
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace';
 const FN_DIR = ROOT + '/mp-class-tools/cloudfunctions/notify';
 const INDEX = FN_DIR + '/index.js';
-const MOCK = ROOT + '/mp-class-tools-tests/cloudfunctions/_mock/wx-server-sdk.js';
+const MOCK = ROOT + '/mp-class-tools/tests/cloudfunctions/_mock/wx-server-sdk.js';
 
 const REAL_NOW = Date.now;
 const FIXED_NOW = Date.parse('2026-11-10T11:30:00.000Z'); // 2026-11-10 19:30 上海

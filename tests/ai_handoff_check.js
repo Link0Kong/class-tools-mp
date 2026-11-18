@@ -21,7 +21,7 @@ const { spawn } = require('child_process');
 
 const TESTS_DIR = __dirname;
 const ROOT = path.resolve(TESTS_DIR, '..');
-const PROJECT = path.join(ROOT, 'mp-class-tools');
+const PROJECT = ROOT; // tests/ 已并入小程序仓库，上一级即小程序根目录
 const QA_DIR = path.join(ROOT, '_ai_task', 'qa');
 const RESULT_FILE = path.join(QA_DIR, 'handoff_result.json');
 const PORT = 9431;

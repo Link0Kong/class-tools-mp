@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 const HARNESS = tryRequire('./_ai_harness.js');
-const ROOT = (HARNESS && HARNESS.PROJECT) || path.resolve(__dirname, '..', 'mp-class-tools');
+const ROOT = (HARNESS && HARNESS.PROJECT) || path.resolve(__dirname, '..');
 const AI = path.join(ROOT, 'ai');
 const ARGS = process.argv.slice(2);
 const FINAL = ARGS.indexOf('--final') >= 0;

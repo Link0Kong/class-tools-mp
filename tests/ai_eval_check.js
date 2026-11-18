@@ -17,12 +17,12 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = (function () {
-  const cands = [path.resolve(__dirname, '..', 'mp-class-tools'), path.resolve(process.cwd(), 'mp-class-tools')];
+  const cands = [path.resolve(__dirname, '..'), path.resolve(process.cwd(), 'mp-class-tools')];
   for (let i = 0; i < cands.length; i++) { try { if (fs.statSync(cands[i]).isDirectory()) return cands[i]; } catch (e) {} }
   return cands[0];
 })();
 const CASES_FILE = path.join(__dirname, 'ai_eval_cases.json');
-const RESULT_FILE = path.resolve(__dirname, '..', '_ai_task', 'qa', 'ai_eval_check_result.json');
+const RESULT_FILE = path.resolve(__dirname, '..', '..', '_ai_task', 'qa', 'ai_eval_check_result.json');
 const STRICT = process.argv.slice(2).indexOf('--strict') >= 0;
 
 // CONTRACT §5 全部 60 个原子接口（分母 / 开发期合法工具名）

@@ -25,7 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const ROOT = path.resolve(__dirname, '..', 'mp-class-tools');
+const ROOT = path.resolve(__dirname, '..');
 const PAGE_DIR = path.join(ROOT, 'pages', 'ug');
 const FILES = {
   js: path.join(PAGE_DIR, 'ug.js'),

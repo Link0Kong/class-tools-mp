@@ -7,7 +7,7 @@
 'use strict';
 const assert = require('assert');
 const path = require('path');
-const ROOT = path.resolve(__dirname, '..', 'mp-class-tools');
+const ROOT = path.resolve(__dirname, '..');
 const mem = {};
 global.wx = {
   getStorageSync(k) { return mem[k] === undefined ? '' : mem[k]; },

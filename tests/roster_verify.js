@@ -19,7 +19,7 @@ const fs = require('fs');
 const automator = require('miniprogram-automator');
 
 const ROOT = __dirname;
-const MP = path.join(ROOT, '..', 'mp-class-tools');
+const MP = path.join(ROOT, '..');
 const OUT = path.join(ROOT, '_shots', 'roster_verify');
 fs.mkdirSync(OUT, { recursive: true });
 

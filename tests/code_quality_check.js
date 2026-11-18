@@ -100,7 +100,7 @@ const CODE_FILE_RE = /\.(json|wxml|wxss|js|wxs|ts|less|sass|scss)$/;
 
 function parseArgs(argv) {
   const opts = {
-    project: path.resolve(__dirname, '..', 'mp-class-tools'),
+    project: path.resolve(__dirname, '..'),
     json: false,
     includeCloudfunctionsCode: false, // 默认按官方 dev 编译语义：cloudfunction 代码文件会被「无依赖文件」过滤掉
     excludeUnusedFilter: false, // 仅诊断：关闭无依赖文件过滤，观察编译包原始清单
