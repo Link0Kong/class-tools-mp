@@ -700,6 +700,11 @@ function ntSnapshotKey() {
   const sid = currentSid();
   return sid ? (NT_SNAP_PREFIX + sid) : '';
 }
+// 2026-11-18：storage 快照/分块缓存若被旧链路按非 UTF-8 写入，会解析出大量 U+FFFD（�）。
+// 这种缓存必须丢弃后重新拉，否则通知标题/正文会整片乱码。
+function ntTextCorrupt(groups) {
+  try { return /[\uFFFD]|锟斤拷|ï¿½|Ã.|â€|ðŸ/.test(JSON.stringify(groups)); } catch (e) { return true; }
+}
 function ntSnapGet() {
   const key = ntSnapshotKey();
   if (!key || typeof wx === 'undefined' || !wx.getStorageSync) return null;
@@ -708,6 +713,7 @@ function ntSnapGet() {
     if (!raw) return null;
     const o = (typeof raw === 'string') ? JSON.parse(raw) : raw;
     if (!o || o.sid !== currentSid() || !Array.isArray(o.g) || !o.g.length) return null;
+    if (ntTextCorrupt(o.g)) { ntSnapClear(); return null; }
     return { g: o.g, sig: String(o.sig || ''), at: Number(o.at) || 0 };
   } catch (e) { return null; }
 }
@@ -756,10 +762,11 @@ function ntLoad() {
   if (ntMemValid()) return _ntMem;
   const c = cache.getWithMeta('ntAuto');
   const v = c && c.val;
-  if (v && v.g) {
+  if (v && v.g && !ntTextCorrupt(v.g)) {
     _ntMem = { sid: currentSid(), at: Number(v.at) || c.at, g: v.g, sig: String(v.sig || '') };
   } else {
-    // 分块缓存不可用（旧版本超限 / 索引损坏 / 配额淘汰）时读单 key 快照；
+    if (v && v.g) { try { cache.del('ntAuto'); } catch (e) { /* ignore */ } }
+    // 分块缓存不可用（旧版本超限 / 索引损坏 / 配额淘汰 / 乱码）时读单 key 快照；
     // 这是弱网/无网仍能看到「上次加载好的通知」的最后一道保障。
     const snap = ntSnapGet();
     _ntMem = snap

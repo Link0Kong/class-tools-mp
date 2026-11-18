@@ -420,7 +420,7 @@ Page({
       },
       {
         key: 'deg', label: '折合扣电', value: latest && latest.usage != null ? water.fmtDeg(latest.deg) : '0.0',
-        unit: '度', sub: '水费 ÷ ' + rulesP.elecPrice
+        unit: '度', sub: '水费 ÷ ' + water.RULES.elec.toFixed(2)
       }
     ];
     this.setData({

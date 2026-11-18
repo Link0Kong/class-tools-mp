@@ -26,6 +26,9 @@ function normalize(o) {
   const sid = cleanString(o.sid);
   const name = cleanString(o.name);
   if (!token || !sid || !name) return null;
+  // 2026-11-18：本机身份名若被非 UTF-8 链路/旧测试注入写成替换字符（�）或典型 mojibake，
+  // 视为身份无效 → 回身份页重新验证，避免首页问候/同步文案/导出图上出现一整片乱码。
+  if (/[\uFFFD]|锟斤拷|ï¿½|Ã.|â€|ðŸ/.test(name)) return null;
   return {
     token: token,
     sid: sid,
