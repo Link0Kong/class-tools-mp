@@ -3,7 +3,7 @@
 <view class="page pad-b {{themeClass}}">
   <view class="page-head">
     <view class="t-headline-m">访问统计</view>
-    <view class="t-body-m muted">仅管理员 · 按姓名聚合，不显示学号</view>
+    <view class="t-body-m muted">按最近登录排序 · 仅管理员 · 不显示学号</view>
   </view>
 
   <!-- 筛选：两组各自 nowrap；空间不足时整组换行（不再用 grow 把范围组挤掉单个 chip） -->
@@ -57,7 +57,7 @@
           </view>
           <view class="st-acc__right">
             <view class="st-acc__n">{{item.count}} 次</view>
-            <view class="st-acc__last">最近 {{item.lastText}}</view>
+            <view class="st-acc__last">最近 {{item.lastText}} · {{item.clientText}}</view>
           </view>
         </view>
       </view>

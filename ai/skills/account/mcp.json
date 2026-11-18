@@ -245,7 +245,7 @@
     },
     {
       "name": "getVisitStats",
-      "description": "读取访问统计（仅管理员）：近 7 或 30 天总访问次数、按姓名聚合的访问次数与最近时间、按天与按小时活跃账号数。不显示学号与设备号。",
+      "description": "读取访问统计（仅管理员）：近 7 或 30 天总访问次数、按最近登录排序的账号（访问次数、最近登录时间到分钟、登录端）、按天与按小时活跃账号数；忽略测试账号，不显示学号与设备号。",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -263,7 +263,8 @@
               "properties": {
                 "name": { "type": "string" },
                 "visits": { "type": "number" },
-                "lastText": { "type": "string" }
+                "lastText": { "type": "string" },
+                "lastClient": { "type": "string" }
               }
             }
           },

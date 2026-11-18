@@ -26,7 +26,7 @@
 }
 .st-acc__right { flex: none; text-align: right; }
 .st-acc__n { font-size: 30rpx; font-weight: 600; color: var(--md-primary); font-variant-numeric: tabular-nums; }
-.st-acc__last { margin-top: 4rpx; font-size: 20rpx; color: var(--md-on-surface-variant); }
+.st-acc__last { margin-top: 4rpx; font-size: 20rpx; color: var(--md-on-surface-variant); white-space: nowrap; }
 .strow { display: flex; flex-wrap: nowrap; align-items: center; gap: 12rpx; padding: 8rpx 0; min-width: 0; }
 .lb {
   width: 120rpx; flex: none; box-sizing: border-box;

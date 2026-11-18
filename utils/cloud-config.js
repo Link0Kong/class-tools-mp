@@ -144,7 +144,7 @@ module.exports = {
     userdata: 'userdata',  // 用户数据 v6：{id: 学号, blob: JSON字符串, ts}（CONTRACT §3）
     feedback: 'feedback',  // 反馈：{id, content, contact, acc, done, ts}
     fitrecs: 'fitrecs',    // 体测记录：{id, acc, data, arch, ts}
-    visits: 'visits',      // 访问统计：{id: sid|slot, slot, sid, name, did, ts}
+    visits: 'visits',      // 访问统计：{id: sid|slot|前端, slot, sid, name, did, client, ts}
     // 站点静态资源（2026-11-07 课表去域名化）：id='tt' 行 body=课表对象 {c,t,meta}，meta={source,fetchedAt,...}
     siteAssets: 'site_assets',
     // 2026-11-09 PPT 演示（契约 web/ppt/CONTRACT.md §3）：

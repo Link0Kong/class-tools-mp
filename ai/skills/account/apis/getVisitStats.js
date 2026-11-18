@@ -1,18 +1,34 @@
 // ai/skills/account/apis/getVisitStats.js —— 访问统计（原子接口，仅管理员）
 //
-// 与主包 pages/stats/stats.js 同口径：只统计有学号的 visits 行，按姓名聚合访问次数与最近时间，
-// 按天/按小时统计「活跃账号数」（去重学号）。输出不含学号与设备号。
+// 与主包 pages/stats/stats.js 同口径（2026-11-18）：
+// - 按最近登录 ts 倒序（不再按访问次数优先）；
+// - 记录并输出最近登录端（client：web/mp/android/win/harmony）；
+// - 忽略测试账号（3260799999 / 9999 段 10 位）与匿名历史行；
+// - 输出不含学号与设备号。
 const auth = require('../../../common/auth.js');
 const rest = require('../../../common/rest.js');
 const fmt = require('../../../common/fmt.js');
 const result = require('../../../common/result.js');
 const handoff = require('../../../common/handoff.js');
 
-const MAX_ROWS = 2000;
+const MAX_ROWS = 5000;
 const NAME_TOP = 15;
+const CLIENT_LABEL = { web: '网页', mp: '小程序', android: '安卓', win: 'Windows', harmony: '鸿蒙' };
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
 function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function slotTs(slot) {
+  const s = String(slot || '');
+  if (s.length < 13) return 0;
+  const d = new Date(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)), Number(s.slice(11, 13)), 0, 0, 0);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+function tsOf(r) { return (Number(r && r.ts) || 0) || slotTs(r && r.slot); }
+function clientLabel(c) { return CLIENT_LABEL[String(c || '').trim().toLowerCase()] || '未记录'; }
+function isTestSid(sid) {
+  const s = String(sid || '').trim();
+  return s === '3260799999' || /^9999\d{6}$/.test(s);
+}
 
 module.exports = function getVisitStats(args) {
   const id = auth.getIdentity();
@@ -33,26 +49,39 @@ module.exports = function getVisitStats(args) {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1), 0, 0, 0, 0);
   const fromSlot = ymd(from) + '-00';
-  const q = 'select=id,slot,sid,name,ts&slot=gte.' + encodeURIComponent(fromSlot) + '&order=ts.desc&limit=' + MAX_ROWS;
+  const q = 'select=id,slot,sid,name,ts,client&slot=gte.' + encodeURIComponent(fromSlot) + '&order=ts.desc&limit=' + MAX_ROWS;
 
   return rest.get(rest.CONFIG.tables.visits, q).then(function (rows) {
     const all = Array.isArray(rows) ? rows : [];
-    // 只统计绑定学号的访问（v12 之前的匿名历史行不参与）
-    const bound = all.filter(function (r) { return String(r && r.sid == null ? '' : r.sid).trim() !== ''; });
+    // 只统计绑定学号的访问（历史匿名行不参与）；测试账号一律忽略。
+    const bound = all.filter(function (r) {
+      const sid = String(r && r.sid == null ? '' : r.sid).trim();
+      return sid !== '' && !isTestSid(sid);
+    });
 
-    // —— 按姓名聚合 ——
+    // —— 按账号（sid）聚合：访问次数 + 最近登录时间/端 ——
     const map = {};
     bound.forEach(function (r) {
+      const sid = String(r.sid || '').trim();
+      if (!sid) return;
       const name = String(r.name || '').trim() || '（无姓名）';
-      const ts = Number(r.ts) || 0;
-      if (!map[name]) map[name] = { name: name, visits: 0, lastTs: 0 };
-      map[name].visits += 1;
-      map[name].lastTs = Math.max(map[name].lastTs, ts);
+      const ts = tsOf(r);
+      if (!map[sid]) map[sid] = { name: name, visits: 0, lastTs: 0, lastClient: '' };
+      map[sid].visits += 1;
+      if (ts >= map[sid].lastTs) { map[sid].lastTs = ts; map[sid].lastClient = String(r.client || '').trim(); }
+      if (name && name !== '（无姓名）') map[sid].name = name;
     });
     const byName = Object.keys(map).map(function (k) { return map[k]; })
-      .sort(function (x, y) { return (y.visits - x.visits) || (y.lastTs - x.lastTs); })
+      .sort(function (x, y) { return (y.lastTs - x.lastTs) || (y.visits - x.visits); })
       .slice(0, NAME_TOP)
-      .map(function (x) { return { name: x.name, visits: x.visits, lastText: x.lastTs ? fmt.fmtDateTime(x.lastTs) : '—' }; });
+      .map(function (x) {
+        return {
+          name: x.name,
+          visits: x.visits,
+          lastText: x.lastTs ? fmt.fmtDateTime(x.lastTs) : '—',
+          lastClient: clientLabel(x.lastClient)
+        };
+      });
 
     // —— 按天：活跃账号数（去重学号） ——
     const byDay = [];
@@ -95,8 +124,8 @@ module.exports = function getVisitStats(args) {
     if (!total) {
       text = '近 ' + days + ' 天还没有访问记录。等同学们使用后可以再来查看。';
     } else {
-      const top = byName.slice(0, 3).map(function (x) { return x.name + '（' + x.visits + ' 次）'; }).join('、');
-      text = s.rangeText + '共 ' + total + ' 次访问、' + accounts + ' 位同学活跃；访问最多的是：' + top +
+      const top = byName.slice(0, 3).map(function (x) { return x.name + '（最近 ' + x.lastText + ' · ' + x.lastClient + '）'; }).join('、');
+      text = s.rangeText + '共 ' + total + ' 次访问、' + accounts + ' 位同学活跃；最近登录的是：' + top +
         '。需要看按天/按小时分布可以继续问。';
     }
     return result.ok(text, s, {

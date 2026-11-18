@@ -1,5 +1,5 @@
-// pages/stats/stats.js —— 访问统计（按账号聚合，仅管理员）
-// 数据来源：CloudBase public.visits（v12 起每次访问写 {id:sid|slot, slot, sid, name, did, ts}）。
+// pages/stats/stats.js —— 访问统计（按最近登录排序，仅管理员）
+// 数据来源：CloudBase public.visits（{id, slot, sid, name, did, client, ts}；client=web/mp/android/win/harmony）。
 // 只按「学号 + 姓名」聚合，不按匿名设备；仅 is_admin 身份可看（服务端 RLS 会再校验 token）。
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');
@@ -7,12 +7,27 @@ const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 
+const CLIENT_LABEL = { web: '网页', mp: '小程序', android: '安卓', win: 'Windows', harmony: '鸿蒙' };
+
 function pad(n) { return ('0' + n).slice(-2); }
 function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function slotTs(slot) {
+  const s = String(slot || '');
+  if (s.length < 13) return 0;
+  const d = new Date(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)), Number(s.slice(11, 13)), 0, 0, 0);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+function tsOf(r) { return (Number(r && r.ts) || 0) || slotTs(r && r.slot); }
 function fmtTs(ts) {
   const d = new Date(Number(ts) || 0);
   if (isNaN(d.getTime()) || !Number(ts)) return '—';
-  return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function clientLabel(c) { return CLIENT_LABEL[String(c || '').trim().toLowerCase()] || '未记录'; }
+// 测试账号：官方测试身份 3260799999 + 临时 QA 身份 9999 段（10 位）；统计一律忽略。
+function isTestSid(sid) {
+  const s = String(sid || '').trim();
+  return s === '3260799999' || /^9999\d{6}$/.test(s);
 }
 
 Page({
@@ -20,7 +35,7 @@ Page({
     state: 'loading',
     denied: false,
     mode: 'account',      // account | day | hour
-    range: 'week',        // today | week
+    range: 'today',       // today | week
     accounts: [],
     bars: [],
     summary: { accounts: 0, visits: 0 },
@@ -37,6 +52,8 @@ Page({
     share.enable();
     scrollmem.restore(this);
     if (!identity.ensure()) return;
+    // 默认打开今天：每次进入统计页都归位（离开再进不沿用上次的 7 天）；AI 接力可随后覆盖。
+    this.setData({ range: 'today' });
     this.applyAgentHandoff();
     if (!identity.isAdmin()) {
       this.setData({ state: 'error', denied: true });
@@ -92,33 +109,38 @@ Page({
     const all = this._rows || [];
     const now = new Date();
     const today = ymd(now);
-    // 只统计「有学号」的 visits 行：v12 之前的历史匿名访问（sid/name 为空）不参与聚合
-    const bound = all.filter(function (r) { return String(r.sid == null ? '' : r.sid).trim() !== ''; });
+    // 只统计「有学号」的 visits 行：旧匿名访问（sid/name 为空）不参与聚合；测试账号一律忽略。
+    const bound = all.filter(function (r) {
+      const sid = String(r.sid == null ? '' : r.sid).trim();
+      return sid !== '' && !isTestSid(sid);
+    });
     const rows = this.data.range === 'today'
       ? bound.filter(function (r) { return String(r.slot || '').slice(0, 10) === today; })
       : bound;
 
-    // —— 按账号聚合（sid/name、访问次数、最近时间）——
+    // —— 按账号聚合（sid/name、访问次数、最近登录时间与登录端）——
     const map = {};
     rows.forEach(function (r) {
       const sid = String(r.sid || '').trim();
       if (!sid) return;
       const name = String(r.name || '').trim();
-      if (!map[sid]) map[sid] = { key: sid, sid: sid, name: name, count: 0, lastTs: 0 };
+      if (!map[sid]) map[sid] = { key: sid, sid: sid, name: name, count: 0, lastTs: 0, lastClient: '' };
       const a = map[sid];
       a.count += 1;
-      a.lastTs = Math.max(a.lastTs, Number(r.ts) || 0);
+      const t = tsOf(r);
+      if (t >= a.lastTs) { a.lastTs = t; a.lastClient = String(r.client || '').trim(); }
       if (name) a.name = name;
     });
     const accounts = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) {
-      return (b.count - a.count) || (b.lastTs - a.lastTs);
+      return (b.lastTs - a.lastTs) || (b.count - a.count);
     }).map(function (a) {
       const nm = a.name || cloud.memberName(a.sid) || '（无姓名）';
       return {
         key: a.key,
         name: nm,
         count: a.count,
-        lastText: fmtTs(a.lastTs)
+        lastText: fmtTs(a.lastTs),
+        clientText: clientLabel(a.lastClient)
       };
     });
 

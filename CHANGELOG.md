@@ -1,5 +1,15 @@
 # 版本记录
 
+## 访问统计：按最新登录排序 + 分钟时间 + 登录端 + 忽略测试账号（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户原话：「将所有端的统计工具统一更新为按最新登录顺序排序，默认打开为今天，时间精确到分钟，记录具体登录端，忽略测试账号」。唯一契约 `web/统计多端_最新登录_契约_20261118.md`。
+
+- `utils/cloud.js`：`visitLog` 行增 `client:"mp"`，`id=sid|slot|mp`，去重键改为 `zq_visit_slot_<sid>_mp`（同机切号不再漏记）；`statsPull` 取 `id,slot,sid,name,ts,client`、`order=ts.desc&limit=5000`。
+- `pages/stats`：默认 `range:'today'` 且 `onShow` 归位；按账号 `max(ts)` 倒序；`MM/DD HH:mm`；显示最近登录端（网页/小程序/安卓/Windows/鸿蒙/未记录）；过滤 `3260799999` 与 9999 段 10 位测试身份、匿名行；摘要/按天/按小时同口径。
+- `ai/skills/account/apis/getVisitStats.js` + `mcp.json`：同口径（最近登录排序、`lastClient`、过滤测试账号；不返回学号/设备号）。
+- **测试**：`node unit.js` **597/0**、`node ai_unit_account.js` **41/0**、`python staticcheck.py` exit 0、`node code_quality_check.js` 退出码 0；`stats_preview.js` 增加默认今天/client 字段断言。
+- **未做**：未上传/发布；未改 VERSION / UD v6 / 云端表结构（`visits.client` 迁移见 web 仓库）。
+
 ## 移除「新通知提醒」+ 手动提醒改以活动报名开始为基准（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户原话：「移除微信新通知提醒功能，另外我发现手动设置提醒不是以活动报名开始时间为基准而是以截止为基准」。

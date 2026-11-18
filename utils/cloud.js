@@ -1793,7 +1793,7 @@ function fbDone(id, row) {
 }
 
 // ---------------------------------------------------------------- 访问统计（visits，按账号）
-// 云同步每次访问写：{id: sid+"|"+slot, slot, sid, name, did, ts}，带 X-Class-Token。
+// 云同步每次访问写：{id: sid+"|"+slot+"|mp", slot, sid, name, did, client:"mp", ts}，带 X-Class-Token。
 // 统计页只读汇总，仅管理员可见（服务端 RLS 再校验 token）。
 function didOf() {
   const d = store.get();
@@ -1814,15 +1814,17 @@ function visitLog() {
   if (!id || !isEnabled() || udOff()) return Promise.resolve(false);
   try {
     const slot = hourSlot();
-    const mark = id.sid + '|' + slot;
-    try { if (wx.getStorageSync('zq_visit_slot') === mark) return Promise.resolve(false); } catch (e) { /* ignore */ }
-    const row = { id: mark, slot: slot, sid: id.sid, name: id.name, did: didOf(), ts: Date.now() };
+    // 2026-11-18：去重键按「账号 + 登录端」分开（旧键不分账号，同机切号会漏记下一个账号）。
+    const mark = id.sid + '|' + slot + '|mp';
+    const storageKey = 'zq_visit_slot_' + id.sid + '_mp';
+    try { if (wx.getStorageSync(storageKey) === mark) return Promise.resolve(false); } catch (e) { /* ignore */ }
+    const row = { id: mark, slot: slot, sid: id.sid, name: id.name, did: didOf(), client: 'mp', ts: Date.now() };
     // 2026-11-17：同一账号同一小时重复写（换设备/清缓存/重装）会撞主键 409，是请求错误率的
     // 真实来源之一。visits 无 UPDATE 权限，不能用 merge-duplicates；用 ignore-duplicates
     // （ON CONFLICT DO NOTHING）幂等忽略，成功返回 2xx，不再计一次失败请求。
     return request('POST', CONFIG.restBase + CONFIG.tables.visits, [row],
       headerOf({ Prefer: 'resolution=ignore-duplicates,return=minimal' }))
-      .then(function () { try { wx.setStorageSync('zq_visit_slot', mark); } catch (e) { /* ignore */ } return true; })
+      .then(function () { try { wx.setStorageSync(storageKey, mark); } catch (e) { /* ignore */ } return true; })
       .catch(function () { return false; });
   } catch (e) { return Promise.resolve(false); }
 }
@@ -1862,7 +1864,7 @@ function ntGroupFull(gid) {
 function statsPull(fromSlot) {
   if (!isEnabled() || !identity.isAdmin()) return Promise.resolve([]);
   const from = String(fromSlot || '').trim();
-  const q = 'select=id,slot,sid,name,ts&slot=gte.' + encodeURIComponent(from) + '&order=ts.desc&limit=2000';
+  const q = 'select=id,slot,sid,name,ts,client&slot=gte.' + encodeURIComponent(from) + '&order=ts.desc&limit=5000';
   return request('GET', CONFIG.restBase + CONFIG.tables.visits + '?' + q, undefined, headers(false))
     .then(function (list) { return Array.isArray(list) ? list : []; })
     .catch(function () { return []; });
