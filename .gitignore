@@ -18,6 +18,15 @@ cloudfunctions/**/node_modules/
 # 云函数历史备份（需要时另存）
 cloudfunctions/_backup/
 
+# 小程序测试（tests/，原 mp-class-tools-tests 仓库并入）：运行产物不入库
+tests/_net_before/
+tests/_shots*/
+tests/_backup_*/
+tests/*-result.json
+tests/*_result.json
+tests/**/__pycache__/
+tests/**/*.pyc
+
 # 系统文件
 .DS_Store
 Thumbs.db
