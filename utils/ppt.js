@@ -549,7 +549,8 @@ function downloadDetailView(manifest, deck, opts) {
     title: title,
     owner: owner,
     meta: metaParts.join(' · '),
-    cover: strOf(d.cover_url),
+    // 封面 cover_url 也走 ECS /pptfiles 缓存（2026-11-18 P4；详情页与列表/播放器同 helper）
+    cover: pptEcsUrl(strOf(d.cover_url)),
     statusKey: status,
     statusText: statusTextOf(status, d),
     isReady: status === 'ready' && !!m,
@@ -1167,7 +1168,8 @@ function deckView(deck, opts) {
     owner: owner,
     ownerIsMe: mine,
     mine: mine,
-    cover: strOf(d.cover_url),
+    // 封面 cover_url 也走 ECS /pptfiles 缓存（2026-11-18 P4：列表/详情/播放器首帧同口径；data:/外域/空原样）
+    cover: pptEcsUrl(strOf(d.cover_url)),
     hasCover: !!strOf(d.cover_url),
     meta: meta + (meta ? ' · ' : '') + ownerText,
     when: fmtWhen(d.created_at),

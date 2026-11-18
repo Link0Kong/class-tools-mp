@@ -185,7 +185,7 @@ Page({
       self._resume = (saved && ppt.resumeValid(saved, Date.now())) ? saved : null;
       if (saved && !self._resume) ppt.clearResume(self._id);
       const v0 = ppt.viewAt(r.manifest, 0);
-      const cover = String((self._deck && self._deck.cover_url) || '');
+      const cover = ppt.pptEcsUrl(String((self._deck && self._deck.cover_url) || ''));
       self._idx = 0;
       self._ready = true;
       self._coverB = !!cover;
