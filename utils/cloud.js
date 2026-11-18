@@ -711,6 +711,20 @@ function ntSnapGet() {
     return { g: o.g, sig: String(o.sig || ''), at: Number(o.at) || 0 };
   } catch (e) { return null; }
 }
+// 单 key 上限按 UTF-8 字节算（中文 3 字节；不能只看字符串长度）。
+function ntUtf8Len(str) {
+  const s = String(str == null ? '' : str);
+  let bytes = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c >= 0xD800 && c <= 0xDBFF) {
+      const n = s.charCodeAt(i + 1);
+      if (n >= 0xDC00 && n <= 0xDFFF) { bytes += 4; i++; continue; }
+    }
+    bytes += (c < 0x80 ? 1 : (c < 0x800 ? 2 : 3));
+  }
+  return bytes;
+}
 function ntSnapSet(groups, sig, at) {
   const key = ntSnapshotKey();
   if (!key || typeof wx === 'undefined' || !wx.setStorageSync) return false;
@@ -719,9 +733,9 @@ function ntSnapSet(groups, sig, at) {
     const base = { v: 1, sid: currentSid(), at: Number(at) || Date.now(), sig: String(sig || ''), g: groups };
     let text = JSON.stringify(base);
     // 微信单 key 约 1MB：超限时只保留最近的通知组（宁可少几条，也保证断网有内容）。
-    if (text.length > 900 * 1024) {
+    if (ntUtf8Len(text) > 900 * 1024) {
       let keep = groups.slice(-Math.min(groups.length, 80));
-      while (keep.length > 1 && JSON.stringify({ v: 1, sid: base.sid, at: base.at, sig: base.sig, g: keep }).length > 900 * 1024) {
+      while (keep.length > 1 && ntUtf8Len(JSON.stringify({ v: 1, sid: base.sid, at: base.at, sig: base.sig, g: keep })) > 900 * 1024) {
         keep = keep.slice(1);
       }
       base.g = keep;
