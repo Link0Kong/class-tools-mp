@@ -1,5 +1,19 @@
 # 版本记录
 
+## 身份名/通知缓存乱码防护 + 水费副标 `undefined` 修复（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户反馈「微信小程序出现了很多异常字符」。排查结论：**正常登录链路（class_verify → identity.save → storage）中文名正确**；
+> 复现到的乱码来自本机 `zq_class_identity.name` 被写成替换字符 `U+FFFD`（`�����˺�`），
+> 首页问候 / 作业昵称 / 数据页同步文案 / 导出图都共用这个字段，所以看起来「一片乱码」。
+> 典型来源是自动化脚本/旧链路把中文按非 UTF-8 注入 storage；真实用户若本机旧缓存被污染也会命中。
+
+- **`utils/identity.js`**：`normalize()` 检测姓名中的 `U+FFFD` / `锟斤拷` / `ï¿½` / `Ã.` / `â€` / `ðŸ` → 判身份无效并清空，页面回身份页重新验证，不再继续渲染乱码。
+- **`utils/cloud.js`**：`ntLoad()` / `ntSnapGet()` 增加 `ntTextCorrupt()` 自愈——分块缓存或 `zq_nt_snap_v1_<sid>` 快照若含乱码，直接丢弃并重新拉取，避免通知标题/正文整片显示 `�`。
+- **`pages/water/water.js`**：折合扣电副标误用 `rulesP.elecPrice`（ruleView 已移除该字段）→ 显示「水费 ÷ undefined」；改 `water.RULES.elec.toFixed(2)`，现显示「水费 ÷ 0.58」。
+- **测试**：新增 `identity_encoding_unit.js` **3/0**（U+FFFD/典型 mojibake 拒绝、正常中文保留）；`water_unit_tests.js` 新增副标断言；`unit.js` **569/7**（7 条均为既有：quickList/toolOrder、长期安排时间、ko-link 旧断言、抽签核验链接、期次时间依赖）；`staticcheck.py` exit 0。
+- **本机验证**：devtools 测试身份重新 `identity.login` 后 `name` 码点 `27979,35797,36134,21495`（测试账号），首页/作业/数据/通知页零 `�`；`perf_notice_probe.js` 改为用 `String.fromCharCode(...)` 在端内构造中文名，避免自动化桥接再次写入乱码。
+- **未做**：未上传/发布小程序；若用户真机仍显示乱码，需清除小程序缓存并重新验证身份（或提供截图/页面进一步定位）。
+
 ## 通知「发布时间」统一：无时间锚点通知 → 发布时间 / 动作「发布」/ 参与排序与统计（2026-11-18，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户原话（2026-11-18 12:45）：「将通知中不含时间的时间设定为发布时间，动作设为发布，并参与排序等等统一计算」。
@@ -1942,6 +1956,4 @@ PATCH），不上传发布。**审核相关：按用户指示不实现审核模�
 - **WXML 限制兜底（2026-11-09 实测）**：微信 WXML 对**嵌套数组的 `.length` 与 `wx:for`** 在部分基础库返回异常（页面数据有、DOM 不渲染）→ 展开体的建议/flow 由 JS 预渲染为 `suggestionsText\n· …` / `flowText`（`white-space:pre-line`），模板只传对象；`dg-flow-t--run` 高亮进行中。
 - **测试**：`node unit.js` **259/0**、`node v3_power_diag_tests.js` **62/0**、`node sync_contract_test.js` **33/0**、`python staticcheck.py` exit 0、`code_quality_check.js` 全通过；automator `diag_v21_preview.js` Lead 实跑 devtools：**23 PASS / 0 FAIL / 0 console error**（下挂映射/正常行无 AI/其它诊断/折叠 31px/胶囊 running·fixed·⚙/展开 cause+建议+flow+关联修复/收起/10s 轮询 running→fixed/无横向溢出），截图 `mp-class-tools-tests/_shots_diag_v21/`。
 - **上传后待真机复核**：真机基础库的嵌套数组表现可能与 devtools 不同；若真机渲染正常可简化为模板数组渲染。
-
-
 
