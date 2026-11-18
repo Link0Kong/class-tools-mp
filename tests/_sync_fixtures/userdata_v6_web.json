@@ -1,0 +1,137 @@
+{
+  "v": 6,
+  "at": {
+    "homeTools": 1762300000000,
+    "fit": 1762300100000,
+    "draw": 1762300200000,
+    "group": 1762300300000,
+    "roster": 1762300400000,
+    "hide": 1762300500000,
+    "tt": 1762300600000,
+    "prefs": 1762290000000,
+    "nick": 1762300700000,
+    "power": 1762300800000,
+    "water": 1762300900000
+  },
+  "homeTools": [
+    "tt",
+    "draw",
+    "hw",
+    "nt"
+  ],
+  "fit": {
+    "sex": "f",
+    "grade": "34",
+    "h": "165",
+    "w": "52",
+    "vc": "2600",
+    "r50": "8.2",
+    "sit": "30",
+    "jump": "175",
+    "pull": "5",
+    "durM": "3",
+    "durS": "45"
+  },
+  "draw": {
+    "start": 1,
+    "end": 60,
+    "count": 8,
+    "dup": true,
+    "excl": "3,7",
+    "sort": "desc",
+    "names": "1 第一组\n2 第二组\n3 第三组"
+  },
+  "group": {
+    "source": "names",
+    "mode": "pergroup",
+    "n": 3,
+    "shuffle": true,
+    "sel": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "roster": {
+    "rosterSel": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "rollSel": [
+      6,
+      7,
+      8
+    ],
+    "rollSt": {
+      "0": "到",
+      "1": "假"
+    },
+    "rollNames": "6 李四\n7 王五\n8 赵六"
+  },
+  "hide": {
+    "hwHide": {
+      "hw_x": true
+    },
+    "ntHide": {
+      "nt_y": true
+    }
+  },
+  "tt": {
+    "ttView": "day",
+    "ttUseMine": true,
+    "ttLocal": {
+      "c": [
+        {
+          "name": "高等数学",
+          "day": 0,
+          "start": 1,
+          "end": 2,
+          "weeks": "1-16",
+          "parity": "all",
+          "teacher": "龚志伟",
+          "room": "自强楼"
+        }
+      ],
+      "t": "2026-08-31"
+    },
+    "termStart": "2026-08-31"
+  },
+  "prefs": {
+    "hwRemind": {
+      "hw_x": true
+    },
+    "ntSub": true,
+    "ntSubAt": 1762290000000
+  },
+  "nick": "陈同学",
+  "homeToolsAt": 1762300000000,
+  "power": {
+    "sel": "4-23A---321",
+    "at": 1762300800000
+  },
+  "water": {
+    "rooms": {
+      "4-23A---321": {
+        "p": 4,
+        "recs": [
+          {
+            "m": "2026-09",
+            "r": 100.5,
+            "ts": 1762000000000
+          },
+          {
+            "m": "2026-10",
+            "r": 106.2,
+            "ts": 1762100000000
+          }
+        ]
+      }
+    }
+  }
+}

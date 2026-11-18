@@ -1,0 +1,6 @@
+{
+  "v": 5,
+  "fit": { "sex": "m", "grade": "12", "h": "170", "w": "60", "vc": "", "r50": "", "sit": "", "jump": "", "pull": "", "durM": "", "durS": "" },
+  "homeTools": ["draw", "hw", "nt", "tt"],
+  "homeToolsAt": 1762200000000
+}

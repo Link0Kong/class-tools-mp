@@ -1,0 +1,299 @@
+{
+  "tag": "incremental",
+  "total": 47,
+  "pass": 47,
+  "fail": 0,
+  "pending": 1,
+  "results": [
+    {
+      "req": "1",
+      "name": "utils/version.js VERSION = 2.0.0",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "1",
+      "name": "app.js globalData.version 引用 version.VERSION",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "1",
+      "name": "「我的」页展示版本号",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "1",
+      "name": "README / CHANGELOG 顶部标注 2.0.0",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "2",
+      "name": "scrollmem 导出完整 API",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "2",
+      "name": "页面实例重建后恢复滚动位置（wx.pageScrollTo 被调用）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "2",
+      "name": "恢复等待期间用户自己滚动 → 取消恢复（不与用户打架）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "2",
+      "name": "同一页面实例后续 onShow 不重复恢复",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "第 9 周周六有课 → days=6 → _gridOverflow=true 且 _gridMaxX>0",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "溢出周：表格在左边缘时右滑 → 切上一周（不再整周禁用）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "溢出周：表格在左边缘时左滑 → 让表格横向滚动（不切周、不抑制点击）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "溢出周：表格已到右边缘时左滑 → 切下一周",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "回归：5 天不溢出的周左滑照常切下一周",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "回归：日视图滑动切周（非溢出）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "3",
+      "name": "回归：第 1 周右滑只回弹不切周",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "9",
+      "name": "recurrence 长期安排：nextTextOf 输出下次时间（含周X/时间）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "9",
+      "name": "长期安排不按 deadline 判过期、不计入待处理",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "9",
+      "name": "通知页渲染长期安排徽标 + 下次时间（nt.wxml / nt.js）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "10",
+      "name": "审核/演示模式源码已移除（utils/demo.js、utils/demo-data.js 不存在）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "10",
+      "name": "身份页无「演示模式（审核用）」入口/文案/处理函数",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "10",
+      "name": "网络层无 demo 拦截/演示桶：cloud.js / store.js / notify.js",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "10",
+      "name": "「我的」页无演示模式文案/退出入口；README/CHANGELOG 已清理并声明不实现审核模式",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "10",
+      "name": "源码与文档无演示数据残留（演示同学 / demo sid / demo-data）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "11",
+      "name": "轮换参数：每 5s、动画 .26s/.32s、>1 条才轮换、页面隐藏/卸载停止",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "11",
+      "name": "轮换实际执行：5s 后卡片 idx 前进且 anim=out→in",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "11",
+      "name": "≤1 条不轮换",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "12",
+      "name": "ntAdminRowId = auto_<gid>（与网页/云端契约一致）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "12",
+      "name": "管理员编辑：PATCH notices?id=eq.auto_<gid> + override_json/edited_at/edited_by",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "12",
+      "name": "管理员删除/恢复：PATCH hidden=true/false",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "12",
+      "name": "非管理员不能调用管理员写接口（本地拒绝，不请求云端）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "12",
+      "name": "override_json 白名单字段套用 / null 清空该字段",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "12",
+      "name": "通知页：解析 hidden/override + 编辑弹层 + 已隐藏筛选（仅管理员）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "14",
+      "name": "udSections.fit 显式包含 sex/grade 与全部体测字段",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "14",
+      "name": "udPush 推送 blob 含 fit.sex/grade 且 at.fit 更新",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "14",
+      "name": "远端正则合并：remote fit 覆盖本机（时间戳大者赢）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "14",
+      "name": "体测页 onShow 拉取并应用 userdata（需求 14 UI 刷新路径）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "14",
+      "name": "国标评分表页（fttable）切换男女/年级 → store.fit 更新 + userdata PUSH + 重进保持（Lead 最终口径）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "16",
+      "name": "marksPull(force) 强制读 marks（kind=ntdone/hw）并写入本机状态",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "16",
+      "name": "marks TTL：非 force 二次拉取不发请求；force 绕过 TTL",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "16",
+      "name": "通知页 / 作业页 onShow / 下拉刷新强制拉 marks",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "16",
+      "name": "离线写 marks 进待补发队列，恢复后 flushPending 补发",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "16",
+      "name": "setMark 契约：id=<sid>|kind|ref、seat=sid、val 布尔、upsert",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "7",
+      "name": "通知页文件缺失：file 无 url → 「待获取」徽标 + 点击提示含群名（需求 7 小程序侧）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "5",
+      "name": "页面无全局 catchtouchmove / preventDefault 阻断纵向滚动",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "5",
+      "name": "scroll-view 横向滚动页的触摸手势有方向锁（tt）",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "13",
+      "name": "通知展开/收起：max-height 过渡 + .26/.28s + reduced-motion 关闭",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "13",
+      "name": "工作台轮换/常驻浮动动画 + reduced-motion 降级",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "req": "15",
+      "name": "setData 轮换只更新 4 个小字段（代码走查）",
+      "ok": null,
+      "note": "index.js _rotateCard 只 setData {key.anim} / {key.idx,title,sub,anim}，未整卡 setData"
+    }
+  ],
+  "at": "2026-11-05T12:16:09.306Z",
+  "root": "C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools"
+}

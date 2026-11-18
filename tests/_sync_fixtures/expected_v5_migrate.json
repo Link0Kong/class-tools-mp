@@ -1,0 +1,70 @@
+{
+  "v": 6,
+  "at": {
+    "homeTools": 1762200000000,
+    "fit": 0,
+    "draw": 0,
+    "group": 0,
+    "roster": 0,
+    "hide": 0,
+    "tt": 0,
+    "prefs": 0,
+    "nick": 0,
+    "power": 0,
+    "water": 0
+  },
+  "homeTools": [
+    "draw",
+    "hw",
+    "nt",
+    "tt"
+  ],
+  "fit": {
+    "sex": "m",
+    "grade": "12",
+    "h": "170",
+    "w": "60",
+    "vc": "",
+    "r50": "",
+    "sit": "",
+    "jump": "",
+    "pull": "",
+    "durM": "",
+    "durS": ""
+  },
+  "draw": {
+    "names": ""
+  },
+  "group": {},
+  "roster": {
+    "rosterSel": [],
+    "rollSel": [],
+    "rollSt": {},
+    "rollNames": ""
+  },
+  "hide": {
+    "hwHide": {},
+    "ntHide": {}
+  },
+  "tt": {
+    "ttView": "",
+    "ttUseMine": false,
+    "ttLocal": null,
+    "termStart": ""
+  },
+  "prefs": {
+    "hwRemind": {},
+    "ntSub": false,
+    "ntSubAt": 0
+  },
+  "nick": "",
+  "power": {
+    "sel": "",
+    "at": 0,
+    "low": 30
+  },
+  "water": {
+    "rooms": {}
+  },
+  "homeToolsAt": 1762200000000
+}
