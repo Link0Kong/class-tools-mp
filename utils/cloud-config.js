@@ -15,12 +15,49 @@
 //   * v19 起「所有用户改动的内容」（勾选 / 抽签 / 分组 / 点名 / 隐藏 / 偏好等）也走 userdata v6
 //     与 marks 同步；用户可在「我的 → 数据与隐私」关闭云同步（cloudOff，仅本机）。
 
+// ================================================================
+// REST base 三档（2026-11-18 自建后端切流；见 deploy/migration/CLIENTS.md）
+// ----------------------------------------------------------------
+// 后端从腾讯云 CloudBase 迁到 ECS 自建（PostgreSQL 18 + PostgREST 13），
+// API 路径/语义与 CloudBase 完全一致，客户端切流只改「档位」一个常量；
+// 未切流前必须保持 cloudbase（发布前检查这一行）。
+//
+//   cloudbase  ：现状（腾讯云 CloudBase 网关）；正式版默认，CloudBase 到期前有效
+//   staging    ：ECS 影子验证路由 http://121.196.47.2/v1/rdb/rest-next/
+//                仅 devtools / 调试版可用（http + IP，正式版/体验版强制 HTTPS 合法域名）；
+//                devtools 需在「详情 → 本地设置」勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」
+//   selfhosted ：备案通过后的正式域名 https://tool.furina.fun/v1/rdb/rest/（正式版切流目标）
+//
+// 三档使用同一份 publishableKey（自建 Caddy 会在自建路由上剥掉 Authorization 头；
+// RLS 仍按 X-Class-Token 校验，客户端鉴权逻辑无需改动）。
+// 切流/回滚：只改 ACTIVE_REST_PROFILE 一行 → 重新上传发布即可。
+const REST_PROFILES = {
+  cloudbase: 'https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com/v1/rdb/rest/',
+  staging: 'http://121.196.47.2/v1/rdb/rest-next/',
+  selfhosted: 'https://tool.furina.fun/v1/rdb/rest/'
+};
+// 当前档位：'cloudbase' | 'staging' | 'selfhosted'（发布前保持 cloudbase）
+const ACTIVE_REST_PROFILE = 'cloudbase';
+
+// 档位 → REST 根（未知档位回退到当前档位，避免配置写错时整个站点离线）
+function resolveRestBase(profile) {
+  const key = String(profile == null ? '' : profile).trim();
+  if (key && REST_PROFILES[key]) return REST_PROFILES[key];
+  return REST_PROFILES[ACTIVE_REST_PROFILE] || REST_PROFILES.cloudbase;
+}
+
 module.exports = {
   // 填好 restBase 与 publishableKey 后改为 true 即可开启同步
   enabled: true,
 
-  // PostgREST 风格的 REST 基址，结尾必须有 '/'
-  restBase: 'https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com/v1/rdb/rest/',
+  // 当前 REST 档位（只读；切流改上面的 ACTIVE_REST_PROFILE）
+  restProfile: ACTIVE_REST_PROFILE,
+  // 三档地址表（只读；供诊断/测试展示，正常业务不要直接改这里）
+  restProfiles: REST_PROFILES,
+  // PostgREST 风格的 REST 基址，结尾必须有 '/'（= resolveRestBase(restProfile)）
+  restBase: resolveRestBase(ACTIVE_REST_PROFILE),
+  // 纯函数：档位 → REST 根（单元测试/诊断用；业务代码用 restBase）
+  resolveRestBase: resolveRestBase,
 
   // 匿名可用的公开令牌（Bearer）
   publishableKey: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjkwMTNkMzBkLWY3NTEtNGE4Yi05OGNlLTlmNTFiMzk3ZDdjNyJ9.eyJpc3MiOiJodHRwczovL3Rvb2wtZDRnb3N1ZG9rNDZlMGUwODEuYXAtc2hhbmdoYWkudGNiLWFwaS50ZW5jZW50Y2xvdWRhcGkuY29tIiwic3ViIjoiYW5vbiIsImF1ZCI6InRvb2wtZDRnb3N1ZG9rNDZlMGUwODEiLCJleHAiOjQwOTUyNzY4ODAsImlhdCI6MTc5MTU5MzY4MCwibm9uY2UiOiItdGJncVVhcVNZS25jNUx0VmZ2QWZRIiwiYXRfaGFzaCI6Ii10YmdxVWFxU1lLbmM1THRWZnZBZlEiLCJuYW1lIjoiQW5vbnltb3VzIiwic2NvcGUiOiJhbm9ueW1vdXMiLCJwcm9qZWN0X2lkIjoidG9vbC1kNGdvc3Vkb2s0NmUwZTA4MSIsIm1ldGEiOnsicGxhdGZvcm0iOiJQdWJsaXNoYWJsZUtleSJ9LCJyb2xlIjoiYW5vbiIsImlzX2Fub255bW91cyI6dHJ1ZSwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiYW5vbnltb3VzIiwicHJvdmlkZXJzIjpbImFub255bW91cyJdfSwidXNlcl9tZXRhZGF0YSI6eyJuYW1lIjoiQW5vbnltb3VzIn0sInVzZXJfdHlwZSI6IiIsImNsaWVudF90eXBlIjoiY2xpZW50X3VzZXIiLCJpc19zeXN0ZW1fYWRtaW4iOmZhbHNlfQ.Iyf827jPzSxTtY6l9tjeRSWG0DVkU8a-sqOcg43b0sP-4CuykUQ_2DpIm3vQSd6t9gDjQRsODpuQzZt4X2iabRr7eahQnB5UFjNuHWBJYtg9O1IZSdx1qfiyQ9NHLHLMOGQKw95E5qhqEs-tQXu-FbASsAl4Y-O_ssL3_OrwFP6qUWfLRb53D0X5gqkumEaKvf-hHhSlyFCzOImKdTKnoI-Qr_N-xa3_WE1AWjGXC_5lo8BhsxZFrGXrkp90eB1kT4303lPA_bzuzP1RXHdrNRmJRbobZmOUUa3k8SoqoeSrizQxCSaL-1oyhZZBFn_zBMpN7wGw0H2uC8I-NTE5Vg',
@@ -60,8 +97,44 @@ module.exports = {
   // 体验版/正式版等 tool.furina.fun DNS/备案恢复后再配微信合法域名，见上）。
   dropBase: '',
 
-  // 单次请求超时（毫秒）
+  // PPT 在线媒体 ECS 缓存（2026-11-18 迁移优化；三端与网页同口径，契约 web/ppt/CONTRACT.md §11/§12）：
+  //   OSS 香港（tool-furina-fun.oss-cn-hongkong.aliyuncs.com）的 /ppt/** 媒体（分步图 WebP、缩略图、
+  //   原样播放 MP4、media_files 单独下载音视频、下载包）→ ECS `/pptfiles/<path>` 缓存
+  //   （实测：OSS 首访 35s / ECS 命中 6-11MB/s；GET/HEAD/Range 206 均由 ECS 支持）。
+  //   * base 留空 = webBase + '/pptfiles'（正式：https://tool.furina.fun/pptfiles，需备案 + HTTPS）；
+  //   * devtools/备案前调试：临时设 'http://121.196.47.2/pptfiles'（配合「不校验合法域名」）；
+  //   * enabled:false = 回滚为 OSS 直链（旧行为，无需改其它代码）；
+  //   * 只映射本 OSS 桶的 /ppt/**；data:/file:/本地临时路径/其它域名原样返回。
+  pptEcs: {
+    enabled: true,
+    base: ''
+  },
+
+  // 单次请求超时（毫秒；默认档，HTTP/网络体验优化 2026-11-18）
   timeout: 8000,
+  // 超时分级：login（身份验证/登录首屏，弱网冷启动首次 TLS 最慢）/ poll（轮询与普通读写）/
+  // upload（大分片上传，页面另有显式 timeout）。未配置时回退 timeout。
+  timeouts: {
+    default: 8000,
+    login: 12000,
+    poll: 8000,
+    upload: 60000
+  },
+
+  // 网络层参数（utils/cloud.js 读取；一般不用改，2026-11-18 网络体验优化）
+  net: {
+    // https 域名请求开启 HTTP/2（微信基础库 2.10.4+ 支持；旧基础库忽略该选项，自动回退 HTTP/1.1）。
+    // 自建后端备案后走 Caddy HTTPS(HTTP/2)；CloudBase 网关本身支持 HTTP/2，无副作用。
+    enableHttp2: true,
+    // 并发上限（超过排队；弱网连续失败时降为 weakMaxConcurrent，避免把本来就拥堵的链路打爆）
+    maxConcurrent: 8,
+    weakMaxConcurrent: 3,
+    // 幂等只读请求（GET / 只读 RPC）最多尝试次数（含首次）与退避基数
+    retryAttempts: 2,
+    retryBaseMs: 350,
+    // 相同 GET 请求在途合并（多页面/定时器同时拉同一张表时只发 1 个请求）
+    coalesce: true
+  },
 
   // 表名（与网页版同一批表；一般不用改）
   tables: {

@@ -25,11 +25,24 @@ const waterUtil = require('./water.js');
 const CONFIG = {
   enabled: false,
   restBase: '',
+  // 2026-11-18 自建后端切流：当前档位（cloudbase|staging|selfhosted）+ 三档地址表（来自 cloud-config.js）
+  restProfile: 'cloudbase',
+  restProfiles: null,
   publishableKey: '',
   ttUrl: '',
   // 2026-11-17：DNS 暂停期默认关闭 legacy 回退；cloud-config.js 可显式设 false/true。
   ttLegacy: true,
   timeout: 15000,
+  // 2026-11-18 网络体验优化：超时分级 + 网络层参数（cloud-config.js 可覆盖）
+  timeouts: { default: 15000, login: 12000, poll: 15000, upload: 60000 },
+  net: {
+    enableHttp2: true,
+    maxConcurrent: 8,
+    weakMaxConcurrent: 3,
+    retryAttempts: 2,
+    retryBaseMs: 350,
+    coalesce: true
+  },
   // 云端 RPC（class_verify 签发身份 token / class_members 下发班级名单）
   rpc: {
     verify: 'rpc/class_verify', members: 'rpc/class_members',
@@ -151,6 +164,15 @@ configure(CFG_FILE);
 function isEnabled() {
   return !!(CONFIG.enabled && CONFIG.restBase);
 }
+// 当前后端档位（诊断/测试用，不含 token）：{ profile, base, staging }
+function restInfo() {
+  return {
+    profile: CONFIG.restProfile || 'custom',
+    base: CONFIG.restBase,
+    staging: /^http:\/\//i.test(CONFIG.restBase),
+    secure: /^https:\/\//i.test(CONFIG.restBase)
+  };
+}
 // 当前是否允许发起同步（云已配置且用户没有关闭「云同步」开关）
 function isReadyForSync() { return isEnabled() && !udOff(); }
 function currentSid() { return identity.sid(); }
@@ -177,51 +199,140 @@ function headers(write, opts) {
   return h;
 }
 
+// ---------------------------------------------------------------- 网络体验优化（2026-11-18）
+// 目标（数据见 mp-class-tools-tests/net_bench.js 前后对比）：
+//   1) 超时分级：登录/身份验证用更宽的超时（弱网冷启动首次 TLS 最慢），普通轮询沿用默认；
+//   2) 重试增强：幂等只读请求最多 2 次尝试（指数退避 + 抖动），额外吸收 502/503/504 网关瞬时错误；
+//   3) 并发控制：全局并发上限（默认 8；当前网络连续失败时降为 3，避免把拥堵链路打爆）；
+//   4) 在途合并：相同 GET 请求同时只发一个（多页面/定时器重复拉同一张表）。
+// 旧 CloudBase base 下行为不回退：成功路径请求数/顺序不变，仅在失败/重复场景下变化。
+
+// 超时分级：opts.timeout（显式） > opts.timeoutKey（login/poll/upload）> CONFIG.timeout
+function timeoutOf(opts) {
+  opts = opts || {};
+  if (opts.timeout) return opts.timeout;
+  const t = (CONFIG.timeouts && typeof CONFIG.timeouts === 'object') ? CONFIG.timeouts : {};
+  const key = opts.timeoutKey && t[opts.timeoutKey];
+  if (key) return key;
+  return t.default || CONFIG.timeout || 15000;
+}
+function netOpt() {
+  const n = (CONFIG.net && typeof CONFIG.net === 'object') ? CONFIG.net : {};
+  return {
+    enableHttp2: n.enableHttp2 !== false,
+    maxConcurrent: Math.max(1, Number(n.maxConcurrent) || 8),
+    weakMaxConcurrent: Math.max(1, Number(n.weakMaxConcurrent) || 3),
+    retryAttempts: Math.max(1, Math.min(3, Number(n.retryAttempts) || 2)),
+    retryBaseMs: Math.max(0, Number(n.retryBaseMs) || 350),
+    coalesce: n.coalesce !== false
+  };
+}
+
+// 轻量网络统计（只做计数，不含 URL/token；供 tests/net_bench.js 与诊断取指标）
+const NET_STATS = { requests: 0, retries: 0, coalesced: 0, queued: 0, peakInflight: 0, lastAt: 0 };
+function netStats() {
+  return {
+    requests: NET_STATS.requests, retries: NET_STATS.retries, coalesced: NET_STATS.coalesced,
+    queued: NET_STATS.queued, peakInflight: NET_STATS.peakInflight, lastAt: NET_STATS.lastAt,
+    inflight: RUN.active, waiting: RUN.queue.length, failStreak: NET.failStreak
+  };
+}
+function netReset() {
+  NET_STATS.requests = NET_STATS.retries = NET_STATS.coalesced = NET_STATS.queued = 0;
+  NET_STATS.peakInflight = 0; NET_STATS.lastAt = 0;
+}
+
+// 并发闸门：超过上限排队；弱网（连续失败 ≥2 次）自动降档
+const RUN = { active: 0, queue: [] };
+function maxConcurrent() {
+  const n = netOpt();
+  return (NET.failStreak >= 2) ? n.weakMaxConcurrent : n.maxConcurrent;
+}
+function drainRun() {
+  while (RUN.queue.length && RUN.active < maxConcurrent()) {
+    const fn = RUN.queue.shift();
+    fn();
+  }
+}
+function scheduleRun(task) {
+  return new Promise(function (resolve, reject) {
+    const run = function () {
+      RUN.active += 1;
+      if (RUN.active > NET_STATS.peakInflight) NET_STATS.peakInflight = RUN.active;
+      task().then(function (v) { RUN.active -= 1; drainRun(); resolve(v); },
+        function (e) { RUN.active -= 1; drainRun(); reject(e); });
+    };
+    if (RUN.active < maxConcurrent() && !RUN.queue.length) run();
+    else { NET_STATS.queued += 1; RUN.queue.push(run); }
+  });
+}
+
 function rawRequest(method, url, data, header, opts) {
   opts = opts || {};
   if (!isEnabled()) return Promise.reject(new Error('cloud-disabled'));
   // 无身份时绝不发数据请求；只有 class_verify（public）允许匿名发出
   if (!opts.public && !identity.has()) return Promise.reject(new Error('identity-required'));
-  return new Promise(function (resolve, reject) {
-    wx.request({
-      url: url,
-      method: method,
-      data: data,
-      header: header,
-      timeout: (opts && opts.timeout) || CONFIG.timeout,
-      success: function (res) {
-        const sc = (res && res.statusCode) || 0;
-        if (sc >= 200 && sc < 300) { noteNetOk(); resolve(res.data); }
-        else {
-          NET.lastFail = Date.now();
-          // 401 = 班级 token 过期/失效：清本机身份并回身份页，停止继续用失效 token 打请求。
-          // （403 是 RLS 权限拒绝，可能只是单表权限，不跳身份页。）
-          if (sc === 401 && !opts.public) {
-            try { require('./identity.js').onAuthExpired(); } catch (e2) { /* ignore */ }
+  return scheduleRun(function () {
+    return new Promise(function (resolve, reject) {
+      NET_STATS.requests += 1; NET_STATS.lastAt = Date.now();
+      const o = {
+        url: url,
+        method: method,
+        data: data,
+        header: header,
+        timeout: timeoutOf(opts),
+        success: function (res) {
+          const sc = (res && res.statusCode) || 0;
+          if (sc >= 200 && sc < 300) { noteNetOk(); resolve(res.data); }
+          else {
+            NET.lastFail = Date.now();
+            // 401 = 班级 token 过期/失效：清本机身份并回身份页，停止继续用失效 token 打请求。
+            // （403 是 RLS 权限拒绝，可能只是单表权限，不跳身份页。）
+            if (sc === 401 && !opts.public) {
+              try { require('./identity.js').onAuthExpired(); } catch (e2) { /* ignore */ }
+            }
+            if (sc >= 500) noteNetFail();
+            reject(new Error('http' + sc));
           }
-          if (sc >= 500) noteNetFail();
-          reject(new Error('http' + sc));
-        }
-      },
-      fail: function (err) { noteNetFail(); reject(err || new Error('network')); }
+        },
+        fail: function (err) { noteNetFail(); reject(err || new Error('network')); }
+      };
+      // HTTP/2：仅 https（微信基础库 2.10.4+ 支持；旧基础库/自建 http staging 忽略此选项）
+      if (netOpt().enableHttp2 && /^https:\/\//i.test(url)) o.enableHttp2 = true;
+      wx.request(o);
     });
   });
 }
 
-// GET 失败自动重试一次（弱网/冷启动 DNS 抖动最常见）；写请求不重试，避免重复写入。
-// opts.retry=true 仅给「幂等只读 RPC」用（如 class_notices_meta），让 POST 也能享受一次弱网重试。
+// GET 失败自动重试（默认 2 次尝试）；幂等只读 RPC 用 opts.retry=true 同样享受重试。
+// 写请求不重试，避免重复写入。瞬时 5xx（502/503/504）按可重试处理（幂等请求才可能走到这里）。
 function request(method, url, data, header, retried, opts) {
-  return rawRequest(method, url, data, header, opts).catch(function (e) {
-    const isHttp = String((e && e.message) || '').indexOf('http') === 0;
-    const canRetry = method === 'GET' || !!(opts && opts.retry);
-    if (canRetry && !retried && !isHttp) {
-      return new Promise(function (r) { setTimeout(r, 350); }).then(function () {
-        return rawRequest(method, url, data, header, opts);
-      });
-    }
-    throw e;
-  });
+  opts = opts || {};
+  const canRetry = method === 'GET' || !!opts.retry;
+  const maxAttempts = canRetry ? (retried ? 1 : netOpt().retryAttempts) : 1;
+  const shareKey = (canRetry && netOpt().coalesce) ? (method + ' ' + (currentSid() || '') + ' ' + url) : '';
+  if (shareKey && INFLIGHT[shareKey]) { NET_STATS.coalesced += 1; return INFLIGHT[shareKey]; }
+  const run = function (attempt) {
+    return rawRequest(method, url, data, header, opts).catch(function (e) {
+      const msg = String((e && e.message) || '');
+      const isHttp = msg.indexOf('http') === 0;
+      const transient = /^http(502|503|504)$/.test(msg);
+      if (!canRetry || attempt + 1 >= maxAttempts || (isHttp && !transient)) throw e;
+      NET_STATS.retries += 1;
+      const base = netOpt().retryBaseMs;
+      const wait = base * Math.pow(2, attempt) + Math.floor(Math.random() * 120);
+      return new Promise(function (r) { setTimeout(r, wait); }).then(function () { return run(attempt + 1); });
+    });
+  };
+  const p = run(retried ? 1 : 0);
+  if (shareKey) {
+    INFLIGHT[shareKey] = p;
+    const clear = function () { if (INFLIGHT[shareKey] === p) delete INFLIGHT[shareKey]; };
+    p.then(clear, clear);
+  }
+  return p;
 }
+const INFLIGHT = Object.create(null);
 
 // 微信小程序部分基础库不支持 wx.request 的 PATCH：统一走「读整行 + 幂等 upsert」。
 function patchByUpsert(table, id, obj) {
@@ -270,7 +381,9 @@ function classVerify(sidIn, nameIn) {
   if (!/^\d{10}$/.test(sid)) return Promise.resolve({ ok: false, reason: '学号应为 10 位数字' });
   if (!isEnabled()) return Promise.resolve({ ok: false, reason: '暂时无法连接云端，请稍后重试' });
   return request('POST', CONFIG.restBase + CONFIG.rpc.verify,
-    { p_sid: sid, p_name: nm }, headers(false, { noIdentity: true }), false, { public: true })
+    { p_sid: sid, p_name: nm }, headers(false, { noIdentity: true }), false,
+    // 2026-11-18：登录超时分级（弱网冷启动更宽）+ 幂等只读 RPC 重试（网络抖动少一次「网络不可用」）
+    { public: true, timeoutKey: 'login', retry: true })
     .then(function (raw) {
       const body = Array.isArray(raw) ? raw[0] : raw;
       if (!body || body.ok !== true) {
@@ -2295,6 +2408,8 @@ function netState() {
 
 module.exports = {
   CONFIG: CONFIG, configure: configure, isEnabled: isEnabled, isReadyForSync: isReadyForSync,
+  // 2026-11-18 自建后端切流 / 网络体验优化（只读探针/统计；页面不依赖，测试与诊断用）
+  restInfo: restInfo, netStats: netStats, netReset: netReset, timeoutOf: timeoutOf,
   TTL: TTL, cache: cache,
   currentSid: currentSid, currentName: currentName, isAdmin: isAdmin,
   cbGet: cbGet, cbPost: cbPost, cbPatch: cbPatch, cbById: cbById, cbUpsert: cbUpsert, cbId: cbId,

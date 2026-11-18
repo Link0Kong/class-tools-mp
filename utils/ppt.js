@@ -15,6 +15,7 @@
 //
 // 页面：pages/ppt（列表 + 上传）、pages/pptplay（全屏播放器）。
 const cloud = require('./cloud.js');
+const CFG = require('./cloud-config.js');
 
 /* ============================================================
  * 常量（与契约一致；改这里必须同步 CONTRACT.md）
@@ -87,6 +88,37 @@ function joinUrl(base, p) {
 }
 // manifest 的 base/src 也允许写相对路径（转换机正常写绝对地址，这里容错）
 function resolveUrl(base, p) { return joinUrl(base, p); }
+
+/* ---- PPT 在线媒体 ECS 缓存映射（2026-11-18 迁移优化；与网页 pptEcsUrl/resolveMediaUrl 同口径） ----
+ * OSS 香港 bucket 的 /ppt/** 媒体 → ECS /pptfiles 缓存（网页实测命中 6-11MB/s，OSS 首访 35s）。
+ * - 仅映射 host = tool-furina-fun.oss-cn-hongkong.aliyuncs.com 且 pathname 以 /ppt/ 开头的 http(s) 地址；
+ *   data:/file:/本地临时路径/其它域名/非 /ppt 路径 → 原样返回（避免误伤外链）；
+ * - base 缺省 = cloud-config.webBase + '/pptfiles'；devtools/备案前可设 cloud-config.pptEcs.base 覆盖；
+ * - enabled:false → 全部原样（回滚 OSS 直链）。
+ * 纯函数（可单测）；编码路径与 ?query 原样保留（Caddy 解码后由缓存服务按 OSS pathname 命中）。 */
+const PPT_OSS_HOST = 'tool-furina-fun.oss-cn-hongkong.aliyuncs.com';
+function pptEcsBase() {
+  const o = CFG.pptEcs || {};
+  if (o.enabled === false) return '';
+  const custom = strOf(o.base).trim();
+  if (custom) return custom.replace(/\/+$/, '');
+  const web = strOf(CFG.webBase).trim();
+  return web ? web.replace(/\/+$/, '') + '/pptfiles' : '';
+}
+function pptEcsUrl(u) {
+  const s = strOf(u);
+  if (!/^https?:\/\//i.test(s)) return s;
+  const m = s.match(/^https?:\/\/([^\/?#]+)([^?#]*)(\?[^#]*)?/i);
+  if (!m) return s;
+  if (m[1].toLowerCase() !== PPT_OSS_HOST) return s;
+  const path = m[2] || '';
+  if (path.indexOf('/ppt/') !== 0) return s;
+  const base = pptEcsBase();
+  if (!base) return s;
+  return base + path + (m[3] || '');
+}
+// base + 相对引用 → 绝对 → ECS 映射（manifest 媒体统一走这里）
+function mediaUrlOf(base, p) { return pptEcsUrl(joinUrl(base, p)); }
 
 // 文件名 → 去目录、去扩展名（默认标题；≤80 字）
 function baseNameOf(name) {
@@ -231,7 +263,7 @@ function normStep(raw, base) {
   const img = strOf(raw.img);
   if (!img) return null;
   const media = (Array.isArray(raw.media) ? raw.media : []).map(normMedia).filter(Boolean);
-  return { img: img, url: joinUrl(base, img), media: media };
+  return { img: img, url: mediaUrlOf(base, img), media: media };
 }
 function normSlide(raw, base) {
   if (!raw || typeof raw !== 'object') return null;
@@ -243,7 +275,7 @@ function normSlide(raw, base) {
     trd: normTrd(raw.trd),
     notes: strOf(raw.notes).slice(0, NOTES_MAX),
     thumb: thumb,
-    thumbUrl: joinUrl(base, thumb || steps[0].img),   // 缩略图缺省用第一步 img（§5）
+    thumbUrl: thumb ? mediaUrlOf(base, thumb) : steps[0].url,   // 缩略图缺省用第一步 img（§5）
     steps: steps
   };
 }
@@ -273,7 +305,7 @@ function normManifest(raw) {
     sl.steps.forEach(function (st) {
       st.media.forEach(function (h) {
         const g = mediaMap[h.s] || null;
-        h.url = joinUrl(base, h.s);
+        h.url = mediaUrlOf(base, h.s);
         h.dur = g ? g.dur : 0;
         h.mw = g ? g.w : 0;
         h.mh = g ? g.h : 0;
@@ -283,7 +315,7 @@ function normManifest(raw) {
   return {
     v: Math.max(1, Math.round(numOr(m.v, hasFiles ? 2 : 1))),
     base: base,
-    src: resolveUrl(base, m.src),
+    src: mediaUrlOf(base, m.src),
     w: clamp(Math.round(numOr(m.w, 1600)), 320, 4096),
     h: clamp(Math.round(numOr(m.h, 900)), 180, 4096),
     slides: slides,
@@ -312,7 +344,7 @@ function normFileRow(raw, base, kind) {
   return {
     kind: strOf(kind),
     s: s,
-    url: resolveUrl(base, s),
+    url: mediaUrlOf(base, s),
     size: size,
     sizeText: size > 0 ? fmtSize(size) : '',
     sha256: strOf(raw.sha256),
@@ -344,7 +376,7 @@ function normMediaFile(raw, base) {
   return {
     kind: kind,
     s: s,
-    url: resolveUrl(base, s),
+    url: mediaUrlOf(base, s),
     name: name,
     size: size,
     sizeText: size > 0 ? fmtSize(size) : '',
@@ -833,7 +865,7 @@ function normVideo(raw, base) {
   });
   return {
     s: s,
-    url: resolveUrl(base, s),
+    url: mediaUrlOf(base, s),
     w: clamp(Math.round(numOr(raw.w, 1280)), 1, 8192),
     h: clamp(Math.round(numOr(raw.h, 720)), 1, 8192),
     dur: dur,
@@ -1561,6 +1593,8 @@ module.exports = {
   RESUME_KEY: RESUME_KEY, MODE_KEY: MODE_KEY, V_STAGE: V_STAGE,
   // A/B 纯工具
   clamp: clamp, isAbsUrl: isAbsUrl, joinUrl: joinUrl, resolveUrl: resolveUrl,
+  // PPT 在线媒体 ECS /pptfiles 映射（2026-11-18）
+  PPT_OSS_HOST: PPT_OSS_HOST, pptEcsBase: pptEcsBase, pptEcsUrl: pptEcsUrl, mediaUrlOf: mediaUrlOf,
   baseNameOf: baseNameOf, extOf: extOf, trimTitle: trimTitle, fmtSize: fmtSize, fmtWhen: fmtWhen, fmtDur: fmtDur,
   deckId: deckId, chunkCount: chunkCount, chunkRange: chunkRange, validateFile: validateFile,
   fileOf: fileOf, deckRow: deckRow, uploadPct: uploadPct,

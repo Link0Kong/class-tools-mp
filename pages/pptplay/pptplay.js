@@ -8,7 +8,8 @@
 //   * 原样播放（§11.3.2）：视频全屏 contain、自动开始、自定义控制条 3s 自动隐藏（播放/暂停、mm:ss/mm:ss、
 //     上一页/下一页按 chapters seek、章节刻度进度条点 seek、倍速 1×/1.25×/1.5×/2×、复制视频链接、从头、关闭、
 //     原样/分步胶囊）；点舞台显隐控制条（不做 1/3 点击翻页）；左右滑=上一页/下一页；缓冲/下载态不白屏；
-//   * 媒体降级链（§11.4）：<video src=OSS直链> → binderror/5s 未起播 → wx.downloadFile 临时文件（进度/可取消）→
+//   * 媒体降级链（§11.4）：<video src=ECS /pptfiles（OSS /ppt/** 映射；见 utils/ppt.js pptEcsUrl）> →
+//     binderror/5s 未起播 → wx.downloadFile 临时文件（进度/可取消）→
 //     仍失败 → 自动切分步 + toast，全程不白屏不卡死；
 //   * 续播（§11.3.4）：storage 按 deckId 记 {mode,page,step,idx,t,at,dur,pt,n}，打开自动续播（可从头播放）；
 //     列表卡片「继续」徽标由 utils/ppt.js 的 resumeBadge 判定；
