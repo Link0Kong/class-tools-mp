@@ -1032,7 +1032,7 @@ const fakeCanvas = (() => {
     assert.strictEqual(cloud.canDelete({ content: '本机未上云' }), true);
   });
 
-  await test('统计页：按最近登录排序、分钟时间、登录端，忽略匿名行与测试账号', () => {
+  await test('统计页：按访问次数优先、次数相同按最近访问；分钟时间/登录端/忽略测试账号', () => {
     const captured = {};
     global.Page = (def) => { captured.def = def; };
     try { require(path.join(ROOT, 'pages/stats/stats.js')); } finally { delete global.Page; }
@@ -1056,6 +1056,8 @@ const fakeCanvas = (() => {
         { slot: today + '-09', sid: '9000000002', name: '李四', ts: at(0, 9, 7), client: 'mp' },
         { slot: today + '-10', sid: '9000000001', name: '张三', ts: at(0, 10, 42), client: 'web' },
         { slot: today + '-11', sid: '9000000001', name: '张三', ts: at(0, 11, 5), client: 'android' },
+        { slot: today + '-07', sid: '9000000003', name: '王五', ts: at(0, 7, 0), client: 'web' },
+        { slot: today + '-07', sid: '9000000003', name: '王五', ts: at(0, 7, 30), client: 'web' },
         { slot: yest + '-20', sid: '9000000003', name: '王五', ts: at(1, 20, 15), client: 'win' }
       ],
       setData(o) { Object.assign(this.data, o); }
@@ -1063,26 +1065,30 @@ const fakeCanvas = (() => {
     ctx.data.range = 'week';
     def.render.call(ctx);
     assert.strictEqual(ctx.data.accounts.length, 3, '忽略测试账号后 3 个账号');
-    assert.strictEqual(ctx.data.accounts[0].name, '张三', '按最近登录排序（今天 11:05）');
-    assert.strictEqual(ctx.data.accounts[0].clientText, '安卓', '同一账号取最近登录端');
-    assert.strictEqual(ctx.data.accounts[0].lastText, mmdd + ' 11:05', '时间精确到分钟');
-    assert.strictEqual(ctx.data.accounts[1].name, '李四');
-    assert.strictEqual(ctx.data.accounts[2].name, '王五');
-    assert.strictEqual(ctx.data.accounts[2].clientText, 'Windows');
+    assert.strictEqual(ctx.data.accounts[0].name, '王五', '访问次数优先（3 次，即使最近访问更早）');
+    assert.strictEqual(ctx.data.accounts[0].clientText, '网页', '同一账号取最近登录端（今天 07:30）');
+    assert.strictEqual(ctx.data.accounts[0].count, 3);
+    assert.strictEqual(ctx.data.accounts[1].name, '张三', '次数相同再按最近访问');
+    assert.strictEqual(ctx.data.accounts[1].clientText, '安卓');
+    assert.strictEqual(ctx.data.accounts[1].lastText, mmdd + ' 11:05', '时间精确到分钟');
+    assert.strictEqual(ctx.data.accounts[2].name, '李四');
+    assert.strictEqual(ctx.data.accounts[2].clientText, '小程序');
     assert.strictEqual(ctx.data.accounts[0].sidMask, undefined, '统计页不再展示学号');
     assert.strictEqual(ctx.data.accounts[0].sid, undefined, '统计页不再展示学号');
-    assert.strictEqual(ctx.data.accounts[0].count, 2);
-    assert.strictEqual(ctx.data.summary.visits, 4);
+    assert.strictEqual(ctx.data.accounts[1].count, 2);
+    assert.strictEqual(ctx.data.summary.visits, 6);
     assert.strictEqual(ctx.data.summary.accounts, 3);
     assert.ok(ctx.data.accounts.every((a) => a.name !== '测试账号' && a.name !== '测试同学'));
     assert.ok(ctx.data.accounts.every((a) => a.name !== '未知账号'));
 
-    /* 今天口径：只保留今天的行（王五昨天不出现） */
+    /* 今天口径：只保留今天的行；张三/王五均 2 次，张三最近访问更晚排前 */
     ctx.data.range = 'today';
     ctx.data.accounts = [];
     def.render.call(ctx);
-    assert.strictEqual(ctx.data.accounts.length, 2);
-    assert.ok(ctx.data.accounts.every((a) => a.name !== '王五'));
+    assert.strictEqual(ctx.data.accounts.length, 3);
+    assert.strictEqual(ctx.data.accounts[0].name, '张三', '次数相同按最近访问排序');
+    assert.strictEqual(ctx.data.accounts[1].name, '王五');
+    assert.strictEqual(ctx.data.summary.visits, 5);
   });
 
   /* ============================================================

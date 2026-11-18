@@ -1,4 +1,4 @@
-// pages/stats/stats.js —— 访问统计（按最近登录排序，仅管理员）
+// pages/stats/stats.js —— 访问统计（按访问次数排序，仅管理员）
 // 数据来源：CloudBase public.visits（{id, slot, sid, name, did, client, ts}；client=web/mp/android/win/harmony）。
 // 只按「学号 + 姓名」聚合，不按匿名设备；仅 is_admin 身份可看（服务端 RLS 会再校验 token）。
 const identity = require('../../utils/identity.js');
@@ -132,7 +132,7 @@ Page({
       if (name) a.name = name;
     });
     const accounts = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) {
-      return (b.lastTs - a.lastTs) || (b.count - a.count);
+      return (b.count - a.count) || (b.lastTs - a.lastTs);
     }).map(function (a) {
       const nm = a.name || cloud.memberName(a.sid) || '（无姓名）';
       return {

@@ -27,7 +27,7 @@ const TOOLS = [
   // 无需房间码/链接/配对；任意大小 8MiB 分片上传、单文件删除、清空空间；文件自上传起保留 3 天。
   { key: 'file', name: '文件传输', ico: '☁', icoImg: '/images/tool-file.png', meta: '临时云空间 · 3 天', desc: '同账号跨设备临时云空间：上传/下载/删除文件，任意大小分片上传，文件自上传起保留 3 天', url: '/pages/cloudspace/cloudspace', tab: false, tone: 'primary' },
   { key: 'map', name: '地图', ico: '🗺', icoImg: '/images/tool-map.png', meta: '2.5D · 道路导航', desc: '校园 2.5D 地图、楼栋楼层与按道路步行导航；与课表下一节联动', url: '/pages/map/map', tab: false, tone: 'primary' },
-  { key: 'stats', name: '统计',  ico: '📊', icoImg: '/images/tool-stats.png', meta: '按最近登录 · 仅管理员', desc: '按最近登录排序的访问统计（显示登录端与分钟时间，不显示学号），仅管理员可见', url: '/pages/stats/stats', tab: false, tone: 'primary', admin: true },
+  { key: 'stats', name: '统计',  ico: '📊', icoImg: '/images/tool-stats.png', meta: '按访问次数 · 仅管理员', desc: '按访问次数排序的访问统计（同次数按最近访问；显示登录端与分钟时间，不显示学号），仅管理员可见', url: '/pages/stats/stats', tab: false, tone: 'primary', admin: true },
   // 2026-11-08 诊断 v2：所有有效班级身份可见（不再仅管理员）；与电费一样不进首页勾选（noHome）
   { key: 'diag', name: '诊断',  ico: '🩺', icoImg: '/images/tool-diag.png', meta: '服务状态 · 设备诊断 · AI 分析', desc: '依赖服务运行状态 + 本机设备诊断 + AI 原因/修复流程；所有已认证同学可查看', url: '/pages/diag/diag', tab: false, tone: 'tertiary', noHome: true },
   // 2026-11-09 PPT 演示（与网页「演示」同名，契约 web/ppt/CONTRACT.md §8.3）：

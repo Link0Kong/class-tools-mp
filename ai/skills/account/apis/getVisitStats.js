@@ -1,7 +1,7 @@
 // ai/skills/account/apis/getVisitStats.js —— 访问统计（原子接口，仅管理员）
 //
 // 与主包 pages/stats/stats.js 同口径（2026-11-18）：
-// - 按最近登录 ts 倒序（不再按访问次数优先）；
+// - 按访问次数倒序（次数相同按最近访问时间倒序）；
 // - 记录并输出最近登录端（client：web/mp/android/win/harmony）；
 // - 忽略测试账号（3260799999 / 9999 段 10 位）与匿名历史行；
 // - 输出不含学号与设备号。
@@ -72,7 +72,7 @@ module.exports = function getVisitStats(args) {
       if (name && name !== '（无姓名）') map[sid].name = name;
     });
     const byName = Object.keys(map).map(function (k) { return map[k]; })
-      .sort(function (x, y) { return (y.lastTs - x.lastTs) || (y.visits - x.visits); })
+      .sort(function (x, y) { return (y.visits - x.visits) || (y.lastTs - x.lastTs); })
       .slice(0, NAME_TOP)
       .map(function (x) {
         return {
@@ -124,8 +124,8 @@ module.exports = function getVisitStats(args) {
     if (!total) {
       text = '近 ' + days + ' 天还没有访问记录。等同学们使用后可以再来查看。';
     } else {
-      const top = byName.slice(0, 3).map(function (x) { return x.name + '（最近 ' + x.lastText + ' · ' + x.lastClient + '）'; }).join('、');
-      text = s.rangeText + '共 ' + total + ' 次访问、' + accounts + ' 位同学活跃；最近登录的是：' + top +
+      const top = byName.slice(0, 3).map(function (x) { return x.name + '（' + x.visits + ' 次 · ' + x.lastClient + '）'; }).join('、');
+      text = s.rangeText + '共 ' + total + ' 次访问、' + accounts + ' 位同学活跃；访问最多的是：' + top +
         '。需要看按天/按小时分布可以继续问。';
     }
     return result.ok(text, s, {

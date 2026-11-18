@@ -525,7 +525,7 @@ function withFeedback(fx) {
     ];
   }
 
-  await H.test('getVisitStats：管理员成功 → 按最近登录/端/忽略测试账号（不含学号）', async function () {
+  await H.test('getVisitStats：管理员成功 → 按访问次数/端/忽略测试账号（不含学号）', async function () {
     const fx = H.mkFixture();
     const rows = visitRows(fx);
     const wx = H.createWx({ storage: fx.storage, routes: visitRoutes(fx, rows) });
@@ -535,7 +535,7 @@ function withFeedback(fx) {
     const sc = res.structuredContent;
     H.eq(sc.total, 4, '匿名行与测试账号不参与统计');
     H.eq(sc.accounts, 3);
-    H.eq(sc.byName[0].name, '李学盈', '按最近登录排序');
+    H.eq(sc.byName[0].name, '李学盈', '按访问次数排序');
     H.eq(sc.byName[0].visits, 2);
     H.eq(sc.byName[0].lastClient, '网页');
     H.eq(sc.byName[1].name, '王梓萱');
