@@ -352,6 +352,27 @@ function run(test) {
       assert.strictEqual(opts[0].at, now + 6 * 86400000 - 86400000);
     });
 
+    await test('提醒：快捷项以活动报名开始时间为基准（无报名才开始用截止）', () => {
+      createEnv();
+      const M = loadUtils(); const def = loadPage(); const ctx = makeCtx(def);
+      const now = Date.now();
+      const start = now + 3 * 86400000;
+      const due = now + 5 * 86400000;
+      let opts = def.remindOptionsFor.call(ctx, groupOf('s1', 'T', iso(due), { signupStart: iso(start), signupEnd: iso(due) }));
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }),
+        ['报名开始前 1 天', '报名开始前 2 小时', '报名开始前 30 分钟', '报名开始时']);
+      assert.strictEqual(opts[0].at, start - 86400000);
+      assert.strictEqual(opts[1].at, start - 7200000);
+      assert.strictEqual(opts[2].at, start - 1800000);
+      assert.strictEqual(opts[3].at, start);
+      // 报名开始 1 小时后：只剩「前 30 分钟」「开始时」
+      opts = def.remindOptionsFor.call(ctx, groupOf('s2', 'T', iso(now + 5 * 86400000), { signupStart: iso(now + 3600000) }));
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['报名开始前 30 分钟', '报名开始时']);
+      // 报名开始已过 → 回退截止
+      opts = def.remindOptionsFor.call(ctx, groupOf('s3', 'T', iso(now + 3 * 86400000), { signupStart: iso(now - 86400000) }));
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 1 天', '截止前 2 小时', '截止前 30 分钟']);
+    });
+
     await test('提醒：快捷项生成（无截止 → 今天/明天 20:00，已过顺延，始终 2 个未来项）', () => {
       createEnv();
       const M = loadUtils(); const def = loadPage(); const ctx = makeCtx(def);
@@ -486,6 +507,23 @@ function run(test) {
       assert.ok(saved.ts > 0);
       assert.ok(env.toasts.indexOf('已设置提醒') >= 0, env.toasts.join('|'));
       assert.ok(ctx._filtered >= 1, '设置成功后应重绘列表');
+    });
+
+    await test('提醒：自定义默认时间按报名开始提前 2 小时，提示报名开始而不是截止', () => {
+      createEnv();
+      const M = loadUtils(); const def = loadPage();
+      const now = Date.now();
+      const start = now + 3 * 86400000;
+      const due = now + 5 * 86400000;
+      const raw = groupOf('auto_s1', '活动通知', iso(due), { signupStart: iso(start), signupEnd: iso(due) });
+      const ctx = makeCtx(def, [raw]);
+      def.openCustomRemind.call(ctx, 'auto_s1');
+      assert.strictEqual(ctx.data.remindSheet, true);
+      const expect = new Date(start - 7200000);
+      assert.strictEqual(ctx.data.remindDate, ymd(expect));
+      assert.strictEqual(ctx.data.remindClock, hhmm(expect));
+      assert.ok(/报名开始/.test(ctx.data.remindHint), '提示应以报名开始为基准：' + ctx.data.remindHint);
+      assert.ok(/不晚于截止/.test(ctx.data.remindHint), '仍保留截止上限提示');
     });
 
     await test('提醒：denied 时 toast「未授权提醒」且不写本机', async () => {
@@ -645,28 +683,19 @@ function run(test) {
       assert.strictEqual(env.scrolls.length, 2);
     });
 
-    await test('提醒：简报区「新通知提醒」→ subscribeNotice（kind=nt, ref=next + tmplId）；支持再次开启（需求 11）', async () => {
-      const env = createEnv();
+    await test('提醒：新通知提醒已移除（无按钮/无接口/无角标）', () => {
       const M = loadUtils(); const def = loadPage();
-      const ctx = makeCtx(def);
-      def.subscribeNextNotice.call(ctx);
-      await sleep(10);
-      assert.strictEqual(env.subLog.length, 1);
-      assert.deepStrictEqual(env.subLog[0].tmplIds, M.notify.templateIds(), '授权请求 tmplIds = templateIds()（默认 1 个，配置第二模板则 2 个）');
-      assert.strictEqual(env.calls[0].data.action, 'subscribe');
-      assert.strictEqual(env.calls[0].data.kind, 'nt');
-      assert.strictEqual(env.calls[0].data.ref, 'next');
-      assert.ok(env.calls[0].data.tmplId, 'subscribe 应带本次授权的模板 ID（供云函数按模板发送）');
-      assert.strictEqual(M.store.get().ntSub, true);
-      assert.ok(M.store.get().ntSubAt > 0);
-      assert.ok(env.toasts.indexOf('已开启 · 收到后自动关闭') >= 0, '授权成功 toast 应说明「收到后自动关闭」');
-      assert.strictEqual(ctx.data.ntSubOn, true);
-      // 一次性订阅被消耗/过期后仍可再次开启：第二次点击必须重新请求授权（不再被本机 24h 标记挡住）
-      env.toasts.length = 0;
-      def.subscribeNextNotice.call(ctx);
-      await sleep(5);
-      assert.strictEqual(env.subLog.length, 2, '再次点击应重新请求订阅授权（支持再次开启）');
-      assert.strictEqual(env.toasts[env.toasts.length - 1], '已开启 · 收到后自动关闭');
+      assert.strictEqual(def.subscribeNextNotice, undefined, 'nt 页不应再有 subscribeNextNotice');
+      assert.strictEqual(def.refreshNotifyStatus, undefined, 'nt 页不应再有 refreshNotifyStatus');
+      ['subscribeNotice', 'publishNotice', 'status', 'clearStatusCache', 'bootstrap'].forEach(function (k) {
+        assert.strictEqual(M.notify[k], undefined, 'notify.js 不应再导出 ' + k);
+      });
+      const wxml = fs.readFileSync(path.join(ROOT, 'pages/nt/nt.wxml'), 'utf8');
+      assert.ok(!/subscribeNextNotice|ntStatusText|ntSubOn|subBusy/.test(wxml), 'nt.wxml 仍残留新通知提醒 UI');
+      const idx = fs.readFileSync(path.join(ROOT, 'pages/index/index.wxml'), 'utf8');
+      assert.ok(!/ntNew|wb-task-new/.test(idx), '工作台仍残留「新通知」角标');
+      const app = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+      assert.ok(!/notify\.bootstrap|d\.ntSub/.test(app), 'app.js 仍在上报新通知 token');
     });
 
     /* ---------- 7. 卡片渲染映射 + 既有功能回归 ---------- */
@@ -726,10 +755,9 @@ function run(test) {
       assert.ok(/data-gid="\{\{card\.id\}\}" catchtap="onRemindTap"/.test(wxml), '提醒按钮应带卡片 data-gid 并绑定 onRemindTap');
       assert.ok(/\{\{card\.remindLabel\}\}/.test(wxml), '胶囊文案应渲染 card.remindLabel');
       assert.ok(/wx:if="\{\{card\.canRemind\}\}"/.test(wxml), '提醒按钮应受 card.canRemind 控制');
-      // 简报区「新通知提醒」（需求 11：按钮文案随状态切换「新通知提醒 / 再次开启」，旁边显示云端状态）
-      assert.ok(/bindtap="subscribeNextNotice"/.test(wxml), '简报区缺「新通知提醒」按钮');
-      assert.ok(/ntSubOn \? '再次开启' : '新通知提醒'/.test(wxml), '按钮应支持「再次开启」状态（需求 11）');
-      assert.ok(/\{\{ntStatusText\}\}/.test(wxml), '简报区应显示提醒状态（已开启 · 收到后自动关闭 · 云端 N 人已订阅）');
+      // 简报区：2026-11-18 已移除「新通知提醒」，只保留刷新
+      assert.ok(!/subscribeNextNotice|ntStatusText|ntSubOn|subBusy/.test(wxml), '简报区不应再有新通知提醒按钮/状态');
+      assert.ok(/bindtap="refresh">刷新</.test(wxml), '简报区应保留刷新');
       // 自定义弹层：bottom-sheet + date/time picker
       assert.ok(/<bottom-sheet show="\{\{remindSheet\}\}" title="自定义提醒时间"/.test(wxml), '缺自定义提醒 bottom-sheet');
       assert.ok(/<picker mode="date" value="\{\{remindDate\}\}" start="\{\{remindStart\}\}" end="\{\{remindEnd\}\}" bindchange="onRemindDate">/.test(wxml));
@@ -742,8 +770,8 @@ function run(test) {
     await test('静态：nt.js 有 gid 处理 / list 核对 / cancel / 授权链；data 页隐私文案补充', () => {
       const js = fs.readFileSync(path.join(ROOT, 'pages/nt/nt.js'), 'utf8');
       ['_pendingGid', 'options.gid', 'jumpPendingGid', '_scrollToCard', 'syncReminders', 'applyReminderRows',
-        'listReminders', 'cancelReminder', 'subscribeNoticeReminder', 'subscribeNextNotice',
-        'remindOptionsFor', 'onRemindTap', 'chooseRemindTime', 'confirmRemind', 'openCustomRemind'
+        'listReminders', 'cancelReminder', 'subscribeNoticeReminder',
+        'remindBaseOf', 'remindOptionsFor', 'onRemindTap', 'chooseRemindTime', 'confirmRemind', 'openCustomRemind'
       ].forEach(function (s) { assert.ok(js.indexOf(s) >= 0, 'nt.js 缺少提醒实现：' + s); });
       // requestSubscribeMessage 不在页面层直接调用（统一走 utils/notify.js 的 ask）
       assert.ok(!/wx\.requestSubscribeMessage\s*\(/.test(js), '授权应统一在 utils/notify.js，页面不要直接调用');
@@ -758,9 +786,12 @@ function run(test) {
       ['subscribeNoticeReminder', 'listReminders', 'cancelReminder', 'deadlineTsOf'].forEach(function (s) {
         assert.ok(notifyJs.indexOf(s) >= 0, 'notify.js 缺少 ' + s);
       });
-      // 既有接口保留
-      ['subscribeHomework', 'subscribeNotice', 'publishNotice'].forEach(function (s) {
+      // 既有接口保留（2026-11-18 移除新通知提醒：subscribeNotice/publishNotice 不再存在）
+      ['subscribeHomework', 'subscribeNoticeReminder', 'listReminders', 'cancelReminder'].forEach(function (s) {
         assert.ok(notifyJs.indexOf(s) >= 0, 'notify.js 既有接口丢失：' + s);
+      });
+      ['subscribeNotice', 'publishNotice', 'bootstrap', 'ntStatus'].forEach(function (s) {
+        assert.ok(!new RegExp('\\b' + s + '\\b').test(notifyJs), 'notify.js 仍残留新通知接口：' + s);
       });
       const storeJs = fs.readFileSync(path.join(ROOT, 'utils/store.js'), 'utf8');
       assert.ok(/ntRemind: \{\}/.test(storeJs), 'store DEF 缺 ntRemind');

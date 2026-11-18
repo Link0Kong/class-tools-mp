@@ -3,13 +3,13 @@
  * 覆盖（对应 task-7 反馈第 2/6/8/9/11 条）：
  *   A. 加载与缓存提速（9）：有本机缓存 → 工作台首帧 state=data（无 120ms 骨架）；请求数有界（marks 单飞/去重）；
  *      无缓存对照 → 先骨架后 data；页面重入 setData 只下发变化字段（diff）。
- *   B. 新通知提醒（11）：按钮授权成功 toast「已开启 · 收到后自动关闭」、显示云端 active 数、可再次开启、
+ *   B. 新通知提醒（11）已于 2026-11-18 移除，仅验证按钮/方法不存在；
  *      云函数未部署时给出可读原因（拒绝/未开启/未部署区分）。
  *   C. 水量共享（6）：23A/23B 固定 4 人间不可改、云端记录合并显示、离线保存进 pending 且恢复后重试成功、
  *      文案不再出现「免费」（定额）。
  *   D. 名单快捷预设（8）：抽签名单选择器「全班/班委/团员」一键套基础集合后仍可逐个增删；投票指定成员预设。
  *   E. 徽章去重（2）：班委页职务文字保留、重复「班委」badge 不再渲染；工具描述同步。
- *   F. 提醒通道诊断（11）：诊断页显示定时器心跳 / active 数 / 新通知扫描 lastError。
+ *   F. 提醒通道诊断（手动提醒）：诊断页显示定时器心跳 / active 数 / lastError。
  *
  * 前置：开发者工具自动化已开（本机实测端口 9424）：
  *   "C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" auto --project <mp-class-tools> --auto-port 9424 --trust-project
@@ -356,74 +356,22 @@ async function pollUntil(mp, fn, timeout, interval) {
   await shot(mp, 'A_index_nocache');
 
   /* ============================================================
-     B. 新通知提醒（需求 11）
+     B. 新通知提醒已移除（2026-11-18）：不再有按钮/页面方法
      ============================================================ */
   await installMock(mp, { seedMembers: true });
-  await pageEval(mp, () => {
-    const E = globalThis.__task7;
-    E.reqImpl = function (url) {
-      const u = String(url || '');
-      if (u.indexOf('/notices?') >= 0) return [{ id: 'auto_g1', ts: 1000, hidden: false, edited_at: 0, title: '宿舍卫生检查安排', body: '[[CLASS_NOTICE_V1]]{}' }];
-      return [];
-    };
-    E.cloudReply = function (data) {
-      if (!data) return { ok: true };
-      if (data.action === 'subscribe') return { ok: true, active: 3, mine: true };
-      if (data.action === 'ntStatus') return { ok: true, active: 3, mine: true, diag: { hb: { ts: Date.now(), agoMs: 60000, source: 'timer' }, scan: { hasToken: true, lastScanAt: Date.now() } } };
-      if (data.action === 'diag') return { ok: true, diag: { hb: { ts: Date.now(), agoMs: 60000, source: 'timer' }, active: 3, ntActive: 3, notify: { hasToken: true, lastScanAt: Date.now() - 60000, lastError: '' } } };
-      if (data.action === 'bootstrap') return { ok: true, tokenOk: true };
-      return { ok: true };
-    };
-  });
   await mp.reLaunch('/pages/nt/nt');
   await waitPath(mp, 'pages/nt/nt');
-  await sleep(600);
-  const beforeB = await pageEval(mp, () => {
-    const pg = getCurrentPages().slice(-1)[0];
-    return { subOn: !!pg.data.ntSubOn, statusText: String(pg.data.ntStatusText || ''), btnHint: String((globalThis.__task7.toasts || []).join('|')) };
-  });
-  await pageEval(mp, () => {
-    const pg = getCurrentPages().slice(-1)[0];
-    pg.subscribeNextNotice();
-  });
-  await sleep(300);
-  const afterB = await pageEval(mp, () => {
-    const E = globalThis.__task7;
+  await sleep(500);
+  const removedB = await pageEval(mp, () => {
     const pg = getCurrentPages().slice(-1)[0];
     return {
-      subLog: E.subLog.length,
-      toasts: E.toasts.slice(),
-      statusText: String(pg.data.ntStatusText || ''),
-      subOn: !!pg.data.ntSubOn,
-      active: pg.data.ntActive || 0
+      hasMethod: typeof pg.subscribeNextNotice,
+      hasStatus: typeof pg.refreshNotifyStatus,
+      subOn: typeof pg.data.ntSubOn,
+      statusText: typeof pg.data.ntStatusText
     };
   });
-  check('B1 授权成功 toast「已开启 · 收到后自动关闭」', afterB.toasts.indexOf('已开启 · 收到后自动关闭') >= 0, afterB.toasts.join('|'));
-  check('B2 状态显示云端 active 订阅数 + 本人已开启', afterB.subOn === true && afterB.active === 3 && afterB.statusText.indexOf('云端 3 人已订阅') >= 0, afterB.statusText);
-  check('B3 requestSubscribeMessage 在点击链里执行一次（tmplIds 数组）', afterB.subLog === 1, 'subLog=' + afterB.subLog);
-  await shot(mp, 'B_nt_notify_on');
-  // 再次开启（一次性订阅消耗后仍可重新授权）
-  await pageEval(mp, () => { getCurrentPages().slice(-1)[0].subscribeNextNotice(); });
-  await sleep(250);
-  const againB = await pageEval(mp, () => ({ subLog: (globalThis.__task7.subLog || []).length }));
-  check('B4 支持再次开启（第二次点击重新授权）', againB.subLog === 2, 'subLog=' + againB.subLog);
-  // 失败可读原因：拒绝 / 未开启 / 云函数未部署
-  await pageEval(mp, () => {
-    globalThis.__task7.cfg = { subDeny: true };
-    getCurrentPages().slice(-1)[0].subscribeNextNotice();
-  });
-  await sleep(200);
-  const denyB = await pageEval(mp, () => (globalThis.__task7.toasts || []).slice(-2));
-  check('B5 已拒绝授权 → 可读 toast「已拒绝提醒授权」', denyB.indexOf('已拒绝提醒授权') >= 0, denyB.join('|'));
-  await pageEval(mp, () => {
-    globalThis.__task7.cfg = { cloudMissing: true };
-    getCurrentPages().slice(-1)[0].refreshNotifyStatus(true);
-  });
-  await sleep(300);
-  const missingB = await pageEval(mp, () => String(getCurrentPages().slice(-1)[0].data.ntStatusText || ''));
-  check('B6 云函数未部署 → 状态显示「云函数未部署」', missingB.indexOf('云函数未部署') >= 0, missingB);
-  await shot(mp, 'B_nt_notify_denied');
-
+  check('B1 通知页不再有「新通知提醒」按钮/状态', removedB.hasMethod === 'undefined' && removedB.hasStatus === 'undefined' && removedB.subOn === 'undefined' && removedB.statusText === 'undefined', JSON.stringify(removedB));
   /* ============================================================
      C. 水量共享（需求 6）
      ============================================================ */
@@ -622,7 +570,7 @@ async function pollUntil(mp, fn, timeout, interval) {
     E.cloudReply = function (data) {
       if (!data) return { ok: true };
       if (data.action === 'diag') {
-        return { ok: true, diag: { hb: { ts: Date.now(), agoMs: 120000, source: 'timer' }, active: 3, ntActive: 3, notify: { hasToken: true, lastScanAt: Date.now() - 120000, lastSentAt: Date.now() - 3600000, sentCount: 2, lastError: 'send-fail: 43101' } } };
+        return { ok: true, diag: { hb: { ts: Date.now(), agoMs: 120000, source: 'timer' }, active: 3, lastError: 'send-fail: 43101' } };
       }
       return { ok: true };
     };
@@ -635,8 +583,8 @@ async function pollUntil(mp, fn, timeout, interval) {
     return pg.data.notifyDiag || null;
   });
   check('F1 诊断页显示提醒通道：定时器心跳（2 分钟前）', !!diagF && diagF.show === true && diagF.hbText.indexOf('2 分钟前') >= 0, diagF && diagF.hbText);
-  check('F2 诊断页显示云端 active 订阅数', !!diagF && diagF.activeText.indexOf('新通知 3') >= 0, diagF && diagF.activeText);
-  check('F3 诊断页显示新通知扫描 lastError', !!diagF && diagF.errText.indexOf('43101') >= 0, diagF && diagF.errText);
+  check('F2 诊断页显示云端 active 提醒数', !!diagF && diagF.activeText.indexOf('active 3 条提醒') >= 0, diagF && diagF.activeText);
+  check('F3 诊断页显示 lastError', !!diagF && diagF.errText.indexOf('43101') >= 0, diagF && diagF.errText);
   await shot(mp, 'F_diag_notify');
 
   /* ============================================================ 汇总 */

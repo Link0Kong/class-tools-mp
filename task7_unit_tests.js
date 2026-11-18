@@ -392,36 +392,32 @@ function run(test) {
       assert.strictEqual(notify.classify(new Error('some-weird')), 'unknown');
     });
 
-    await test('B5 授权链：ask 请求 templateIds 数组；subscribeNotice 带 tmplId；status/diag/bootstrap 走 wx.cloud 且不外泄 token', async function () {
+    await test('B5 授权链：新通知提醒已移除；手动通知提醒仍走 ask + 云函数（dateText=报名开始）', async function () {
       purge();
       C.clearMem(); C.setIdentity();
       C.setCloudReply(function (data) {
         if (data.action === 'subscribe') return { ok: true };
-        if (data.action === 'ntStatus') return { ok: true, active: 3, mine: true, diag: { hb: { ts: Date.now(), agoMs: 1000, source: 'timer' }, scan: { hasToken: true } } };
-        if (data.action === 'diag') return { ok: true, diag: { hb: null, active: 3, ntActive: 2, notify: { hasToken: true, lastScanAt: 1, lastError: '' } } };
-        if (data.action === 'bootstrap') return { ok: true, tokenOk: true };
+        if (data.action === 'diag') return { ok: true, diag: { hb: null, active: 2, lastError: '' } };
         return { ok: true };
       });
       const notify = R('utils/notify.js');
-      await notify.subscribeNotice();
+      ['subscribeNotice', 'publishNotice', 'status', 'bootstrap', 'clearStatusCache'].forEach(function (k) {
+        assert.strictEqual(notify[k], undefined, '新通知提醒接口应移除：' + k);
+      });
+      const fireAt = Date.now() + 3600000;
+      const baseTs = Date.now() + 86400000;
+      await notify.subscribeNoticeReminder({ id: 'auto_g1', title: '测试通知', baseTs: baseTs }, fireAt, '报名开始时');
       assert.strictEqual(C.subLog().length, 1, '一次授权');
       assert.deepStrictEqual(C.subLog()[0].tmplIds, notify.templateIds(), 'tmplIds = templateIds()');
       const sub = C.cloudCalls().find(function (x) { return x.data && x.data.action === 'subscribe'; });
-      assert.ok(sub && sub.data.kind === 'nt' && sub.data.ref === 'next', 'subscribeNotice → kind=nt ref=next');
-      assert.strictEqual(sub.data.tmplId, notify.TEMPLATE_ID, '带本次授权的模板 ID（云函数按它发送）');
-      const st = await notify.status(true);
-      assert.strictEqual(st.active, 3);
-      assert.strictEqual(st.mine, true);
+      assert.ok(sub && sub.data.kind === 'ntremind' && sub.data.ref === 'auto_g1', '手动通知提醒 → kind=ntremind');
+      assert.strictEqual(sub.data.dateText, notify.fmt(baseTs), '模板日期显示报名开始，而不是截止');
       const dg = await notify.diag();
-      assert.ok(dg && dg.notify && dg.notify.hasToken === true, 'diag 透传脱敏扫描状态');
-      const okBoot = await notify.bootstrap('CLASS-TOKEN-TEST');
-      assert.strictEqual(okBoot, true, 'bootstrap 成功');
-      const boot = C.cloudCalls().find(function (x) { return x.data && x.data.action === 'bootstrap'; });
-      assert.ok(boot && boot.data.token === 'CLASS-TOKEN-TEST', 'bootstrap 把班级 token 交给云函数（wx.cloud 内网，不打印）');
-      assert.ok(C.reqLog().length === 0, 'bootstrap/status/diag 不走 wx.request（仅 wx.cloud 云函数）');
+      assert.ok(dg && dg.active === 2, 'diag 保留提醒通道诊断');
+      assert.ok(C.reqLog().length === 0, '提醒授权/云函数不走 wx.request');
     });
 
-    await test('B6 云函数接线（静态）：timer 扫新通知 + bootstrap/ntStatus/scan action + 第二模板 + 无 token 打印', function () {
+    await test('B6 云函数接线（静态，旧版客户端兼容）：timer 扫新通知 + bootstrap/ntStatus/scan action + 第二模板 + 无 token 打印', function () {
       const js = src('cloudfunctions/notify/index.js');
       assert.ok(/require\('\.\/scan\.js'\)/.test(js), 'index.js 引入 scan.js');
       assert.ok(/scanNewNotices\(\{\}\)/.test(js), 'timer 里调用新通知扫描');
@@ -439,27 +435,23 @@ function run(test) {
       assert.ok(/scanMinMs/.test(rest), '扫描最小间隔可配（默认 5 分钟）');
     });
 
-    await test('B7 nt 页提醒反馈：授权成功文案/可再次开启/云端 active 数/失败可读原因；诊断页显示 notify diag', function () {
+    await test('B7 新通知提醒 UI/接口已移除，手动提醒与诊断保留', function () {
       const js = src('pages/nt/nt.js');
-      assert.ok(/已开启 · 收到后自动关闭/.test(js), 'toast 文案：已开启 · 收到后自动关闭');
-      assert.ok(/再次开启/.test(js) || /ntSubOn/.test(js), '支持再次开启（不再 24h 直接 return）');
-      assert.ok(!/now - d\.ntSubAt < 24 \* 3600 \* 1000\) \{ util\.toast\('已开启新通知提醒'\); return; \}/.test(js), '删除了旧的「已订阅直接 return」短路');
-      ['denied: \'已拒绝提醒授权\'', 'cloud-missing', '网络不可用'].forEach(function (s) {
-        assert.ok(js.indexOf(s.split(':')[0]) >= 0, '失败原因分支缺失：' + s);
-      });
-      assert.ok(/refreshNotifyStatus/.test(js) && /notify\.status\(/.test(js), '进入通知页拉取云端 active 状态');
-      assert.ok(/云端 ' \+ v\.active \+ ' 人/.test(js) || /云端 .* 人已订阅/.test(js), '显示云端 active 订阅数');
+      assert.ok(!/subscribeNextNotice|refreshNotifyStatus|ntSubOn|ntStatusText|notify\.status\(/.test(js), 'nt 页仍残留新通知提醒');
+      assert.ok(/subscribeNoticeReminder/.test(js) && /flushReminders/.test(src('app.js')), '手动提醒链路保留');
       const wxml = src('pages/nt/nt.wxml');
-      assert.ok(/ntStatusText/.test(wxml), '简报区显示提醒状态');
-      assert.ok(/subBusy/.test(wxml), '授权中状态防重复点击');
+      assert.ok(!/subscribeNextNotice|ntStatusText|ntSubOn|subBusy/.test(wxml), 'nt.wxml 仍残留新通知提醒 UI');
+      assert.ok(/bindtap="refresh">刷新</.test(wxml), '简报区保留刷新');
+      const idx = src('pages/index/index.wxml');
+      assert.ok(!/ntNew|wb-task-new/.test(idx), '工作台仍残留新通知角标');
       const diagJs = src('pages/diag/diag.js');
       const diagWxml = src('pages/diag/diag.wxml');
-      assert.ok(/loadNotifyDiag/.test(diagJs) && /notifyDiag/.test(diagJs), '诊断页实现提醒通道诊断');
+      assert.ok(/loadNotifyDiag/.test(diagJs) && /notifyDiag/.test(diagJs), '诊断页保留提醒通道诊断');
       assert.ok(/提醒通道诊断/.test(diagWxml) && /hbText/.test(diagWxml), '诊断页 UI 显示心跳/active/lastError');
-      assert.ok(/lastError/.test(diagJs), '诊断页显示 lastError');
+      assert.ok(!/scanText|ntActive|新通知扫描/.test(diagJs + diagWxml), '诊断页仍残留新通知扫描');
       const appJs = src('app.js');
-      assert.ok(/notify\.bootstrap\(identity\.token\(\)\)/.test(appJs), 'app.warmSync 里 bootstrap 上报 token（30 分钟节流）');
-      assert.ok(/notify\.flushReminders\(\)/.test(appJs), '保留前端提醒 catch-up');
+      assert.ok(!/notify\.bootstrap|d\.ntSub/.test(appJs), 'app.warmSync 不应再上报新通知 token');
+      assert.ok(/notify\.flushReminders\(\)/.test(appJs), '保留前端手动提醒 catch-up');
     });
 
     /* ============================================================

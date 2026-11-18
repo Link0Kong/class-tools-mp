@@ -1,5 +1,19 @@
 # 班级工具站小程序 · 测试与修复工程
 
+## 移除「新通知提醒」+ 手动提醒以报名开始为基准（2026-11-18，未发版）
+
+- **移除新通知提醒**：删除 `pages/nt` 简报区按钮/状态、`pages/index` 工作台「新通知」角标、`utils/notify.js`
+  `subscribeNotice/publishNotice/status/bootstrap`、`app.js` bootstrap、`utils/cloud.js` `newNtAt` 写入、诊断页新通知扫描行；
+  云函数 `kind='nt'`/旧 action 保留给旧版客户端。
+- **手动提醒基准**：`pages/nt/nt.js` 新增 `remindBaseOf()`——活动有未开始的 `signupStart` → 以报名开始为基准
+  （快捷项「报名开始前 1 天 / 2 小时 / 30 分钟 / 报名开始时」、自定义默认提前 2 小时）；报名开始已过/无报名窗口回退截止。
+  `notify.subscribeNoticeReminder` 支持 `baseTs`，模板 `dateText` 显示报名开始而不是截止。
+- **测试**：`unit.js` **571/7**（7 条均为既有失败：quickList 1 + 需求12 长期时间 1 + draw ko-link 4 + 期次时间依赖 1）；
+  新增快捷项/自定义默认/已移除断言；`task7_unit_tests` B5/B7、`task7_preview` B/F 同步更新；
+  `staticcheck.py` exit 0、`code_quality_check.js` 退出码 0。
+- **本机 automator（测试身份）**：通知页无「新通知提醒」按钮/状态；`signupStart=+3d` 的假活动返回 4 个报名开始基准快捷项；
+  `subscribeNoticeReminder` 的 `dateText=报名开始时间`。
+
 ## 通知「发布时间」统一（2026-11-18，未发版；待用户上传发布）
 
 对应契约 `web/通知三端_发布时间统一_契约_20261118.md`（用户原话：「将通知中不含时间的时间设定为发布时间，动作设为发布，并参与排序等等统一计算」）。
