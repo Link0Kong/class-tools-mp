@@ -144,7 +144,7 @@ request + downloadFile 合法域名后用真机正式版验证一张图 + 一段
 | --- | --- | --- |
 | `ppt_dl_unit_tests.js`（**新增**，36 项 = v2.0 26 + v2.3 10） | 默认自建内存 wx mock（不发真实请求）；A manifest v2 归一化（`slides` 可为空 + `files.compat/pdf/source`；旧 v1 兼容；缺 s/坏 compat/JSON 字符串/未知字段容错；warnings 截断 20）；B 下载文件行（三行顺序/label/大小/PDF 页数/建议文件名/打开类型）+ 旧 deck `manifest.src` 原始行 + `safeFileName`；C 详情视图（v2 ready / 旧 deck / video-only / 未就绪 / compat-only 合并 / 重试权限）；D 列表标签 + `filesOfDecks` 轻查询 + 缓存；E 页面行为（下载进度→`wx.openDocument`、取消 abort、失败 toast、转发/降级复制链接、旧 deck 预览/重试、onUnload abort）；F 工程静态接线；**M（§12.8）**：`manifest.media_files` 归一化（URL/kind/dur/w/h/slides/size/sha/坏项丢弃/上限 20）、无 media_files 兼容（`hasMediaFiles=false` 不显示）、`mediaRows` 行数据（「视频1 · 第 7 页」「音频1 · 第 12 页」序号按类型分开、多页「第 7、12 页」、时长/分辨率/大小/name/url）、详情视图 `hasMedia/mediaCount/mediaVideos/mediaAudios`、视频下载→`wx.saveVideoToPhotosAlbum`、相册授权失败→`showModal`+`wx.openSetting`、视频转发 `shareFileMessage(fileName=manifest name)`、音频→`openDocument`（失败降级转发）、媒体行复制链接/取消/失败 toast、WXML/JS 静态接线 | `node ppt_dl_unit_tests.js`（独立运行写 `ppt_dl_result.json`）或 `node unit.js`（末尾已挂载） |
 | `unit.js`（**改**） | 末尾 require `ppt_dl_unit_tests.js`（总断言 402 → **412**；本文件新增 10 项） | `node unit.js` |
-| `ppt_video_unit_tests.js`（**改**） | G3 列表断言按 §12.4.1 更新：整卡点击=下载详情（`openDeck` → `/pages/pptdl/pptdl?id=`）、「兼容版/PDF」小标签与轻查询；播放器/续播用例全部保留 | `node ppt_video_unit_tests.js` |
+| `ppt_video_unit_tests.js`（**改**） | G3 列表断言按 §12.4.1 更新：整卡点击=下载详情（`openDeck` → `/pages/ppt/pptdl/pptdl?id=`）、「兼容版/PDF」小标签与轻查询；播放器/续播用例全部保留 | `node ppt_video_unit_tests.js` |
 | `ppt_dl_preview.js`（**新增**，automator 实测） | 开发者工具 automator（端口 9424，**不 preview/不推手机**）：列表点击卡片=下载详情（不再进播放器）；真实 deck 形态识别（旧 deck「兼容版未生成 + 在线预览 + 重新处理」/ v2 三行下载）；用 `wx.request` 内存包装器注入 v2 `manifest.files+compat`（不写云端）验证列表「兼容版/PDF」标签、三行大小、两条橙色兼容提示；mock `wx.downloadFile`（进度 42%→成功）→ `wx.openDocument(fileType=pptx,showMenu)`、取消 `abort`、失败、复制链接（剪贴板校验）、`wx.shareFileMessage` 转发链；点「在线预览」进入旧播放器；截图 7 张到 `_shots_ppt_dl/`，结果写 `ppt_dl_preview_result.json` | 先 `"C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat" auto --project "C:\Users\Ko_Li\.openclaw\workspace\mp-class-tools" --auto-port 9424 --trust-project`，再 `node ppt_dl_preview.js`（`WS` 可覆盖 ws） |
 | `ppt_media_preview.js`（**新增**，automator 实测 v2.3） | 无 media_files 的 deck 断言「视频单独下载」分组**不显示**；`wx.request` 包装器注入 §12.8 `media_files`（视频 第7页 150.92s 1024×576 19.2MB / 音频 第12页 225.582s）后断言分组标题、两行「视频1 · 第 7 页」「音频1 · 第 12 页」、时长/分辨率/大小、三行下载仍保留；mock `wx.downloadFile`（进度 42%→成功）→ 视频 `wx.saveVideoToPhotosAlbum`（已保存到相册）/ 相册授权失败 `showModal`+`wx.openSetting` / 视频「转发」`shareFileMessage(fileName)` / 音频 `wx.openDocument` / 媒体行「复制链接」剪贴板；截图 4 张到 `_shots_ppt_media/`，结果写 `ppt_media_preview_result.json` | 同上（9424 端口），再 `node ppt_media_preview.js` |
 
@@ -155,7 +155,7 @@ request + downloadFile 合法域名后用真机正式版验证一张图 + 一段
 `node ppt_media_preview.js` automator **17 passed / 0 failed**（截图 `_shots_ppt_media/`）。
 
 **v2.3 视频/音频单独下载（§12.8）关键点**：分组仅在 `manifest.media_files` 非空时显示（旧 deck 无字段不显示）；行文案由
-`utils/ppt.js::mediaRows` 生成（序号按类型分开、多页列出、时长/分辨率/大小/`name`）；视频下载 → `wx.saveVideoToPhotosAlbum`
+`pages/ppt/utils/ppt.js::mediaRows` 生成（序号按类型分开、多页列出、时长/分辨率/大小/`name`）；视频下载 → `wx.saveVideoToPhotosAlbum`
 （授权失败 `showModal`→`wx.openSetting`，其它失败降级转发/复制链接）；音频下载 → `wx.openDocument`（失败降级转发）；
 `wx.shareFileMessage` 转发文件名用 manifest `name`；媒体行与三行共用同一 `dl` 下载状态（进度/取消/失败 toast/复制链接），
 **真实 deck 当前无 media_files → 分组不显示，转换机上线 media_files 后自动出现**（无需再改客户端）。
@@ -557,6 +557,3 @@ Lead automator（真实只读云端）**13/0**，0 console error。**需用户�
 ④ 上传发布小程序后在真机点「新通知提醒」→ 网页端发一条新通知 → 5 分钟内收到；诊断页确认心跳/lastError；
 ⑤ 真机验水量共享（同宿舍两台设备/两个账号看到同一条记录）与 23A/23B 固定四人间。
 **自动化未发真实订阅消息、未写真实云表。**
-
-
-

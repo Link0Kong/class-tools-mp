@@ -19,7 +19,7 @@ function safeType(v) {
 Page({
   data: {
     type: 'privacy',
-    doc: null,
+    head: null,
     blocks: [],
     toc: [],
     ready: false
@@ -43,7 +43,12 @@ Page({
       this.setData({ ready: false, type: t });
       return;
     }
-    this.setData({ type: t, doc: doc, blocks: doc.blocks || [], toc: doc.toc || [], ready: true });
+    // 只把头部字段放进 data：doc 本身已包含 blocks/toc，若整体 setData 会把 80KB 正文重复传 3 份。
+    const head = {
+      code: doc.code, title: doc.title, meta: doc.meta || [], lead: doc.lead || '',
+      basis: doc.basis || [], version: doc.version || '', effective: doc.effective || '', operator: doc.operator || ''
+    };
+    this.setData({ type: t, head: head, blocks: doc.blocks || [], toc: doc.toc || [], ready: true });
     try { wx.setNavigationBarTitle({ title: doc.title }); } catch (e) { /* 旧基础库/单测无此 API */ }
     if (scrollTop) {
       try { wx.pageScrollTo({ scrollTop: 0, duration: 0 }); } catch (e) { /* ignore */ }
@@ -74,7 +79,7 @@ Page({
 
   onShareAppMessage() {
     const t = this.data.type;
-    const title = (this.data.doc && this.data.doc.title) ? (this.data.doc.title + '｜班级工具') : '班级工具｜隐私政策与用户协议';
+    const title = (this.data.head && this.data.head.title) ? (this.data.head.title + '｜班级工具') : '班级工具｜隐私政策与用户协议';
     return share.message({
       title: title,
       path: '/pages/legal/legal',
@@ -84,7 +89,7 @@ Page({
   },
   onShareTimeline() {
     const t = this.data.type;
-    const title = (this.data.doc && this.data.doc.title) ? (this.data.doc.title + '｜班级工具') : '班级工具｜隐私政策与用户协议';
+    const title = (this.data.head && this.data.head.title) ? (this.data.head.title + '｜班级工具') : '班级工具｜隐私政策与用户协议';
     return share.timeline({
       title: title,
       query: 'type=' + encodeURIComponent(t),

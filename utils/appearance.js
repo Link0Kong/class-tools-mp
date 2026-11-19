@@ -154,24 +154,51 @@ function resolved() {
 // 页面根节点内联样式（page-meta page-style 的值）：
 //   * 跟随系统 → ''（交给 app.wxss 的 prefers-color-scheme，首帧不闪、原生媒体查询继续生效）；
 //   * 浅/深 → 整组 --md-* token + color-scheme（覆盖 app.wxss 在 page 上的声明；子元素继承）。
-function pageStyle() {
-  if (getMode() === 'system') return '';
-  const dark = resolved() === 'dark';
+function styleOf(dark) {
   const t = dark ? DARK : LIGHT;
   const parts = TOKENS.map(function (k) { return '--' + k + ':' + t[k]; });
   parts.push('color-scheme:' + (dark ? 'dark' : 'light'));
   return parts.join(';') + ';';
 }
 
+// 一次性算出「模式 / 实际主题 / 内联样式 / 暗色类」：
+// 以前 pageStyle() + themeClass() + applyChrome() 各自重复 getStorageSync/getAppBaseInfo，
+// 每个页面每次 onShow 要 6–7 次同步桥调用；现在每次 onShow 只读一次 storage。
+function stateOf() {
+  const mode = getMode();
+  const theme = mode === 'system' ? systemTheme() : mode;
+  return {
+    mode: mode,
+    theme: theme,
+    style: mode === 'system' ? '' : styleOf(theme === 'dark'),
+    cls: theme === 'dark' ? 'theme-dark' : ''
+  };
+}
+
+function pageStyle() {
+  return stateOf().style;
+}
+
 // 页面级暗色标记：页面 WXSS 里「页面自有 token / 深色 hero」用 .theme-dark 覆盖（跟随 resolved()，
 // 不再依赖 @media，否则「显式浅色 + 系统深色」时局部仍是暗色）。
 function themeClass() {
-  return resolved() === 'dark' ? 'theme-dark' : '';
+  return stateOf().cls;
 }
 
-// 同步原生外壳：导航栏 / 窗口底色 / 下拉背景 / tabBar（非 tab 页调用 tabBar 会失败，静默）
-function applyChrome() {
-  const c = CHROME[resolved() === 'dark' ? 'dark' : 'light'];
+// tabBar 页（只有这三个页面能成功调用 wx.setTabBarStyle；非 tab 页调用会 fail 并多一次桥调用）
+const TAB_ROUTES = { 'pages/index/index': 1, 'pages/all/all': 1, 'pages/me/me': 1 };
+
+// 同步原生外壳：导航栏 / 窗口底色 / 下拉背景 / tabBar
+// 同一页面实例 + 同一主题只应用一次（切 tab 回来不再重复 4 次桥调用）；新页面实例仍会应用，
+// 因为导航栏颜色是页面级的，不应用会退回 theme.json 的系统色。
+function applyChrome(page, st) {
+  st = st || stateOf();
+  const route = page && page.route ? String(page.route) : '';
+  const isTab = route ? !!TAB_ROUTES[route] : true;   // 无 page（主题切换）时按 tab 页全量应用
+  const sig = st.theme + '|' + (isTab ? 'tab' : 'page');
+  if (page && page.__zqChromeSig === sig) return;
+  if (page) page.__zqChromeSig = sig;
+  const c = CHROME[st.theme === 'dark' ? 'dark' : 'light'];
   try {
     if (wx.setNavigationBarColor) {
       wx.setNavigationBarColor({
@@ -195,7 +222,7 @@ function applyChrome() {
     }
   } catch (e) { /* ignore */ }
   try {
-    if (wx.setTabBarStyle) {
+    if (isTab && wx.setTabBarStyle) {
       wx.setTabBarStyle({
         color: c.tabColor, selectedColor: c.tabSelected,
         backgroundColor: c.tabBg, borderStyle: c.tabBorder,
@@ -209,17 +236,31 @@ function applyChrome() {
 function notifyPages() {
   let pages = [];
   try { pages = getCurrentPages() || []; } catch (e) { pages = []; }
+  const st = stateOf();
   pages.forEach(function (p) {
     try {
-      if (p && typeof p.setData === 'function') p.setData({ themeStyle: pageStyle(), themeClass: themeClass() });
+      if (!p || typeof p.setData !== 'function') return;
+      const d = p.data || {};
+      const patch = {};
+      if (d.themeStyle !== st.style) patch.themeStyle = st.style;
+      if (d.themeClass !== st.cls) patch.themeClass = st.cls;
+      if (Object.keys(patch).length) p.setData(patch);
     } catch (e) { /* 单页失败不影响其它页 */ }
   });
 }
 
 // 页面级同步（页面 onShow 可再调一次，确保后台切换/系统主题变化后立即一致）
+// 只在值真的变了才 setData：绝大多数 onShow 主题没变，避免一次无意义的渲染周期。
 function syncPage(page) {
   try {
-    if (page && typeof page.setData === 'function') page.setData({ themeStyle: pageStyle(), themeClass: themeClass() });
+    if (!page || typeof page.setData !== 'function') return;
+    const st = stateOf();
+    const d = page.data || {};
+    const patch = {};
+    if (d.themeStyle !== st.style) patch.themeStyle = st.style;
+    if (d.themeClass !== st.cls) patch.themeClass = st.cls;
+    if (Object.keys(patch).length) page.setData(patch);
+    applyChrome(page, st);
   } catch (e) { /* ignore */ }
 }
 
@@ -250,12 +291,12 @@ function decoratePages() {
     const wrapped = function (def) {
       def = def || {};
       def.data = Object.assign({}, def.data || {});
-      def.data.themeStyle = pageStyle();
-      def.data.themeClass = themeClass();
+      const st = stateOf();
+      def.data.themeStyle = st.style;
+      def.data.themeClass = st.cls;
       const origOnShow = def.onShow;
       def.onShow = function () {
-        syncPage(this);
-        applyChrome();
+        syncPage(this);   // 已包含「值不变不 setData」+ 首次/主题变化时应用原生外壳
         return origOnShow ? origOnShow.apply(this, arguments) : undefined;
       };
       return rawPage(def);

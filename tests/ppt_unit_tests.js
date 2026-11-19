@@ -158,7 +158,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-A1 URL 解析：http/https/data 直连；相对路径按 base 拼接（三端一致 §5）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.isAbsUrl('https://a.test/x.webp'), true);
       assert.strictEqual(ppt.isAbsUrl('http://a.test/x.webp'), true);
       assert.strictEqual(ppt.isAbsUrl('data:image/png;base64,AAA'), true);
@@ -174,7 +174,7 @@ async function run(test) {
 
     await test('PPT-A2 展示工具：标题/扩展名/fmtSize/fmtWhen', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.baseNameOf('C:\\Users\\a\\班会.pptx'), '班会');
       assert.strictEqual(ppt.baseNameOf('/tmp/演示.PPT'), '演示');
       assert.strictEqual(ppt.extOf('a.PPTX'), 'pptx');
@@ -194,7 +194,7 @@ async function run(test) {
 
     await test('PPT-A3 文件校验：仅 .ppt/.pptx、非空、≤64MiB；fileOf 兼容 path/tempFilePath', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.validateFile({ name: 'a.pptx', size: 10 }).ok, true);
       assert.strictEqual(ppt.validateFile({ name: 'a.PPT', size: 10 }).ok, true);
       const txt = ppt.validateFile({ name: 'a.txt', size: 10 });
@@ -218,7 +218,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-B1 deckId：d + base36(ts) + 6 位随机小写字母数字（§3.1）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const at = 1762700000000;
       const id = ppt.deckId(at);
       assert.ok(/^d[0-9a-z]+$/.test(id), '只有小写字母数字：' + id);
@@ -229,7 +229,7 @@ async function run(test) {
 
     await test('PPT-B2 分片计数/区间：512KiB/片，最后一片可小（§3.2）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const K = 512 * 1024;
       assert.strictEqual(ppt.CHUNK_SIZE, K);
       assert.strictEqual(ppt.chunkCount(0), 0);
@@ -246,7 +246,7 @@ async function run(test) {
 
     await test('PPT-B3 建行字段（§4.1 + RLS）：owner_sid=self、client=mp、uploading、chunk_count、deleted=false', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const now = 1762700000000;
       const row = ppt.deckRow({ deckId: 'dabc123456xy', title: ' 班会 ', sourceName: '班会.pptx', sourceSize: 600 * 1024, sid: SID, ownerName: '测试账号', now: now });
       assert.strictEqual(row.id, 'dabc123456xy');
@@ -270,7 +270,7 @@ async function run(test) {
 
     await test('PPT-B4 上传百分比：done/total 取整并 clamp 0..100', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.uploadPct(0, 24), 0);
       assert.strictEqual(ppt.uploadPct(12, 24), 50);
       assert.strictEqual(ppt.uploadPct(24, 24), 100);
@@ -284,7 +284,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-C1 manifest 归一化：默认值/URL 解析/全局媒体表合并/缩略图兜底（§5）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(manifestFixture());
       assert.ok(m);
       assert.strictEqual(m.v, 1);
@@ -309,7 +309,7 @@ async function run(test) {
 
     await test('PPT-C2 manifest 容错：缺字段/未知值/坏数据不白屏（§5 兼容）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const raw = {
         base: 'https://oss.test/b/',
         slides: [
@@ -349,7 +349,7 @@ async function run(test) {
 
     await test('PPT-C3 媒体条目：无 s 丢弃、音频 k=a、w/h/dur 缺省 0', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.normMedia(null), null);
       assert.strictEqual(ppt.normMedia({ x: 0.1 }), null, '无 s 的热点丢弃');
       assert.strictEqual(ppt.normMedia({ s: 'a.m4a', k: 'a' }).k, 'a');
@@ -366,7 +366,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-D1 扁平 step 序列与页码换算：posOf/advance/pageStart/progressPct/posText', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(manifestFixture());
       const flat = ppt.flatSteps(m);
       assert.strictEqual(flat.length, 3);
@@ -393,7 +393,7 @@ async function run(test) {
 
     await test('PPT-D2 viewAt：当前帧视图（图片/备注/文案/进度/页切换/热点）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(manifestFixture());
       const v = ppt.viewAt(m, 1);
       assert.strictEqual(v.page, 1);
@@ -416,7 +416,7 @@ async function run(test) {
 
     await test('PPT-D3 fitRect（letterbox contain）/ hotRects（0..1 → px）/ 预加载 / 缩略图', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const portrait = ppt.fitRect(390, 844, 1600, 900);
       assert.deepStrictEqual(portrait, { left: 0, top: 312, width: 390, height: 219 }, '竖屏 16:9 上下黑边（(844-219.375)/2 取整）');
       const landscape = ppt.fitRect(844, 390, 1600, 900);
@@ -452,7 +452,7 @@ async function run(test) {
 
     await test('PPT-D4 播放器帧细节：页内步点（step≥2 才显示）、预加载计划、热点圆钮、时长角标', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(manifestFixture());
       // 页内步点：第 1 页有 2 步 → 2 个点且当前步高亮；第 2 页只有 1 步 → 不显示
       const v0 = ppt.viewAt(m, 0);
@@ -496,7 +496,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-E1 状态文案映射（§4.4/§8.1）：上传中%/排队/转换中%/完成/失败/未知', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const mine = { id: 'd1', owner_sid: SID, status: 'uploading', source_size: 1024, error: '' };
       const up = ppt.statusView(mine, { sid: SID, up: { deckId: 'd1', done: 5, total: 10 } });
       assert.strictEqual(up.pill, '上传中 50%');
@@ -529,7 +529,7 @@ async function run(test) {
 
     await test('PPT-E2 deckView 卡片字段 + sortDecks 本人活跃置顶 + listView 过滤', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const d = { id: 'dA', title: '班会', owner_sid: SID, owner_name: '测试账号', status: 'ready', slide_count: 12, step_count: 12, aspect: '16:9', source_size: 2 * 1024 * 1024, created_at: new Date(2026, 10, 9, 8, 5).getTime() };
       const v = ppt.deckView(d, { sid: SID });
       assert.strictEqual(v.meta, '12 页 · 测试账号（我）', 'DESIGN §4.1：元信息「38 页 · 测试账号」');
@@ -563,7 +563,7 @@ async function run(test) {
 
     await test('PPT-E3 转换机心跳：seen_at ≤180s 在线、>180s 离线、坏数据/缺失容错（§3.4）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const now = 1762700000000;
       assert.strictEqual(ppt.HB_OFFLINE_MS, 180000);
       const online = ppt.hbView({ body: { online: true, seen_at: now - 60000, queued: 2, version: '1.0', host: 'pc' }, updated_at: 0 }, now);
@@ -589,7 +589,7 @@ async function run(test) {
 
     await test('PPT-E4 上传中断识别：重试方式（上传中断→重新上传 / 转换失败→重新排队）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.UPLOAD_ERR, '上传中断，请重试');
       assert.strictEqual(ppt.isUploadInterrupted('上传中断，请重试'), true);
       assert.strictEqual(ppt.isUploadInterrupted('转换超时'), false);
@@ -600,7 +600,7 @@ async function run(test) {
 
     await test('PPT-E5 错误文案：身份过期/网络/服务端/413 映射中文（不抛异常）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.reasonOf(new Error('identity-required')), '身份已过期，请重新进入');
       assert.strictEqual(ppt.reasonOf(new Error('cloud-disabled')), '云服务未开启');
       assert.strictEqual(ppt.reasonOf(new Error('http403')), '身份已过期，请重新进入');
@@ -615,7 +615,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-F1 runPool：并发 ≤4、全部完成、进度最终 100%（上传并发调度 mock）', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let inflight = 0, maxInflight = 0, runCount = 0;
       const progress = [];
       const r = await ppt.runPool({
@@ -639,7 +639,7 @@ async function run(test) {
 
     await test('PPT-F2 runPool：单片失败重试 2 次（共 3 次）后成功；永久失败返回 error 且不挂起', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let attempt = 0;
       const ok = await ppt.runPool({
         total: 1, concurrency: 1, retry: 2, backoff: [1, 1],
@@ -661,7 +661,7 @@ async function run(test) {
 
     await test('PPT-F3 runPool：取消后停止派发、不挂起、已完成的 done 计数正确', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let cancelled = false, runCount = 0;
       const p = ppt.runPool({
         total: 20, concurrency: 4, retry: 0,
@@ -686,7 +686,7 @@ async function run(test) {
 
     await test('PPT-F4 uploadChunks：读文件按 offset/length → base64 → 逐片发送（尺寸/序号/进度/mock）', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const size = 512 * 1024 + 1024;          // 2 片：512KiB + 1KiB
       const sent = [];
       const reads = [];
@@ -727,7 +727,7 @@ async function run(test) {
 
     await test('PPT-F5 pickChunkBuffer：readFile 分段/旧库整文件切片/长度不足 → null', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const mk = function (n) { const b = new Uint8Array(n); for (let i = 0; i < n; i++) b[i] = i % 256; return b.buffer; };
       // 新库 readFile 已按 position/length 返回（长度正好 = length）
       const exact = ppt.pickChunkBuffer(mk(8), 1024, 8);
@@ -742,7 +742,7 @@ async function run(test) {
 
     await test('PPT-F5b readChunkBase64：优先 readFile(position,length)（基础库 3.x openSync 旧签名已不可用）', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const prevFs = C.wxMock.getFileSystemManager;
       const prevB64 = C.wxMock.arrayBufferToBase64;
       let readFileArgs = null;
@@ -784,7 +784,7 @@ async function run(test) {
 
     await test('PPT-F5c readChunkBase64：readFile 失败 → openSync(对象签名/旧签名)回退 + closeSync；全失败 reject file-read', async function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const prevFs = C.wxMock.getFileSystemManager;
       const prevB64 = C.wxMock.arrayBufferToBase64;
       let closed = 0;
@@ -846,7 +846,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       C.setReq(function (o) {
         assert.strictEqual(String(o.method).toUpperCase(), 'POST');
         assert.ok(String(o.url).indexOf('/ppt_decks') >= 0, o.url);
@@ -869,7 +869,7 @@ async function run(test) {
       C.clearMem(); C.setIdentity(ID);
       purge(); R('utils/store.js');
       const cloud2 = R('utils/cloud.js'); enableCloud(cloud2);
-      const ppt2 = R('utils/ppt.js');
+      const ppt2 = R('pages/ppt/utils/ppt.js');
       C.setReq(function (o) { o.success({ statusCode: 403, data: { message: 'denied' } }); });
       const bad = await ppt2.createDeck({ sourceName: 'a.pptx', sourceSize: 10 });
       assert.strictEqual(bad.ok, false);
@@ -882,7 +882,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let seen = null;
       C.setReq(function (o) {
         seen = o;
@@ -902,7 +902,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let url = '';
       C.setReq(function (o) {
         url = String(o.url);
@@ -930,7 +930,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let url = '';
       C.setReq(function (o) {
         url = String(o.url);
@@ -963,7 +963,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const posts = [];
       C.setReq(function (o) {
         const m = String(o.method || 'GET').toUpperCase();
@@ -1000,7 +1000,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const ms = [];
       C.setReq(function (o) {
         const m = String(o.method || 'GET').toUpperCase();
@@ -1028,7 +1028,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const seen = [];
       C.setReq(function (o) {
         const u = String(o.url);
@@ -1051,7 +1051,7 @@ async function run(test) {
       C.clearMem(); C.setIdentity(ID);
       purge(); R('utils/store.js');
       const cloud2 = R('utils/cloud.js'); enableCloud(cloud2);
-      const ppt2 = R('utils/ppt.js');
+      const ppt2 = R('pages/ppt/utils/ppt.js');
       C.setReq(function (o) { o.success({ statusCode: 200, data: [] }); });
       const hb2 = await ppt2.heartbeat();
       assert.strictEqual(hb2.ok, true);
@@ -1065,7 +1065,7 @@ async function run(test) {
       purge();
       const app = JSON.parse(src('app.json'));
       assert.ok(allPages(app).indexOf('pages/ppt/ppt') >= 0, 'app.json 注册 pages/ppt/ppt（分包）');
-      assert.ok(allPages(app).indexOf('pages/pptplay/pptplay') >= 0, 'app.json 注册 pages/pptplay/pptplay（分包）');
+      assert.ok(allPages(app).indexOf('pages/ppt/pptplay/pptplay') >= 0, 'app.json 注册 pages/ppt/pptplay/pptplay（分包）');
       assert.strictEqual(app.tabBar.list.length, 3, '不新增 tabBar');
       const tools = R('utils/tools.js');
       const t = tools.toolOf('ppt');
@@ -1083,7 +1083,7 @@ async function run(test) {
 
     await test('PPT-H2 工程：两页 4 文件 + 分享 handler；列表封面 webp + 空态唯一小字；播放器 custom/auto/disableScroll', function () {
       purge();
-      ['pages/ppt/ppt', 'pages/pptplay/pptplay'].forEach(function (p) {
+      ['pages/ppt/ppt', 'pages/ppt/pptplay/pptplay'].forEach(function (p) {
         ['.js', '.wxml', '.wxss', '.json'].forEach(function (ext) {
           assert.ok(fs.existsSync(path.join(ROOT, p + ext)), '缺少 ' + p + ext);
         });
@@ -1094,7 +1094,7 @@ async function run(test) {
         const json = JSON.parse(src(p + '.json'));
         assert.ok(json.navigationBarTitleText, p + ' 缺少标题');
       });
-      const play = JSON.parse(src('pages/pptplay/pptplay.json'));
+      const play = JSON.parse(src('pages/ppt/pptplay/pptplay.json'));
       assert.strictEqual(play.navigationStyle, 'custom', '播放器自定义导航（全屏舞台）');
       assert.strictEqual(play.pageOrientation, 'auto', '播放器允许横屏');
       assert.strictEqual(play.disableScroll, true, '播放器禁页面滚动（手势用于切页）');
@@ -1103,7 +1103,7 @@ async function run(test) {
 
       // DESIGN §3.2 硬前置：<image> 必须 webp="{{true}}"，否则真机 .webp 全白
       const listWxml = src('pages/ppt/ppt.wxml');
-      const playWxml = src('pages/pptplay/pptplay.wxml');
+      const playWxml = src('pages/ppt/pptplay/pptplay.wxml');
       assert.ok(/webp="\{\{true\}\}"/.test(listWxml), '列表封面 image 必须带 webp 属性（真机 .webp）');
       assert.ok((playWxml.match(/webp="\{\{true\}\}"/g) || []).length >= 2, '播放器主图与缩略图都必须带 webp 属性');
       // DESIGN §4.2：小程序唯一上传入口 = 聊天记录；空态一行小字是唯一允许的说明
@@ -1117,7 +1117,7 @@ async function run(test) {
       const listJs = src('pages/ppt/ppt.js');
       const listWxml = src('pages/ppt/ppt.wxml');
       assert.ok(/chooseMessageFile/.test(listJs), '选文件入口');
-      assert.ok(/uploadChunks/.test(listJs) && /uploadChunks|readChunkBase64/.test(src('utils/ppt.js')) && /readChunkBase64|getFileSystemManager/.test(src('utils/ppt.js')), '分片读取/上传链路');
+      assert.ok(/uploadChunks/.test(listJs) && /uploadChunks|readChunkBase64/.test(src('pages/ppt/utils/ppt.js')) && /readChunkBase64|getFileSystemManager/.test(src('pages/ppt/utils/ppt.js')), '分片读取/上传链路');
       assert.ok(/POLL_MS = 10000/.test(listJs), '可见时 10s 轮询');
       assert.ok(/onHide\(\)/.test(listJs) && /_stopPoll/.test(listJs), '隐藏停止轮询');
       assert.ok(/_startPoll/.test(listJs) && /onShow\(\)/.test(listJs), 'onShow 立即拉取 + 启动轮询');
@@ -1133,9 +1133,9 @@ async function run(test) {
 
     await test('PPT-H4 工程：播放器（step 语义/媒体层生命周期/自动隐藏/步点/黑屏/转场/缩略图/备注/预加载/失败降级/释放）', function () {
       purge();
-      const playJs = src('pages/pptplay/pptplay.js');
-      const playWxml = src('pages/pptplay/pptplay.wxml');
-      const playWxss = src('pages/pptplay/pptplay.wxss');
+      const playJs = src('pages/ppt/pptplay/pptplay.js');
+      const playWxml = src('pages/ppt/pptplay/pptplay.wxml');
+      const playWxss = src('pages/ppt/pptplay/pptplay.wxss');
       // image + video；controls 原生控制；object-fit contain
       assert.ok(/<image/.test(playWxml) && /<video/.test(playWxml), '图片舞台 + 视频媒体层');
       assert.ok(/controls/.test(playWxml) && /object-fit="contain"/.test(playWxml), '视频原生 controls + contain');
@@ -1347,7 +1347,7 @@ async function run(test) {
       C.wxMock.enableAlertBeforeUnload = function () {};
       C.wxMock.disableAlertBeforeUnload = function () {};
       C.wxMock.downloadFile = function () {};
-      const def = loadPageDef('pages/pptplay/pptplay.js');
+      const def = loadPageDef('pages/ppt/pptplay/pptplay.js');
       const ctx = ctxOf(def);
       def.onLoad.call(ctx, { id: 'dabc123456xy' });
       await waitFor(function () { return ctx.data.state === 'ready'; }, 2000);

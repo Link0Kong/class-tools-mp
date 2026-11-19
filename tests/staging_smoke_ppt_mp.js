@@ -110,7 +110,7 @@ async function waitFor(fn, timeoutMs, label) {
     report.steps.push({ step: 'list', route: listView.route, count: listView.count, cover: listView.cover, hasCover: listView.hasCover, state: listView.state });
 
     // 3) 打开 PPT 播放器（真实 deck；manifest + 媒体 + 首帧封面均走 staging/ECS）
-    await mp.navigateTo('/pages/pptplay/pptplay?id=' + encodeURIComponent(DECK));
+    await mp.navigateTo('/pages/ppt/pptplay/pptplay?id=' + encodeURIComponent(DECK));
     await sleep(4500); // manifest 拉取 + 首图/缩略图加载
     const view = await mp.evaluate(function () {
       const p = getCurrentPages().slice(-1)[0];

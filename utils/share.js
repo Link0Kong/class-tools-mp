@@ -26,8 +26,17 @@ function qs(query) {
   return parts.length ? '?' + parts.join('&') : '';
 }
 
-// 打开原生分享菜单（转发 + 朋友圈）；不支持 menus 的旧基础库自动降级为默认转发
+// 打开原生分享菜单（转发 + 朋友圈）；不支持 menus 的旧基础库自动降级为默认转发。
+// 同一页面实例只调用一次：切 tab/回前台时 onShow 会反复调 share.enable()，
+// showShareMenu 是页面级设置且会保持，不必每次过桥。
 function enable() {
+  let page = null;
+  try {
+    const pages = getCurrentPages();
+    page = pages && pages.length ? pages[pages.length - 1] : null;
+  } catch (e) { /* 非页面环境（单测/启动早期）：照常调用 */ }
+  if (page && page.__zqShareOn) return;
+  if (page) page.__zqShareOn = true;
   try {
     wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] });
   } catch (e) {

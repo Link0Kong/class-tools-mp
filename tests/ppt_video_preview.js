@@ -112,7 +112,7 @@ async function shot(mp, name) {
     if (!page || String(page.path || '').indexOf('pptplay') < 0) {
       // 兜底：卡片点击未跳转（例如卡片状态非 ready）时直接导航，保证后续用例可跑
       console.log('[warn] 卡片点击未进入播放器，改用 navigateTo');
-      page = await mp.navigateTo('/pages/pptplay/pptplay?id=' + encodeURIComponent(DECK));
+      page = await mp.navigateTo('/pages/ppt/pptplay/pptplay?id=' + encodeURIComponent(DECK));
       await sleep(1500);
     }
     ok('整卡点击进入播放器', !!page && String(page.path || '').indexOf('pptplay') >= 0, page && page.path);
@@ -386,7 +386,7 @@ async function shot(mp, name) {
     await sleep(3000);
     page = await mp.currentPage();
     if (!page || String(page.path || '').indexOf('pptplay') < 0) {
-      page = await mp.navigateTo('/pages/pptplay/pptplay?id=' + encodeURIComponent(DECK));
+      page = await mp.navigateTo('/pages/ppt/pptplay/pptplay?id=' + encodeURIComponent(DECK));
       await sleep(1500);
     }
     const prefDbg = await mp.evaluate(function () { return { modePref: wx.getStorageSync('zq_ppt_mode_v1'), resume: wx.getStorageSync('zq_ppt_resume_v1') }; });
@@ -463,7 +463,7 @@ async function shot(mp, name) {
     });
     await mp.navigateBack();
     await sleep(1200);
-    await mp.navigateTo('/pages/pptplay/pptplay?id=dnope000000');
+    await mp.navigateTo('/pages/ppt/pptplay/pptplay?id=dnope000000');
     await sleep(3000);
     const badPage = await mp.currentPage();
     const bd = await dataOf(badPage);
@@ -494,8 +494,3 @@ async function shot(mp, name) {
     process.exit(1);
   }
 })();
-
-
-
-
-

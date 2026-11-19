@@ -4,13 +4,13 @@
 <view class="page pad-b lg-page {{themeClass}}">
   <block wx:if="{{ready}}">
     <view class="lg-head">
-      <view class="lg-kicker">{{doc.code}}</view>
-      <view class="lg-title">{{doc.title}}</view>
+      <view class="lg-kicker">{{head.code}}</view>
+      <view class="lg-title">{{head.title}}</view>
       <view class="lg-meta">
-        <text class="lg-meta-i" wx:for="{{doc.meta}}" wx:key="k">{{item.k}} {{item.v}}</text>
+        <text class="lg-meta-i" wx:for="{{head.meta}}" wx:key="k">{{item.k}} {{item.v}}</text>
       </view>
-      <view class="lg-lead" wx:if="{{doc.lead}}">{{doc.lead}}</view>
-      <view class="lg-basis" wx:for="{{doc.basis}}" wx:key="*this">{{item}}</view>
+      <view class="lg-lead" wx:if="{{head.lead}}">{{head.lead}}</view>
+      <view class="lg-basis" wx:for="{{head.basis}}" wx:key="*this">{{item}}</view>
       <view class="lg-actions">
         <view class="lg-btn" bindtap="back">返回</view>
         <view class="lg-btn lg-btn--on" data-type="{{type === 'privacy' ? 'terms' : 'privacy'}}" bindtap="switchDoc">{{type === 'privacy' ? '用户协议' : '隐私政策'}}</view>
@@ -45,7 +45,7 @@
       </block>
     </view>
 
-    <view class="lg-foot">正文版本 {{doc.version}} · 生效 {{doc.effective}} · 运营者 {{doc.operator}}</view>
+    <view class="lg-foot">正文版本 {{head.version}} · 生效 {{head.effective}} · 运营者 {{head.operator}}</view>
     <view class="lg-back" bindtap="back">返回</view>
   </block>
 

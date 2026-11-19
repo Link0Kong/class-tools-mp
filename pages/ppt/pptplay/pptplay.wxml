@@ -1,4 +1,4 @@
-<!-- pages/pptplay/pptplay.wxml —— 全屏播放器（契约 §5/§7/§8.1/§11；DESIGN §4.3–4.9）
+<!-- pages/ppt/pptplay/pptplay.wxml —— 全屏播放器（契约 §5/§7/§8.1/§11；DESIGN §4.3–4.9）
      层级：图片层 10 → 媒体热点 20 → 视频层 30 → 顶部进度 40 → 控制条 41 → 抽屉遮罩/抽屉 50/51 → 黑屏/轻提示 60
      两种模式（§11.3.1）：「原样播放」视频（manifest.video，网络良好/用户偏好时默认）与「分步浏览」。
      全屏由页面配置承担（navigationStyle:custom + pageOrientation:auto + disableScroll），不叠站点导航/底栏。 -->

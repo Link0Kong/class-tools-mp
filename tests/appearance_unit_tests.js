@@ -237,7 +237,11 @@ module.exports.run = async function (test) {
     assert.strictEqual(captured.data.a, 1, '页面原 data 保留');
     // 2) onShow：同步 themeStyle/themeClass + 应用原生外壳 + 继续调用原 onShow(this)
     const setDataLog = [];
-    const fakePage = { setData(d) { setDataLog.push(d); }, route: 'pages/x/x' };
+    const fakePage = {
+      data: { themeStyle: '', themeClass: '' },
+      setData(d) { setDataLog.push(d); Object.assign(this.data, d); },
+      route: 'pages/all/all'
+    };
     pages.push(fakePage);
     C.log.nav.length = 0; C.log.tab.length = 0;
     captured.onShow.call(fakePage);
@@ -247,6 +251,14 @@ module.exports.run = async function (test) {
     assert.strictEqual(C.log.tab.length, 1, 'onShow 同步 tabBar');
     assert.strictEqual(origShowCalls, 1, '原 onShow 被调用一次');
     assert.strictEqual(origThis, fakePage, '原 onShow 的 this 正确');
+    // 2b) 同一页面实例再次 onShow：主题未变 → 不 setData、不重复 4 次原生桥调用
+    setDataLog.length = 0;
+    C.log.nav.length = 0; C.log.tab.length = 0;
+    captured.onShow.call(fakePage);
+    assert.strictEqual(setDataLog.length, 0, '主题未变不重复 setData');
+    assert.strictEqual(C.log.nav.length, 0, '主题未变不重复导航栏');
+    assert.strictEqual(C.log.tab.length, 0, '主题未变不重复 tabBar');
+    assert.strictEqual(origShowCalls, 2, '原 onShow 仍被调用');
     // 3) 幂等：再次 decoratePages 不重复包装
     const wrappedRef = global.Page;
     assert.strictEqual(ap.decoratePages(), true);

@@ -13,9 +13,9 @@
 //     step 扁平序列、热点矩形、预加载计划、页码换算全部是纯函数（可单测）；
 //   * 状态文案与列表排序严格按契约 §4.4 / §8.1；转换机心跳按 §3.4 的 180s 离线判定。
 //
-// 页面：pages/ppt（列表 + 上传）、pages/pptplay（全屏播放器）。
-const cloud = require('./cloud.js');
-const CFG = require('./cloud-config.js');
+// 页面：pages/ppt/ppt（列表 + 上传）、pages/ppt/pptplay/pptplay（全屏播放器）。
+const cloud = require('../../../utils/cloud.js');
+const CFG = require('../../../utils/cloud-config.js');
 
 /* ============================================================
  * 常量（与契约一致；改这里必须同步 CONTRACT.md）
@@ -397,7 +397,7 @@ function normMediaFiles(raw, base) {
     .filter(Boolean)
     .slice(0, 20);
 }
-// §12.8 客户端行数据（供 pages/pptdl 渲染 + 单测）：
+// §12.8 客户端行数据（供 pages/ppt/pptdl 渲染 + 单测）：
 //   [{key,no,kind,label:'视频1 · 第 7 页',pageText,specText:'2:30 · 1024×576',sizeText,metaText,name,url,ext,...}]
 //   序号按类型分别从 1 开始（视频1/视频2/音频1…）；同名媒体多页 → 「第 7、12 页」；文件名用 f.name。
 function mediaRows(manifest) {

@@ -205,7 +205,7 @@ async function waitFor(fn, timeout, step) {
       await sleep(2200);
       let page = await curPage(mp);
       if (!page || String(page.path || '').indexOf('pptdl') < 0) {
-        page = await navTo(mp, '/pages/pptdl/pptdl?id=' + encodeURIComponent(DECK));
+        page = await navTo(mp, '/pages/ppt/pptdl/pptdl?id=' + encodeURIComponent(DECK));
         await sleep(1500);
       }
       const d = await waitFor(async function () { const x = await dataOf(page); return x.state === 'ready' ? x : null; }, 15000);

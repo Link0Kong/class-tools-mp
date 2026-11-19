@@ -1,4 +1,4 @@
-// pages/pptdl/pptdl.js —— 下载中心 · 单 deck 下载详情（v2.0，契约 §12.4）
+// pages/ppt/pptdl/pptdl.js —— 下载中心 · 单 deck 下载详情（v2.0，契约 §12.4）
 //
 // 定位（§12）：本工具 = PPT 兼容性处理与多端下载中心；点击列表卡片进入本页（不再默认进播放器）。
 //   * 数据：GET /ppt_decks?select=manifest&id=eq.<id>（utils/ppt.js getManifest；v2 兼容包/PDF/原始、旧 deck 兼容）；
@@ -10,15 +10,15 @@
 //     wx.openDocument({filePath,fileType:'pptx'|'pdf'|…,showMenu:true}) 用系统/Office/WPS 打开；
 //     可用 wx.shareFileMessage 时「转发到聊天/电脑」，不可用降级「复制链接」；另每行「复制链接」；
 //   * 兼容提示（§12.2）：compat.warnings 橙色逐条显示（外链媒体/字体未嵌入等，不删除内容）；
-//   * 旧 deck（无 files）：兼容版未生成 + 在线预览（旧 pages/pptplay 保留为预览入口）+ 重新处理（retryDeck）；
+//   * 旧 deck（无 files）：兼容版未生成 + 在线预览（旧 pages/ppt/pptplay 保留为预览入口）+ 重新处理（retryDeck）；
 //   * 状态非 ready：只显示状态/进度，不显示下载；失败显示 error 摘要 + 本人可重新处理；
 //   * 文件标签由 utils/ppt.js 缓存（列表页「兼容版」「PDF」标签复用）。
 //
 // 安全：只读云端 + 本机临时文件；不打印任何 token；下载失败不白屏、可重试。
-const identity = require('../../utils/identity.js');
-const ppt = require('../../utils/ppt.js');
-const util = require('../../utils/util.js');
-const share = require('../../utils/share.js');
+const identity = require('../../../utils/identity.js');
+const ppt = require('../utils/ppt.js');
+const util = require('../../../utils/util.js');
+const share = require('../../../utils/share.js');
 
 Page({
   data: {
@@ -313,7 +313,7 @@ Page({
   openPreview() {
     if (this._dead || !this._id) return;
     if (this.data.dl) { util.toast('正在下载，请稍候'); return; }
-    wx.navigateTo({ url: '/pages/pptplay/pptplay?id=' + encodeURIComponent(this._id) });
+    wx.navigateTo({ url: '/pages/ppt/pptplay/pptplay?id=' + encodeURIComponent(this._id) });
   },
 
   /* ---------------- 重新处理（旧 deck 补 compat / 失败重排；§12.3/§12.4.3） ---------------- */
@@ -342,7 +342,7 @@ Page({
   onShareAppMessage() {
     return share.message({
       title: '班级工具｜演示下载',
-      path: '/pages/pptdl/pptdl?id=' + encodeURIComponent(this._id || ''),
+      path: '/pages/ppt/pptdl/pptdl?id=' + encodeURIComponent(this._id || ''),
       imageUrl: '/images/share/default.png'
     });
   },

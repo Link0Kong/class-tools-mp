@@ -1,4 +1,4 @@
-// pages/pptplay/pptplay.js —— 全屏播放器（PPT 分步图片 + 媒体热点 + v1.2「原样播放」视频）
+// pages/ppt/pptplay/pptplay.js —— 全屏播放器（PPT 分步图片 + 媒体热点 + v1.2「原样播放」视频）
 //
 // 契约：web/ppt/CONTRACT.md §5（manifest 播放语义）/ §7（页切换动效）/ §8.1 / §8.3 /
 //       §11（v1.2 原样播放 + 便捷操作）/ §11.4（小程序媒体传输降级链）
@@ -20,10 +20,10 @@
 //     视频/音频热点失败 → 热点灰化「视频不可用」，不阻塞翻页；
 //   * 预加载：仅分步模式（原样播放不浪费 40–55MB 视频带宽），wx.downloadFile 并发 ≤4；2G/断网暂停；
 //   * 退出：控制条「更多 → 退出演示」/ 系统返回（有进度时 enableAlertBeforeUnload 二次确认）。
-const identity = require('../../utils/identity.js');
-const ppt = require('../../utils/ppt.js');
-const util = require('../../utils/util.js');
-const share = require('../../utils/share.js');
+const identity = require('../../../utils/identity.js');
+const ppt = require('../utils/ppt.js');
+const util = require('../../../utils/util.js');
+const share = require('../../../utils/share.js');
 
 const CTRL_HIDE_MS = 3200;          // 任意触摸 → 控制条 3s 后淡出（DESIGN §4.4）
 const TITLE_FADE_MS = 3000;         // 左上文件名 3s 后淡出，之后不再出现（DESIGN §4.3）

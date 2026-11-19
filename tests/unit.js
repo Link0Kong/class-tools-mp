@@ -404,6 +404,24 @@ const fakeCanvas = (() => {
     const d = share.message({});
     assert.ok(d.title && d.path.indexOf('/pages/') === 0 && d.imageUrl === '/images/share/default.png', '缺省值应可用');
     assert.doesNotThrow(() => share.enable(), 'enable 在无 wx.showShareMenu 的环境也不应抛错');
+    // 2026-11-19 性能：同一页面实例只 showShareMenu 一次；新页面实例仍会调用
+    const gcp = global.getCurrentPages;
+    const origShow = global.wx.showShareMenu;
+    const calls = [];
+    try {
+      global.wx.showShareMenu = (o) => { calls.push(o); };
+      const p1 = {};
+      global.getCurrentPages = () => [p1];
+      share.enable(); share.enable();
+      assert.strictEqual(calls.length, 1, '同一页面实例重复 enable 只调用一次');
+      const p2 = {};
+      global.getCurrentPages = () => [p2];
+      share.enable();
+      assert.strictEqual(calls.length, 2, '新页面实例重新调用一次');
+    } finally {
+      global.wx.showShareMenu = origShow;
+      if (gcp === undefined) { try { delete global.getCurrentPages; } catch (e) {} } else global.getCurrentPages = gcp;
+    }
   });
 
   await test('flow：patch/get/clear 持久化', () => {

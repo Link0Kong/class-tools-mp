@@ -9,7 +9,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 (async () => {
   const mp = await automator.connect({ wsEndpoint: WS });
   console.log('[mp] connected');
-  await mp.reLaunch('/pages/pptplay/pptplay?id=' + DECK);
+  await mp.reLaunch('/pages/ppt/pptplay/pptplay?id=' + DECK);
   await sleep(2500);
   const page = await mp.currentPage();
   console.log('[mp] page:', page && page.path);

@@ -1,5 +1,23 @@
 # 班级工具站 · 原生微信小程序（v25 / 2.0.0）
 
+> **2026-11-19（待上传；代码版本仍 2.0.0）· 页面加载性能：PPT 三页合并单分包 + `utils/ppt.js` 移出主包 + 去掉工具页预下载 + 外观 onShow 去重**：
+> 用户反馈「各页面加载速率严重变慢，主包内有未使用的 `ppt.js`」。核查：`utils/ppt.js`（74.2KB）只被 3 个 PPT 分包页面
+> `require`，主包页面无任何引用；但它留在主包、PPT 三页又各自是独立分包，所以不能直接删除。同时 `pages/all` 的
+> `preloadRule` 会在 WiFi 下把 3 个 PPT 分包（编译体积约 90KB）后台下载，和工具页/后续页面的首屏请求抢带宽。改动：
+> ① `pages/pptdl`、`pages/pptplay` 并入 `pages/ppt` 分包（新路由 `/pages/ppt/pptdl/pptdl`、`/pages/ppt/pptplay/pptplay`），
+> `utils/ppt.js` 移到 `pages/ppt/utils/ppt.js`，主包不再包含该模块（`utils/ppt.js` 主包引用 0）；
+> ② 删除 `preloadRule`，打开工具页不再预下载 PPT 分包（首次打开演示页时才下载，122,076 B）；
+> ③ `utils/appearance.js` 每个页面每次 onShow 只读一次 storage，主题未变不再 setData；同一页面实例 + 同一主题只应用一次
+> 原生外壳（4 次桥调用 → 0；非 tab 页不再调用注定失败的 `setTabBarStyle`）；`utils/share.js` 同一页面实例只
+> `showShareMenu` 一次。
+> ④ 法律正文页 `setData` 不再把 `doc`（内含 blocks/toc）整份 + `blocks` + `toc` 三份传给渲染层，改为
+> `head + blocks + toc` 一份，首帧少传约 2/3 正文数据。
+> 实测（devtools automator，官方测试身份）：非 tab 页 onShow 原生 API 调用 4 → 3；连续切 tab 9 次 36 → 12 次；
+> 主包编译体积 **1,041,453 → 1,010,114 B（−31,339 B，−3.0%）**，源码主包 −74.2KB；`unit.js` **613 passed / 7 failed**
+> （7 项均为既有 ko-link / 时间依赖失败，与本次无关）、`staticcheck.py` 0、`code_quality_check.js` 0；
+> PPT 三条新路由 automator 冒烟通过（列表 ready / 详情与播放器错误态均正常显示）。
+> **VERSION 仍 2.0.0，需用户上传发布后生效。**
+>
 > **2026-11-17（待上传；代码版本仍 2.0.0）· 性能专项：通知整表 14MB → 0.30MB + 启动/请求错误率优化**：
 > 微信后台性能报告：打开率 93.85%（iOS 50%）、总启动 1638ms、请求耗时 251ms、**请求错误率 45.45%**。
 > 根因：`public.notices` auto 行 body 内嵌 data URI，整表已达 **14.07MB**；冷启动/签名变化即拉整表，
@@ -1390,8 +1408,3 @@ AI 原子接口运行在独立 JS 环境，**不能 require 主包 utils/**，�
 
 
 > **2026-11-09（待上传；代码版本仍 2.0.0）· 诊断 v2.1**：AI 结论改为**下挂到对应异常项下方**（折叠一行：severity 点+标题+状态胶囊+⚙；点击展开原因/建议/flow/关联修复；无关联进「其它诊断」折叠区），进展轮询 15s→**10s**，设备上报/展示信息最小化（无品牌/型号/语言，detail 必带 check id）；WXML 嵌套数组限制用预渲染文本兜底。详见 CHANGELOG 顶部条目。
-
-
-
-
-

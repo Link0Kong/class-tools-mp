@@ -1,4 +1,4 @@
-/* pages/pptplay/pptplay.wxss —— 全屏播放器（纯黑舞台；DESIGN §4.3–4.9）
+/* pages/ppt/pptplay/pptplay.wxss —— 全屏播放器（纯黑舞台；DESIGN §4.3–4.9）
  * 尺寸用 px（x 1 = 1px，与设计稿 1:1）；rpx 只用于不关键的内边距。
  * 播放器内部一律中性黑白，不使用品牌色（唯一例外：缩略图当前页描边/音频波形 #4E9082）。 */
 

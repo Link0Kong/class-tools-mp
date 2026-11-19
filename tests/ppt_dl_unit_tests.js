@@ -249,7 +249,7 @@ async function loadDetailPage(C, opts) {
   const cloud = R('utils/cloud.js');
   enableCloud(cloud);
   setDetailReq(C, o.manifest === undefined ? compatManifest() : o.manifest, o.deck || deckRow());
-  const def = loadPageDef('pages/pptdl/pptdl.js');
+  const def = loadPageDef('pages/ppt/pptdl/pptdl.js');
   const ctx = ctxOf(def);
   def.onLoad.call(ctx, { id: DECK });
   if (ctx.data.state !== 'denied') def.onShow.call(ctx);
@@ -267,7 +267,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-DL-A1 manifest v2：slides 可为空，files.compat/pdf/source 解析（URL/大小/名字/页数）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(compatManifest());
       assert.ok(m, 'v2 兼容清单应可解析（slides=[] 合法）');
       assert.strictEqual(m.v, 2);
@@ -291,7 +291,7 @@ async function run(test) {
 
     await test('PPT-DL-A2 旧 v1 manifest 兼容：slides 保留、files 全 null、hasFiles=false（不回归旧 deck）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(legacyManifest());
       assert.ok(m);
       assert.strictEqual(m.v, 1);
@@ -309,7 +309,7 @@ async function run(test) {
 
     await test('PPT-DL-A3 manifest v2 容错：files 缺 s 丢弃、坏 compat 默认值、绝对 URL、JSON 字符串、未知字段忽略', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest({
         base: BASE,
         files: {
@@ -341,7 +341,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-DL-B1 fileRows：三行顺序=兼容版/PDF/原始，标签与大小、PDF 页数、建议文件名扩展名', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(compatManifest());
       const rows = ppt.fileRows(m, { title: '团日活动' });
       assert.deepStrictEqual(rows.map(function (r) { return r.key; }), ['compat', 'pdf', 'source']);
@@ -363,7 +363,7 @@ async function run(test) {
 
     await test('PPT-DL-B2 旧 deck：无 files 时用 manifest.src 给「原始文件」行（仍可下载原件，§12.6）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const rows = ppt.fileRows(ppt.normManifest(legacyManifest()), { title: '旧演示' });
       assert.strictEqual(rows.length, 1);
       assert.strictEqual(rows[0].key, 'source');
@@ -379,7 +379,7 @@ async function run(test) {
 
     await test('PPT-DL-B3 safeFileName/openTypeOf：去非法字符、强制扩展名、空标题兜底、打开类型容错', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.safeFileName('a:b*c?"<>|.pptx', 't', 'pptx'), 'abc.pptx');
       assert.strictEqual(ppt.safeFileName('dir/a b.pptx', 't', 'pptx'), 'a b.pptx', '带目录只取文件名');
       assert.strictEqual(ppt.safeFileName('', '团日活动', 'pdf'), '团日活动.pdf');
@@ -399,7 +399,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-DL-C1 详情视图（v2 ready）：三行 + 兼容提示 + 元信息；无 slides/video 不显示在线预览', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const deck = deckRow();
       const view = ppt.downloadDetailView(ppt.normManifest(compatManifest()), deck, { mine: true });
       assert.strictEqual(view.isReady, true);
@@ -420,7 +420,7 @@ async function run(test) {
 
     await test('PPT-DL-C2 旧 deck：兼容版未生成 + 在线预览可用 + 原始文件行 + 重新处理（本人/管理员）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const view = ppt.downloadDetailView(ppt.normManifest(legacyManifest()), deckRow(), { mine: true });
       assert.strictEqual(view.legacy, true);
       assert.strictEqual(view.missingCompat, true);
@@ -442,7 +442,7 @@ async function run(test) {
 
     await test('PPT-DL-C3 未就绪/失败 deck：只显示状态与进度，不显示下载文件', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const processing = ppt.downloadDetailView(null, deckRow({ status: 'processing', progress: 42 }), { mine: true });
       assert.strictEqual(processing.isReady, false);
       assert.strictEqual(processing.rows.length, 0);
@@ -458,7 +458,7 @@ async function run(test) {
 
     await test('PPT-DL-C4 `--compat-only` 合并后的 deck：三行下载 + 旧 slides 保留 → 仍可在线预览（§12.3/§12.5）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const mm = compatManifest();
       mm.slides = legacyManifest().slides;         // compat-only 保留旧预览字段
       mm.video = { s: 'deck.mp4', dur: 60, chapters: [] };
@@ -475,7 +475,7 @@ async function run(test) {
     await test('PPT-DL-D1 列表标签：filesMap → deckView.tagCompat/tagPdf；无缓存不显示', function () {
       purge();
       C.clearMem();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const deck = deckRow();
       const filesMap = {};
       filesMap[DECK] = { compat: true, pdf: true, at: Date.now() };
@@ -498,7 +498,7 @@ async function run(test) {
       C.setIdentity(ID);
       const cloud = R('utils/cloud.js');
       enableCloud(cloud);
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let url = '';
       C.setReq(function (o) {
         url = String(o.url);
@@ -524,7 +524,7 @@ async function run(test) {
     await test('PPT-DL-D3 rememberFiles：详情页拉过 manifest 后写缓存（列表标签离线可用）', function () {
       purge();
       C.clearMem();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       ppt.rememberFiles('deckZ', { compat: { s: 'c' }, pdf: null });
       const map = ppt.filesMap();
       assert.strictEqual(map.deckZ.compat, true);
@@ -679,7 +679,7 @@ async function run(test) {
       assert.strictEqual(ctx.data.d.allowRetry, true);
       // 在线预览 → 旧播放器
       def.openPreview.call(ctx);
-      assert.ok(C.navLog().some(function (u) { return u.indexOf('/pages/pptplay/pptplay?id=' + DECK) >= 0; }), '预览跳旧播放器');
+      assert.ok(C.navLog().some(function (u) { return u.indexOf('/pages/ppt/pptplay/pptplay?id=' + DECK) >= 0; }), '预览跳旧播放器');
       // 重新处理 → PATCH status=queued
       C.clearMem();
       const before = C.reqLog().length;
@@ -720,13 +720,13 @@ async function run(test) {
     await test('PPT-DL-F1 app.json 注册 pptdl（共 24 页、不新增 tabBar）、页面 4 文件 + 分享 handler；VERSION 2.0.0', function () {
       purge();
       const app = JSON.parse(src('app.json'));
-      assert.ok(allPages(app).indexOf('pages/pptdl/pptdl') >= 0, '注册下载详情页（分包）');
-      assert.ok(allPages(app).indexOf('pages/pptplay/pptplay') >= 0, '旧播放器保留（预览入口，分包）');
+      assert.ok(allPages(app).indexOf('pages/ppt/pptdl/pptdl') >= 0, '注册下载详情页（分包）');
+      assert.ok(allPages(app).indexOf('pages/ppt/pptplay/pptplay') >= 0, '旧播放器保留（预览入口，分包）');
       assert.strictEqual(app.tabBar.list.length, 3, '不新增 tabBar');
       ['.js', '.wxml', '.wxss', '.json'].forEach(function (ext) {
-        assert.ok(fs.existsSync(path.join(ROOT, 'pages/pptdl/pptdl' + ext)), '缺少 ppdl' + ext);
+        assert.ok(fs.existsSync(path.join(ROOT, 'pages/ppt/pptdl/pptdl' + ext)), '缺少 ppdl' + ext);
       });
-      const js = src('pages/pptdl/pptdl.js');
+      const js = src('pages/ppt/pptdl/pptdl.js');
       ['onShareAppMessage', 'onShareTimeline', 'share.enable()', 'utils/share.js'].forEach(function (k) {
         assert.ok(js.indexOf(k) >= 0, '详情页缺少 ' + k);
       });
@@ -735,9 +735,9 @@ async function run(test) {
 
     await test('PPT-DL-F2 详情页静态：wx.downloadFile/openDocument(showMenu)/shareFileMessage/复制链接/兼容提示/旧 deck', function () {
       purge();
-      const js = src('pages/pptdl/pptdl.js');
-      const wxml = src('pages/pptdl/pptdl.wxml');
-      const wxss = src('pages/pptdl/pptdl.wxss');
+      const js = src('pages/ppt/pptdl/pptdl.js');
+      const wxml = src('pages/ppt/pptdl/pptdl.wxml');
+      const wxss = src('pages/ppt/pptdl/pptdl.wxss');
       assert.ok(/wx\.downloadFile/.test(js) && /onProgressUpdate/.test(js), 'downloadFile + 进度');
       assert.ok(/\.abort\(\)/.test(js) && /_abortDownload/.test(js), '可取消下载');
       assert.ok(/wx\.openDocument/.test(js) && /fileType: row\.openType/.test(js) && /showMenu: true/.test(js), 'openDocument(fileType/showMenu)');
@@ -775,8 +775,8 @@ async function run(test) {
       const navBefore = C.navLog().length;
       def.openDeck.call(ctx, { currentTarget: { dataset: { id: DECK } } });
       assert.strictEqual(C.navLog().length, navBefore + 1);
-      assert.ok(C.navLog()[navBefore].indexOf('/pages/pptdl/pptdl?id=' + DECK) >= 0, '跳下载详情；实际 ' + C.navLog()[navBefore]);
-      assert.ok(!/\/pages\/pptplay\/pptplay/.test(C.navLog()[navBefore]), '点击卡片不再直接进播放器');
+      assert.ok(C.navLog()[navBefore].indexOf('/pages/ppt/pptdl/pptdl?id=' + DECK) >= 0, '跳下载详情；实际 ' + C.navLog()[navBefore]);
+      assert.ok(!/\/pages\/ppt\/pptplay\/pptplay/.test(C.navLog()[navBefore]), '点击卡片不再直接进播放器');
       // 原有能力保留
       const listJs = src('pages/ppt/ppt.js');
       ['uploadTap', 'cancelTap', 'moreTap', 'retryTap', 'delTap', 'chooseMessageFile', 'POLL_MS = 10000'].forEach(function (k) {
@@ -790,7 +790,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-DL-M1 manifest.media_files 归一化：URL/kind/时长/分辨率/slides/sha/size + 坏项丢弃 + 上限 20', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m = ppt.normManifest(mediaManifest());
       assert.strictEqual(m.media_files.length, 2);
       assert.strictEqual(m.hasMediaFiles, true);
@@ -831,7 +831,7 @@ async function run(test) {
 
     await test('PPT-DL-M2 无 media_files（旧 deck / 普通 compat deck）→ [] / hasMediaFiles=false（向后兼容不显示分组）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m1 = ppt.normManifest(compatManifest());
       assert.deepStrictEqual(m1.media_files, []);
       assert.strictEqual(m1.hasMediaFiles, false);
@@ -847,7 +847,7 @@ async function run(test) {
 
     await test('PPT-DL-M3 mediaRows：视频1 · 第 7 页 / 音频1 · 第 12 页（序号按类型分开）+ 时长·分辨率·大小·name·url', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const man = ppt.normManifest(mediaManifest());
       const rows = ppt.mediaRows(man);
       assert.strictEqual(rows.length, 2);
@@ -884,7 +884,7 @@ async function run(test) {
 
     await test('PPT-DL-M4 详情视图：media_rows 挂到 d（hasMedia/mediaCount/mediaVideos/mediaAudios），三行下载不变', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const view = ppt.downloadDetailView(ppt.normManifest(mediaManifest()), deckRow(), { mine: true });
       assert.strictEqual(view.hasMedia, true);
       assert.strictEqual(view.mediaCount, 2);
@@ -990,9 +990,9 @@ async function run(test) {
 
     await test('PPT-DL-M10 工程静态：WXML「视频单独下载」分组只由 hasMedia 控制、媒体行按钮齐；JS 保存相册/设置引导', function () {
       purge();
-      const js = src('pages/pptdl/pptdl.js');
-      const wxml = src('pages/pptdl/pptdl.wxml');
-      const wxss = src('pages/pptdl/pptdl.wxss');
+      const js = src('pages/ppt/pptdl/pptdl.js');
+      const wxml = src('pages/ppt/pptdl/pptdl.wxml');
+      const wxss = src('pages/ppt/pptdl/pptdl.wxss');
       assert.ok(/视频单独下载/.test(wxml), '分组标题');
       assert.ok(/wx:if="\{\{d\.hasMedia\}\}"/.test(wxml), '仅 media_files 非空显示（无字段不显示）');
       assert.ok(/wx:for="\{\{d\.mediaRows\}\}"/.test(wxml) && /item\.label/.test(wxml), '媒体行渲染');

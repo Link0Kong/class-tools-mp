@@ -87,7 +87,7 @@ async function goBack(mp) {
   let p = await curPage(mp);
   if (p && String(p.path || '').indexOf('pptdl') >= 0) return p;
   // 返回被系统弹窗拦住 / 掉到列表：直接重新打开下载详情（request 包装器仍生效）
-  const np = await navTo(mp, '/pages/pptdl/pptdl?id=' + encodeURIComponent(DECK));
+  const np = await navTo(mp, '/pages/ppt/pptdl/pptdl?id=' + encodeURIComponent(DECK));
   await sleep(1800);
   return np || (await curPage(mp));
 }
@@ -203,7 +203,7 @@ async function tap(element) {
       await sleep(2200);
       let page = await curPage(mp);
       if (!page || String(page.path || '').indexOf('pptdl') < 0) {
-        page = await navTo(mp, '/pages/pptdl/pptdl?id=' + encodeURIComponent(DECK));
+        page = await navTo(mp, '/pages/ppt/pptdl/pptdl?id=' + encodeURIComponent(DECK));
         await sleep(1200);
       }
       const pd = await waitFor(async function () { const x = await dataOf(page); return (x.state === 'ready' || x.state === 'error') ? x : null; }, 15000);
@@ -455,10 +455,3 @@ async function tap(element) {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-

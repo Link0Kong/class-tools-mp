@@ -10,7 +10,7 @@
 // 不白屏：云端失败保留上次列表 + 顶部轻提示；身份失效提示「身份已过期」。
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');
-const ppt = require('../../utils/ppt.js');
+const ppt = require('./utils/ppt.js');
 const util = require('../../utils/util.js');
 const share = require('../../utils/share.js');
 
@@ -351,7 +351,7 @@ Page({
     if (!id) return;
     const row = this._rowOf(id);
     if (!row) return;
-    wx.navigateTo({ url: '/pages/pptdl/pptdl?id=' + encodeURIComponent(id) });
+    wx.navigateTo({ url: '/pages/ppt/pptdl/pptdl?id=' + encodeURIComponent(id) });
   },
   delTap(e) {
     const id = this._deckIdOf(e);

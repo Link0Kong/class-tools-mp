@@ -68,7 +68,7 @@ function run(test) {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
-      const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+      const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
       withConfig(null, function () {
         assert.strictEqual(ppt.pptEcsUrl(OSS + '/ppt/a/d1/b0/s1-1.webp'), ECS + '/ppt/a/d1/b0/s1-1.webp');
         // 视频 + query 原样保留（Range/缓存参数不丢）
@@ -90,7 +90,7 @@ function run(test) {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
-      const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+      const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
       withConfig(null, function () {
         [
           'data:image/webp;base64,AAAA',
@@ -115,7 +115,7 @@ function run(test) {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
-      const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+      const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
       // 1) 缺省：webBase(https://tool.furina.fun) + /pptfiles
       withConfig(null, function (cfg) {
         cfg.pptEcs = { enabled: true, base: '' };
@@ -142,7 +142,7 @@ function run(test) {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
-      const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+      const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
       withConfig(null, function () {
         const raw = {
           v: 2,
@@ -195,7 +195,7 @@ function run(test) {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
-      const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+      const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
       withConfig(null, function () {
         const raw = { base: 'https://mock.oss.test/ppt/a/d1/b0/', slides: [{ steps: [{ img: 's1.webp' }] }], w: 1600, h: 900 };
         const m = ppt.normManifest(raw);
@@ -210,7 +210,7 @@ function run(test) {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
-      const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+      const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
       const fs = require('fs');
       withConfig(null, function () {
         const oss = OSS;
@@ -241,7 +241,7 @@ function run(test) {
         assert.strictEqual(ppt.deckView({ id: 'd5', status: 'ready', cover_url: '' }, {}).cover, '');
 
         // 4) 播放器首帧：pages/pptplay 用 ppt.pptEcsUrl 包裹 _deck.cover_url（静态接线断言，防回退直连）
-        const page = fs.readFileSync(path.join(ROOT, 'pages/pptplay/pptplay.js'), 'utf8');
+        const page = fs.readFileSync(path.join(ROOT, 'pages/ppt/pptplay/pptplay.js'), 'utf8');
         assert.ok(/const cover = ppt\.pptEcsUrl\(String\(\(self\._deck && self\._deck\.cover_url\) \|\| ''\)\);/.test(page),
           'pptplay 首帧封面必须经 ppt.pptEcsUrl 映射');
 

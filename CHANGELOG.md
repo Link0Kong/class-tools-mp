@@ -1,5 +1,27 @@
 # 版本记录
 
+## 页面加载性能：PPT 三页合并单分包 + utils/ppt.js 移出主包 + 去掉工具页预下载 + 外观 onShow 去重（2026-11-19，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户原话：「微信小程序的各个页面加载速率严重变慢了，同时主包内存在未使用的 js 文件 ppt.js」。
+
+- **根因核查**：`utils/ppt.js`（74.2KB）只被 `pages/ppt`、`pages/pptdl`、`pages/pptplay` 三个页面 `require`，
+  主包页面 0 引用；但它留在主包、三个 PPT 页面又各自是独立分包，所以不能直接删除。同时 `pages/all` 的
+  `preloadRule` 在 WiFi 下会后台下载上述 3 个 PPT 分包（编译体积约 90KB），与工具页/后续页面首屏请求抢带宽。
+- **PPT 单分包**：`pages/pptdl/*`、`pages/pptplay/*` 并入 `pages/ppt` 分包，`utils/ppt.js` 移到
+  `pages/ppt/utils/ppt.js`；路由改为 `/pages/ppt/pptdl/pptdl`、`/pages/ppt/pptplay/pptplay`（列表页 `/pages/ppt/ppt`
+  不变）。`app.json` 由 3 个 PPT 分包合并为 1 个，其余 diag/cloudspace/screencast/map 分包不变。
+- **去掉预下载**：删除 `preloadRule`；打开工具页不再下载 PPT 分包，首次打开演示页才下载（122,076 B）。
+- **外观 onShow 去重**（`utils/appearance.js`）：每次 onShow 只读一次 storage；主题未变不 `setData`；
+  同一页面实例 + 同一主题只应用一次原生外壳（导航栏/窗口/下拉/tabBar 4 次桥调用 → 0；非 tab 页不再调用
+  注定失败的 `setTabBarStyle`）。`utils/share.js` 同一页面实例只 `showShareMenu` 一次。
+- **法律正文页**（`pages/legal`）：`setData` 不再把 `doc`（内含 blocks/toc）+ `blocks` + `toc` 三份正文
+  传给渲染层，改为 `head + blocks + toc` 一份；`doc` 只保留在 JS 内取标题/导航栏标题。
+- **实测**：devtools automator（官方测试身份）非 tab 页 onShow 原生 API 4 → 3；连续切 tab 9 次 36 → 12 次；
+  主包编译体积 **1,041,453 → 1,010,114 B（−31,339 B，−3.0%）**；`unit.js 613/7`（7 项既有 ko-link/时间依赖失败，与本次无关）、
+  `staticcheck.py` 0、`code_quality_check.js` 0；PPT 三条新路由冒烟通过。
+- **未做**：未上传/发布；VERSION 仍 2.0.0、UD v6/云端表不变。回滚：恢复 `pages/pptdl`、`pages/pptplay`、
+  `utils/ppt.js` 与旧 `app.json`（含 `preloadRule`），并还原 `utils/appearance.js`/`utils/share.js`。
+
 ## 微信通知提醒改用「日程提醒（基础信息）」模板（2026-11-19，源码就绪；云函数待用户上传；小程序待用户发布；VERSION 仍 2.0.0）
 
 > 用户原话：「微信通知提醒改用基础信息」+ 模板信息：模版 ID `ZqIur9lMTUTrbKeTXzirEEtHosvLFm-7sULeBjmyMjk`、

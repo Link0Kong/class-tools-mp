@@ -30,21 +30,9 @@
       "root": "pages/ppt",
       "name": "ppt",
       "pages": [
-        "ppt"
-      ]
-    },
-    {
-      "root": "pages/pptdl",
-      "name": "pptdl",
-      "pages": [
-        "pptdl"
-      ]
-    },
-    {
-      "root": "pages/pptplay",
-      "name": "pptplay",
-      "pages": [
-        "pptplay"
+        "ppt",
+        "pptdl/pptdl",
+        "pptplay/pptplay"
       ]
     },
     {
@@ -76,16 +64,6 @@
       ]
     }
   ],
-  "preloadRule": {
-    "pages/all/all": {
-      "network": "wifi",
-      "packages": [
-        "pages/ppt",
-        "pages/pptdl",
-        "pages/pptplay"
-      ]
-    }
-  },
   "window": {
     "navigationBarBackgroundColor": "@navBgColor",
     "navigationBarTitleText": "班级工具",

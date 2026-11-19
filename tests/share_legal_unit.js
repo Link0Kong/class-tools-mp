@@ -1,7 +1,8 @@
 /* share_legal_unit.js —— 2026-11-19 分享卡 / 法律页 / 分包静态单测
  *
  * 覆盖：
- *   A. app.json 分包：PPT（及不常用重页面）不在主包、路径不变、preloadRule 合法、tabBar 不在分包；
+ *   A. app.json 分包：PPT 三页同属 pages/ppt（utils/ppt.js 随包）、不常用重页面不在主包、
+ *      不做 PPT 预下载、tabBar 不在分包；
  *   B. utils/sharecard：抽签/投票视图（标题/结果/隐藏结果）+ canvas 5:4 导出（假 canvas 返回临时图）；
  *   C. 法律正文数据：隐私/协议版本、生效日期、运营者、收集/第三方/跨境/权利/联系方式关键段落、无外链；
  *   D. 页面接线：draw / drawrec / vote / votedetail / group / identity / me / data / legal 的分享按钮或协议入口。
@@ -60,20 +61,27 @@ async function run(outerTest) {
   const T = (typeof outerTest === 'function') ? outerTest : test;
 
   /* ---------------- A. app.json 分包 ---------------- */
-  await T('分包 A1：app.json 合法 JSON；PPT 三页在 subPackages、主包不再注册且路径保持 /pages/<dir>/<page>', async function () {
+  await T('分包 A1：app.json 合法 JSON；PPT 三页同属一个分包、主包不再注册；utils/ppt.js 随分包', async function () {
     const app = JSON.parse(src('app.json'));
     const main = app.pages || [];
-    assert.ok(Array.isArray(app.subPackages) && app.subPackages.length >= 3, 'subPackages 至少包含 PPT 三页');
+    assert.ok(Array.isArray(app.subPackages), 'subPackages 存在');
+    const pptPkg = (app.subPackages || []).filter(function (sp) {
+      return String(sp && sp.root || '').replace(/\/+$/, '') === 'pages/ppt';
+    })[0];
+    assert.ok(pptPkg, '存在 pages/ppt 分包');
     const sub = subPagePaths(app);
-    ['pages/ppt/ppt', 'pages/pptdl/pptdl', 'pages/pptplay/pptplay'].forEach(function (p) {
+    ['pages/ppt/ppt', 'pages/ppt/pptdl/pptdl', 'pages/ppt/pptplay/pptplay'].forEach(function (p) {
       assert.ok(sub.indexOf(p) >= 0, p + ' 应在分包');
       assert.strictEqual(main.indexOf(p), -1, p + ' 不应在主包');
     });
+    assert.strictEqual(pptPkg.pages.length, 3, 'PPT 三页合并在同一分包');
+    assert.ok(fs.existsSync(path.join(MP, 'pages/ppt/utils/ppt.js')), 'utils/ppt.js 已移入 PPT 分包');
+    assert.ok(!fs.existsSync(path.join(MP, 'utils/ppt.js')), '主包不再保留 utils/ppt.js');
     assert.ok(main.indexOf('pages/legal/legal') >= 0, '法律页在主包（身份页/我的可立即打开）');
     assert.strictEqual(new Set(main.concat(sub)).size, main.length + sub.length, '页面路径不能重复');
   });
 
-  await T('分包 A2：不常用重页面拆出；preloadRule 指向已有分包；tabBar 不在分包', async function () {
+  await T('分包 A2：不常用重页面拆出；不做 PPT 预下载（避免工具页后台下载 3 包）；tabBar 不在分包', async function () {
     const app = JSON.parse(src('app.json'));
     const main = app.pages || [];
     const sub = subPagePaths(app);
@@ -83,6 +91,8 @@ async function run(outerTest) {
     });
     const roots = (app.subPackages || []).map(function (sp) { return String(sp.root).replace(/\/$/, ''); });
     const names = (app.subPackages || []).map(function (sp) { return sp.name; }).filter(Boolean);
+    assert.strictEqual(app.preloadRule, undefined,
+      'preloadRule 已移除：打开工具页不再后台下载 PPT 分包（2026-11-19 性能）');
     const rules = app.preloadRule || {};
     Object.keys(rules).forEach(function (key) {
       assert.ok(main.concat(sub).indexOf(key) >= 0, 'preloadRule key 未注册：' + key);
@@ -253,6 +263,8 @@ async function run(outerTest) {
     const js = src('pages/legal/legal.js');
     const wxml = src('pages/legal/legal.wxml');
     assert.ok(/pageScrollTo/.test(js), '目录跳转用原生 pageScrollTo');
+    assert.ok(/head:\s*head/.test(js) && !/doc:\s*doc/.test(js), '法律页只 setData 头部字段（不把 doc+blocks+toc 重复 3 份）');
+    assert.strictEqual(wxml.indexOf('{{doc.'), -1, '法律页 WXML 不再绑定整份 doc');
     const tag = 'web' + '-view';
     assert.strictEqual((js + wxml).indexOf(tag), -1, '不得使用 ' + tag);
     assert.strictEqual(/wx\.request/.test(js), false, '不得直连 wx.request');

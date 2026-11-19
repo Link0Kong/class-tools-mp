@@ -10,7 +10,7 @@ function chk(n, c, d) { R[n] = !!c; console.log((c ? 'PASS ' : 'FAIL ') + n + (d
 (async () => {
   const mp = await automator.connect({ wsEndpoint: WS });
   console.log('[mp] connected');
-  await mp.reLaunch('/pages/pptplay/pptplay?id=' + DECK);
+  await mp.reLaunch('/pages/ppt/pptplay/pptplay?id=' + DECK);
   await sleep(3000);
   let info = await mp.evaluate(() => {
     const p = getCurrentPages().slice(-1)[0];

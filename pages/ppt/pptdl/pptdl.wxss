@@ -1,4 +1,4 @@
-/* pages/pptdl/pptdl.wxss —— 下载中心详情（暖白卡片 + 雾青主色；契约 §12.4.1）
+/* pages/ppt/pptdl/pptdl.wxss —— 下载中心详情（暖白卡片 + 雾青主色；契约 §12.4.1）
  * 尺寸按 750 设计宽（1px = 2rpx）；触控区域 ≥ 80rpx（40px）。 */
 
 .dl-page { padding-top: 8rpx; }

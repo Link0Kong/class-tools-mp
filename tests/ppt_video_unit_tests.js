@@ -199,7 +199,7 @@ async function loadVideoPage(C, opts) {
     }
     return req.success({ statusCode: 200, data: [] });
   });
-  const def = loadPageDef('pages/pptplay/pptplay.js');
+  const def = loadPageDef('pages/ppt/pptplay/pptplay.js');
   const ctx = ctxOf(def);
   def.onLoad.call(ctx, { id: 'dabc123456xy' });
   await waitFor(function () { return ctx.data.state === 'ready' && ctx.data.mode !== ''; }, 3000);
@@ -216,7 +216,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-A1 manifest.video：缺失/坏数据 → null（回退分步，不报错白屏）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.normVideo(null, 'https://oss.test/a/'), null);
       assert.strictEqual(ppt.normVideo(undefined, ''), null);
       assert.strictEqual(ppt.normVideo({}, ''), null, '缺 s');
@@ -237,7 +237,7 @@ async function run(test) {
 
     await test('PPT-V-A2 manifest.video：URL 解析（绝对/data: 直连、base 无尾斜杠、未知字段忽略）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const abs = ppt.normVideo({ s: 'https://cdn.test/deck.mp4', extra: 'x', w: 999999 }, 'https://oss.test/a/');
       assert.strictEqual(abs.url, 'https://cdn.test/deck.mp4');
       assert.strictEqual(abs.w, 8192, 'w clamp 上限');
@@ -253,7 +253,7 @@ async function run(test) {
 
     await test('PPT-V-A3 manifest.video：chapters 容错（坏项丢弃/按 t 排序/同页去重/单调不减）+ 刻度百分比', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const v = ppt.normVideo({
         s: 'deck.mp4', dur: 100,
         chapters: [
@@ -276,7 +276,7 @@ async function run(test) {
 
     await test('PPT-V-A4 normManifest：有 video 时归一化挂载，缺失/坏 video 仍保留分步（§11.1 兼容规则）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const m1 = ppt.normManifest(manifestWithVideo());
       assert.ok(m1 && m1.video, 'manifest.video 归一化到 manifest.video');
       assert.strictEqual(m1.video.url, 'https://oss.test/ppt/a/dabc/20261110/deck.mp4');
@@ -297,7 +297,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-B1 章节定位：videoChapterAt / videoPageOf 边界（早于/正好/之间/末尾）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const v = ppt.normVideo(videoFixture(), '');
       assert.strictEqual(ppt.videoChapterAt(v, -3), -1, '早于第一章节（t=0 前）');
       assert.strictEqual(ppt.videoChapterAt(v, 0), 0);
@@ -312,7 +312,7 @@ async function run(test) {
 
     await test('PPT-V-B2 章节 seek 目标：chapters[i].t + 0.05、clamp [0, dur-0.05]、找不到页 → -1', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const v = ppt.normVideo(videoFixture(), '');
       assert.strictEqual(ppt.videoSeekTarget(v, 0), 0.05);
       assert.strictEqual(ppt.videoSeekTarget(v, 1), 8.75);
@@ -327,7 +327,7 @@ async function run(test) {
 
     await test('PPT-V-B3 上一页/下一页（章节边界）：videoPrevNext 首尾返回 null、保持 ±1 页', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const v = ppt.normVideo(videoFixture(), '');
       assert.strictEqual(ppt.videoPrevNext(v, 0, -1), null, '第一页再上一页 → null');
       assert.deepStrictEqual(ppt.videoPrevNext(v, 0, 1), { page: 1, t: 8.75, index: 1 });
@@ -341,7 +341,7 @@ async function run(test) {
 
     await test('PPT-V-B4 时间文本 / 百分比：mm:ss、负值 clamp、vpct 0–100', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.fmtVideoClock(0), '00:00');
       assert.strictEqual(ppt.fmtVideoClock(5), '00:05');
       assert.strictEqual(ppt.fmtVideoClock(65), '01:05');
@@ -360,7 +360,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-C1 默认模式：无 video → 分步；wifi/4g/5g/unknown → 原样；2g/3g/none → 分步', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.chooseMode({ hasVideo: false, networkType: 'wifi' }), 'step');
       ['wifi', '4g', '5g', 'unknown', '', 'ethernet'].forEach(function (nt) {
         assert.strictEqual(ppt.chooseMode({ hasVideo: true, networkType: nt }), 'video', nt + ' → 原样');
@@ -372,7 +372,7 @@ async function run(test) {
 
     await test('PPT-V-C2 设备偏好优先：用户切换过 video/step → 优先（即使网络相反；无 video 仍分步）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.chooseMode({ hasVideo: true, networkType: '2g', pref: 'video' }), 'video', '用户偏好原样优先于弱网');
       assert.strictEqual(ppt.chooseMode({ hasVideo: true, networkType: 'wifi', pref: 'step' }), 'step', '用户偏好分步优先于好网');
       assert.strictEqual(ppt.chooseMode({ hasVideo: false, networkType: 'wifi', pref: 'video' }), 'step', '无 video 不能强制原样');
@@ -383,7 +383,7 @@ async function run(test) {
     await test('PPT-V-C3 模式偏好 storage：按 deckId 记住，坏值忽略，不进 UD 同步（本机 key）', function () {
       purge();
       C.clearMem();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.modeOf('deckA'), '');
       assert.strictEqual(ppt.saveMode('deckA', 'video'), 'video');
       assert.strictEqual(ppt.modeOf('deckA'), 'video');
@@ -400,7 +400,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-D1 resumeValid：视频 >5s 且 <95% 才算未播完；7 天内有效', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const now = 1762700000000;
       assert.strictEqual(ppt.resumeValid(null, now), false);
       assert.strictEqual(ppt.resumeValid({ t: 0, at: now }, now), false);
@@ -417,7 +417,7 @@ async function run(test) {
 
     await test('PPT-V-D2 resumeText：视频「续播 05:42」/ 分步「续播 3/12」；无效返回空串', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const now = 1762700000000;
       assert.strictEqual(ppt.resumeText({ mode: 'video', t: 342.5, dur: 400, at: now }, now), '续播 05:42');
       assert.strictEqual(ppt.resumeText({ mode: 'step', page: 2, pt: 12, idx: 3, n: 20, at: now }, now), '续播 3/12');
@@ -428,7 +428,7 @@ async function run(test) {
     await test('PPT-V-D3 续播 storage：saveResume/resumeOf/resumeAll/clearResume + 过期清理 + 数量上限', function () {
       purge();
       C.clearMem();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const now = Date.now();
       assert.strictEqual(ppt.resumeOf('deckA', now), null);
       ppt.saveResume('deckA', { mode: 'video', t: 120, dur: 300, at: now });
@@ -458,7 +458,7 @@ async function run(test) {
     await test('PPT-V-D4 列表「继续」徽标：deckView 增加 resumeShow/resumeText（7 天/未到末尾），不影响原有字段', function () {
       purge();
       C.clearMem();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       const now = Date.now();
       const resumeMap = {
         dReady: { mode: 'video', t: 120, dur: 300, at: now },
@@ -484,7 +484,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-E1 降级状态机：direct →(error/timeout)→ download →(ok)→ temp →(error)→ step', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       let n = ppt.videoStageNext('direct', 'direct-error');
       assert.deepStrictEqual([n.stage, n.action], ['download', 'download']);
       n = ppt.videoStageNext('direct', 'direct-timeout');
@@ -516,7 +516,7 @@ async function run(test) {
 
     await test('PPT-V-E2 下载进度：downloadPct 未知总长 → -1、四舍五入、clamp；downloadText「下载 34%」', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.strictEqual(ppt.downloadPct(0, 0), -1, '总长未知（下载中…）');
       assert.strictEqual(ppt.downloadPct(50, 100), 50);
       assert.strictEqual(ppt.downloadPct(1, 3), 33);
@@ -533,7 +533,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-F1 倍速：1× → 1.25× → 1.5× → 2× → 循环；未知值回 1×（§11.3.2）', function () {
       purge();
-      const ppt = R('utils/ppt.js');
+      const ppt = R('pages/ppt/utils/ppt.js');
       assert.deepStrictEqual(ppt.V_RATES, [1, 1.25, 1.5, 2]);
       assert.strictEqual(ppt.nextRate(1), 1.25);
       assert.strictEqual(ppt.nextRate(1.25), 1.5);
@@ -554,7 +554,7 @@ async function run(test) {
      * ============================================================ */
     await test('PPT-V-G1 播放器 WXML：自制控制条/章节刻度/倍速/复制链接/缓冲与下载态/不白屏', function () {
       purge();
-      const wxml = src('pages/pptplay/pptplay.wxml');
+      const wxml = src('pages/ppt/pptplay/pptplay.wxml');
       assert.ok(/<video/.test(wxml) && /id="plv"/.test(wxml), '视频模式 <video id="plv">');
       assert.ok(/controls="\{\{false\}\}"/.test(wxml), '不用原生 controls（自制控制条 §11.3.2）');
       assert.ok(/autoplay="\{\{vauto\}\}"/.test(wxml), '自动开始（被拒时显示大播放键）');
@@ -576,7 +576,7 @@ async function run(test) {
 
     await test('PPT-V-G2 播放器 JS：降级链/downloadFile 可取消/章节 seek/倍速/续播/热点时序修复', function () {
       purge();
-      const js = src('pages/pptplay/pptplay.js');
+      const js = src('pages/ppt/pptplay/pptplay.js');
       assert.ok(/ppt\.chooseMode/.test(js), '默认模式由 utils 纯函数决定（§11.3.1）');
       assert.ok(/ppt\.videoStageNext/.test(js), '降级链状态机（§11.4）');
       assert.ok(/wx\.downloadFile/.test(js) && /_vDlTask/.test(js) && /abort/.test(js), 'downloadFile 降级 + 退出/切模式可取消');
@@ -591,7 +591,7 @@ async function run(test) {
       assert.ok(/_vArmStartWatch/.test(js) && /V_START_TIMEOUT_MS|ppt\.V_START_TIMEOUT_MS/.test(js), '直连 5s 未起播降级');
       assert.ok(/_vDlArm/.test(js) && /V_DL_STALL_MS/.test(js), '下载降级无进度看门狗（不卡死）');
       assert.ok(/if \(!this\._vStarted\)[\s\S]{0,260}_vClearStartWatch/.test(js) || /时间就证明真的在播|timeupdate/.test(js), '以 timeupdate 判定起播（兼容不触发 bindplaying 的基础库）');
-      assert.ok(/_vGoStep/.test(js) && /网络不佳，已切换分步浏览/.test(src('utils/ppt.js')), '仍失败自动切分步 + toast');
+      assert.ok(/_vGoStep/.test(js) && /网络不佳，已切换分步浏览/.test(src('pages/ppt/utils/ppt.js')), '仍失败自动切分步 + toast');
       // 热点时序修复（§11.3.3）：图片 load / 转场结束 / resize 三处重算
       assert.ok(/onImgLoad\(\)[\s\S]{0,900}_updateHot\(\)/.test(js), '图片 load 后重算热点');
       assert.ok(/_bTimer = setTimeout[\s\S]{0,600}_updateHot\(\)/.test(js), '转场结束后重算热点');
@@ -613,7 +613,7 @@ async function run(test) {
       assert.ok(/\.ppt-tag--compat/.test(listWxss) && /\.ppt-tag--pdf/.test(listWxss), '标签样式');
       // v2.0 §12.4.1：点击卡片 = 打开下载详情（不再直接进播放器）
       assert.ok(/openDeck/.test(listJs) && /bindtap="openDeck"/.test(listWxml), '整卡点击=下载详情');
-      assert.ok(/\/pages\/pptdl\/pptdl\?id=/.test(listJs), '跳转下载详情页');
+      assert.ok(/\/pages\/ppt\/pptdl\/pptdl\?id=/.test(listJs), '跳转下载详情页');
       ['uploadTap', 'delTap|moreTap', 'retryTap', 'downloadSource|openSource', 'renameDeck'].forEach(function (k) {
         assert.ok(new RegExp(k).test(listJs), '保留原有能力 ' + k);
       });
@@ -623,13 +623,13 @@ async function run(test) {
     await test('PPT-V-G4 红线：VERSION 仍 2.0.0、页面配置不变、不新增 tabBar、不使用 wx.cloud', function () {
       purge();
       assert.ok(/VERSION = '2\.0\.0'/.test(src('utils/version.js')), 'VERSION 保持 2.0.0');
-      const play = JSON.parse(src('pages/pptplay/pptplay.json'));
+      const play = JSON.parse(src('pages/ppt/pptplay/pptplay.json'));
       assert.strictEqual(play.navigationStyle, 'custom');
       assert.strictEqual(play.pageOrientation, 'auto');
       assert.strictEqual(play.disableScroll, true);
       const app = JSON.parse(src('app.json'));
-      assert.strictEqual(allPages(app).indexOf('pages/pptplay/pptplay') >= 0, true);
-      const wxml = src('pages/pptplay/pptplay.wxml');
+      assert.strictEqual(allPages(app).indexOf('pages/ppt/pptplay/pptplay') >= 0, true);
+      const wxml = src('pages/ppt/pptplay/pptplay.wxml');
       assert.ok(!/wx\.cloud/.test(wxml) && !/web-view/.test(wxml), '不引入云开发 SDK / web-view');
       assert.ok(/webp="\{\{true\}\}"/.test(wxml), '图片仍必须 webp=true（真机 .webp）');
     });
@@ -853,7 +853,7 @@ async function run(test) {
         r.def.switchVideo.call(ctx);
         assert.strictEqual(ctx.data.mode, 'video');
         assert.ok(ctx.data.vsrc, '手动切换后开始加载视频');
-        const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+        const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
         assert.strictEqual(ppt.modeOf('dabc123456xy'), 'video', '手动切换后记住设备偏好');
         r.def.onUnload.call(ctx);
       } finally {
@@ -899,7 +899,7 @@ async function run(test) {
 // 读取当前页面 mode 偏好（H 用例辅助）
 function pptModeOf(ctx) {
   try {
-    const ppt = require(path.join(ROOT, 'utils/ppt.js'));
+    const ppt = require(path.join(ROOT, 'pages/ppt/utils/ppt.js'));
     return ppt.modeOf(ctx._id);
   } catch (e) { return ''; }
 }

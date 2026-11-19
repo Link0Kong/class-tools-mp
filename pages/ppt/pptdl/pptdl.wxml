@@ -1,4 +1,4 @@
-<!-- pages/pptdl/pptdl.wxml —— 下载中心 · 单 deck 下载详情（契约 §12.4.1 / §12.4.3）
+<!-- pages/ppt/pptdl/pptdl.wxml —— 下载中心 · 单 deck 下载详情（契约 §12.4.1 / §12.4.3）
      点击列表卡片进入本页（不再默认进播放器）；三行下载：兼容版 PPTX / PDF / 原始文件；
      下载 = wx.downloadFile（进度/可取消）→ wx.openDocument；转发 = wx.shareFileMessage（不可用降级复制链接）；
      兼容提示（外链媒体/字体）橙色逐条；旧 deck（无 files）= 兼容版未生成 + 在线预览 + 重新处理。 -->
