@@ -14,7 +14,7 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const cfg = require('C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools/utils/cloud-config.js');
+const cfg = require(require('path').resolve(__dirname, '..', 'utils', 'cloud-config.js'));
 
 const REST = String(cfg.restBase || '').replace(/\/$/, '');
 

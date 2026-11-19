@@ -21,7 +21,7 @@
 const path = require('path');
 const fs = require('fs');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const BEFORE_UTILS = path.join(__dirname, '_net_before');
 const AFTER_UTILS = path.join(ROOT, 'utils');
 

@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ID = { token: 'tok-perf', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
 
 // ---------------------------------------------------------------- 线上实测规模（RECON §2.1）

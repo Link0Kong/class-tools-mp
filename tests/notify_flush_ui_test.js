@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const notifySrc = fs.readFileSync(path.join(ROOT, 'utils/notify.js'), 'utf8');
 const appSrc = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
 const fnSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/notify/index.js'), 'utf8');

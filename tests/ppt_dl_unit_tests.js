@@ -22,7 +22,7 @@ const path = require('path');
 const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ROOT_N = ROOT.replace(/\\/g, '/');
 const ID = { token: 'tok-ppt-dl-mp', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: false, ts: 1 };
 const ID2 = { token: 'tok-ppt-dl-guest', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };

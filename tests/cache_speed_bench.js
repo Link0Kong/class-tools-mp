@@ -20,8 +20,8 @@ const path = require('path');
 const fs = require('fs');
 const { performance } = require('perf_hooks');
 
-const BASELINE = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools-tests/_baseline_cache_20261111';
-const CURRENT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const BASELINE = require('path').resolve(__dirname, '_baseline_cache_20261111').replace(/\\/g, '/');
+const CURRENT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 
 const INDEX_FULL_ROWS = [
   { id: 'auto_g1', ts: 1000, hidden: false, edited_at: 0, title: '宿舍卫生检查安排', body: '[[CLASS_NOTICE_V1]]{}' },

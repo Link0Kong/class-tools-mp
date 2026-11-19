@@ -4,7 +4,7 @@
  */
 'use strict';
 const https = require('https');
-const cfg = require('C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools/utils/cloud-config.js');
+const cfg = require(require('path').resolve(__dirname, '..', 'utils', 'cloud-config.js'));
 
 function post(path, body, headers) {
   return new Promise((resolve, reject) => {

@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const H = 3600 * 1000;
 const D = 24 * H;
 const NOW = new Date(2026, 10, 5, 23, 0, 0, 0).getTime();   // 2026-11-05 23:00 周四

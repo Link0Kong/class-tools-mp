@@ -20,7 +20,7 @@ const path = require('path');
 const http = require('http');
 const automator = require('miniprogram-automator');
 
-const MP_ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const MP_ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const CFG = path.join(MP_ROOT, 'utils/cloud-config.js');
 const STAGING = 'http://121.196.47.2/v1/rdb/rest-next/';
 const ECS_PPT = 'http://121.196.47.2/pptfiles';

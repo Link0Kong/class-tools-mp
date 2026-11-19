@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 
 const ID = { token: 'tok-cache-1', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
 const ID2 = { token: 'tok-cache-2', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };

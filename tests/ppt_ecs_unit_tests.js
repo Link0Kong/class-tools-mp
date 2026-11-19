@@ -16,7 +16,7 @@
 const path = require('path');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ROOT_N = ROOT.replace(/\\/g, '/');
 const OSS = 'https://tool-furina-fun.oss-cn-hongkong.aliyuncs.com';
 const ECS = 'https://tool.furina.fun/pptfiles';

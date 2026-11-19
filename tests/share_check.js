@@ -14,7 +14,7 @@ const path = require('path');
 const fs = require('fs');
 const automator = require('miniprogram-automator');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const OUT = path.join(__dirname, '_shots', 'share');
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

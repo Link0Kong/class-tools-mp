@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ROOT_N = ROOT.replace(/\\/g, '/');
 const WEB_INDEX = 'C:/Users/Ko_Li/.openclaw/workspace/web/tools/index.html';
 

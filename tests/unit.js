@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = path.resolve(__dirname, '..').replace(/\\/g, '/');
 const results = [];
 let passN = 0, failN = 0;
 

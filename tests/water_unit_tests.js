@@ -15,7 +15,7 @@ const { allPages } = require('./_app_pages.js');
 const fs = require('fs');
 const assert = require('assert');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
+const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ID = { token: 'tok-water-1', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
 
 function purge() {
