@@ -59,6 +59,7 @@
           <text class="vote-card-total">{{item.totalText}}</text>
           <text class="vote-card-voted" wx:if="{{item.hasVoted}}">已投票</text>
           <view class="grow"></view>
+          <button class="vote-share" open-type="share" data-id="{{item.id}}" catchtap="noop">分享</button>
           <text class="vote-card-more">›</text>
         </view>
       </view>

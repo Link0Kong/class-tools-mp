@@ -20,6 +20,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
@@ -1063,8 +1064,8 @@ async function run(test) {
     await test('PPT-H1 工程：app.json 注册 2 页（不加 tabBar）、tools.js「演示」、图标存在且媒体预算内', function () {
       purge();
       const app = JSON.parse(src('app.json'));
-      assert.ok(app.pages.indexOf('pages/ppt/ppt') >= 0, 'app.json 注册 pages/ppt/ppt');
-      assert.ok(app.pages.indexOf('pages/pptplay/pptplay') >= 0, 'app.json 注册 pages/pptplay/pptplay');
+      assert.ok(allPages(app).indexOf('pages/ppt/ppt') >= 0, 'app.json 注册 pages/ppt/ppt（分包）');
+      assert.ok(allPages(app).indexOf('pages/pptplay/pptplay') >= 0, 'app.json 注册 pages/pptplay/pptplay（分包）');
       assert.strictEqual(app.tabBar.list.length, 3, '不新增 tabBar');
       const tools = R('utils/tools.js');
       const t = tools.toolOf('ppt');

@@ -11,6 +11,7 @@
  */
 'use strict';
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const fs = require('fs');
 const assert = require('assert');
 
@@ -239,8 +240,8 @@ async function run(test) {
   await test('页面：app.json 注册 pages/water/water；tools 目录「水量」可勾选进首页；图标存在且在媒体预算内', function () {
     purge();
     const app = JSON.parse(src('app.json'));
-    assert.ok(app.pages.indexOf('pages/water/water') >= 0, 'app.json 应注册 water 页');
-    assert.ok(!app.subPackages || !app.subPackages.length, '水量页在主包');
+    assert.ok(allPages(app).indexOf('pages/water/water') >= 0, 'app.json 应注册 water 页');
+    assert.ok(app.pages.indexOf('pages/water/water') >= 0, '水量页在主包（不拆分包）');
     const tools = R('utils/tools.js');
     const t = tools.toolOf('water');
     assert.ok(t && t.name === '水量' && t.url === '/pages/water/water', '工具目录应有「水量」');

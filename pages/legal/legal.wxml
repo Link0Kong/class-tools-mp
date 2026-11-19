@@ -1,0 +1,55 @@
+<!-- pages/legal/legal.wxml —— 隐私政策 / 用户协议原生正文（不依赖外部网页 / 外链 / request 域名） -->
+<page-meta page-style="{{themeStyle}}"></page-meta>
+
+<view class="page pad-b lg-page {{themeClass}}">
+  <block wx:if="{{ready}}">
+    <view class="lg-head">
+      <view class="lg-kicker">{{doc.code}}</view>
+      <view class="lg-title">{{doc.title}}</view>
+      <view class="lg-meta">
+        <text class="lg-meta-i" wx:for="{{doc.meta}}" wx:key="k">{{item.k}} {{item.v}}</text>
+      </view>
+      <view class="lg-lead" wx:if="{{doc.lead}}">{{doc.lead}}</view>
+      <view class="lg-basis" wx:for="{{doc.basis}}" wx:key="*this">{{item}}</view>
+      <view class="lg-actions">
+        <view class="lg-btn" bindtap="back">返回</view>
+        <view class="lg-btn lg-btn--on" data-type="{{type === 'privacy' ? 'terms' : 'privacy'}}" bindtap="switchDoc">{{type === 'privacy' ? '用户协议' : '隐私政策'}}</view>
+      </view>
+    </view>
+
+    <view class="lg-toc" wx:if="{{toc.length}}">
+      <view class="lg-toc-t">目录</view>
+      <view class="lg-toc-wrap">
+        <view class="lg-toc-i" wx:for="{{toc}}" wx:key="id" data-id="{{item.id}}" bindtap="jump">{{item.text}}</view>
+      </view>
+    </view>
+
+    <view class="lg-body">
+      <block wx:for="{{blocks}}" wx:key="id">
+        <view wx:if="{{item.t === 'h2'}}" id="lg-{{item.anchor}}" class="lg-h2">{{item.text}}</view>
+        <view wx:elif="{{item.t === 'h3'}}" class="lg-h3">{{item.text}}</view>
+        <view wx:elif="{{item.t === 'p'}}" class="lg-p">{{item.text}}</view>
+        <view wx:elif="{{item.t === 'li'}}" class="lg-li">
+          <text class="lg-dot">•</text>
+          <text class="lg-li-t">{{item.text}}</text>
+        </view>
+        <view wx:elif="{{item.t === 'note'}}" class="lg-note">
+          <view class="lg-note-t" wx:if="{{item.title}}">{{item.title}}</view>
+          <view class="lg-note-l" wx:for="{{item.lines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+        </view>
+        <view wx:elif="{{item.t === 'table'}}" class="lg-table">
+          <view class="lg-cap" wx:if="{{item.caption}}">{{item.caption}}</view>
+          <view class="lg-thead" wx:if="{{item.headText}}">{{item.headText}}</view>
+          <view class="lg-tr" wx:for="{{item.lines}}" wx:for-item="line" wx:key="*this">{{line}}</view>
+        </view>
+      </block>
+    </view>
+
+    <view class="lg-foot">正文版本 {{doc.version}} · 生效 {{doc.effective}} · 运营者 {{doc.operator}}</view>
+    <view class="lg-back" bindtap="back">返回</view>
+  </block>
+
+  <view wx:else class="m3-card m3-card--outlined">
+    <empty-state icon="📄" title="协议正文加载失败" text="请返回重试；条款正文内置于小程序，不依赖网络。" action-text="返回" bind:action="back"></empty-state>
+  </view>
+</view>

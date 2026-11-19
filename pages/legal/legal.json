@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "隐私政策",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/index"
+  }
+}

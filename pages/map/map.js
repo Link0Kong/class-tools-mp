@@ -1,5 +1,5 @@
 // pages/map/map.js — 校内地图（原生 Canvas 2.5D，可旋转/缩放/楼层/路线）
-const DATA = require('../../data/campus_map.js');
+const DATA = require('./campus_map.js');
 const share = require('../../utils/share.js');
 
 const CX = DATA.vb[0] / 2;

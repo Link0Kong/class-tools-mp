@@ -638,7 +638,18 @@ Page({
     this.load(true);
   },
 
-  onShareAppMessage() {
+  onShareAppMessage(e) {
+    // 列表卡片上的「分享」按钮：data-id 指定要分享的投票，标题用该投票的真实标题（不是泛品牌文案）
+    const id = e && e.target && e.target.dataset ? String(e.target.dataset.id || '') : '';
+    const row = id ? (this.data.rows || []).filter(function (r) { return r.id === id; })[0] : null;
+    if (id) {
+      return share.message({
+        title: (row && row.title) ? row.title : '班级投票',
+        path: '/pages/votedetail/votedetail',
+        query: 'id=' + encodeURIComponent(id),
+        imageUrl: '/images/share/default.png'
+      });
+    }
     return share.message({
       title: '班级工具｜投票 · 限时/长时，自定义标题与选项',
       path: '/pages/vote/vote',
@@ -647,7 +658,7 @@ Page({
   },
   onShareTimeline() {
     return share.timeline({
-      title: '班级工具｜投票 · 限时/长时，实时结果',
+      title: '班级投票 · 限时/长时，实时结果',
       imageUrl: '/images/share/default.png'
     });
   }

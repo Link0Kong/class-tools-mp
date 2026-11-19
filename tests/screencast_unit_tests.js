@@ -15,6 +15,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const HERE = __dirname;
@@ -120,7 +121,7 @@ async function run(outerTest) {
   // C. 工程接线 -----------------------------------------------------------
   await T('C1 app.json 注册 pages/screencast/screencast', function () {
     const app = JSON.parse(src('app.json'));
-    assert.ok(app.pages.indexOf('pages/screencast/screencast') >= 0);
+    assert.ok(allPages(app).indexOf('pages/screencast/screencast') >= 0);
   });
   await T('C2 页面 4 文件存在', function () {
     ['.js', '.wxml', '.json', '.wxss'].forEach(function (ext) {

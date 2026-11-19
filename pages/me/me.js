@@ -193,6 +193,9 @@ Page({
 
   // ---------------------- 数据 ----------------------
   goData() { wx.navigateTo({ url: '/pages/data/data' }); },
+  // 法律页（2026-11-19）：原生正文，不依赖外部网页 / 域名
+  goPrivacy() { wx.navigateTo({ url: '/pages/legal/legal?type=privacy' }); },
+  goTerms() { wx.navigateTo({ url: '/pages/legal/legal?type=terms' }); },
   clearData() {
     wx.showModal({
       title: '清空数据',

@@ -127,6 +127,28 @@
       </view>
     </view>
 
+    <!-- —— 法律与协议（2026-11-19：原生正文，不依赖 web-view / 外链）—— -->
+    <view class="sec-title"><text class="t-label-l muted">法律与协议</text></view>
+    <view class="m3-card m3-card--outlined enter enter-6">
+      <touchable cls="m3-li m3-li--flush" bindtap="goPrivacy">
+        <view class="m3-li__lead m3-li__lead--primary">隐</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">隐私政策</view>
+          <view class="m3-li__sub">处理者 / 收集范围 / 第三方与跨境 / 你的权利</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+      <view class="divider"></view>
+      <touchable cls="m3-li m3-li--flush" bindtap="goTerms">
+        <view class="m3-li__lead m3-li__lead--primary">约</view>
+        <view class="m3-li__body">
+          <view class="m3-li__title">用户协议</view>
+          <view class="m3-li__sub">服务边界 / 使用规范 / 内容与数据 / 免责</view>
+        </view>
+        <view class="m3-li__trail chev"></view>
+      </touchable>
+    </view>
+
     <view class="footer-note">班级工具 · 数据与隐私</view>
   </block>
 </view>

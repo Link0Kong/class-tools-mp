@@ -217,6 +217,9 @@ Page({
   },
 
   goFeedback() { wx.navigateTo({ url: '/pages/fb/fb' }); },
+  // 法律页（2026-11-19）：原生正文，不依赖外部网页 / 域名
+  goPrivacy() { wx.navigateTo({ url: '/pages/legal/legal?type=privacy' }); },
+  goTerms() { wx.navigateTo({ url: '/pages/legal/legal?type=terms' }); },
 
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onHide() { scrollmem.save(this); },

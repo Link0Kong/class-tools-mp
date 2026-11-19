@@ -40,7 +40,17 @@
       </view>
     </view>
     <view wx:if="{{err}}" class="id-err">{{err}}</view>
-    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:20rpx" bindtap="submit">{{verifying ? '验证中…' : '验证并进入'}}</touchable>
+    <!-- 协议勾选（2026-11-19）：链接可点开原生正文；点「验证并进入」时未勾选会提示（submit 核心逻辑保持可被自动化直接调用） -->
+    <view class="id-agree" bindtap="toggleAgree">
+      <view class="id-check {{agreed ? 'id-check--on' : ''}}" aria-role="checkbox" aria-checked="{{agreed}}">
+        <text wx:if="{{agreed}}" class="id-check-t">✓</text>
+      </view>
+      <view class="id-agree-txt">我已阅读并同意
+        <text class="id-link" data-type="terms" catchtap="openLegal">《用户协议》</text>
+        <text class="id-link" data-type="privacy" catchtap="openLegal">《隐私政策》</text>
+      </view>
+    </view>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:20rpx" bindtap="submitTap">{{verifying ? '验证中…' : '验证并进入'}}</touchable>
     <view class="id-tip">身份与班级名单由云端校验；换人使用时请在「我的」退出身份。</view>
   </view>
 
@@ -52,6 +62,11 @@
       <view class="id-priv__row"><text class="id-priv__k">页面展示</text><text class="id-priv__v">只显示姓名与角色，不显示学号</text></view>
       <view class="id-priv__row"><text class="id-priv__k">云端同步</text><text class="id-priv__v">作业 / 通知 / 勾选 / 体测 / 访问统计按账号同步</text></view>
       <view class="id-priv__row"><text class="id-priv__k">用户改动</text><text class="id-priv__v">抽签 / 分组 / 点名 / 隐藏项 / 偏好同步，可在「我的 → 数据与隐私」管理</text></view>
+    </view>
+    <view class="id-legal">
+      <text class="id-legal-link" data-type="privacy" catchtap="openLegal">隐私政策</text>
+      <text class="id-legal-sep">·</text>
+      <text class="id-legal-link" data-type="terms" catchtap="openLegal">用户协议</text>
     </view>
   </view>
 

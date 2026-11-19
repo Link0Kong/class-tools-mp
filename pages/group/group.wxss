@@ -7,3 +7,11 @@
 .gmem__n { font-size: 24rpx; font-weight: 600; color: var(--md-primary); margin-right: 12rpx; }
 .gmem__name { font-size: 28rpx; color: var(--md-on-surface); }
 .exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
+.share-btn {
+  margin: 0 8rpx; padding: 0 24rpx; height: 64rpx; min-height: 64rpx; line-height: 64rpx;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--md-shape-full);
+  background: var(--md-primary-container); color: var(--md-on-primary-container);
+  font-size: 24rpx; font-weight: 600;
+}
+.share-btn::after { border: 0; }

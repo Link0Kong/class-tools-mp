@@ -9,6 +9,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
@@ -3650,8 +3651,8 @@ function run(test) {
       assert.strictEqual(tools.quickList(4).filter(function (t) { return t.key === 'power' || t.key === 'diag'; }).length, 0, '首页常用不应出现 power/diag');
       assert.ok(tools.catalog().some(function (t) { return t.key === 'diag'; }), '「全部工具」目录应含 diag（非管理员也可看到）');
       const app = JSON.parse(src('app.json'));
-      assert.ok(app.pages.indexOf('pages/power/power') >= 0, 'app.json 应注册 power 页');
-      assert.ok(app.pages.indexOf('pages/diag/diag') >= 0, 'app.json 应注册 diag 页');
+      assert.ok(allPages(app).indexOf('pages/power/power') >= 0, 'app.json 应注册 power 页');
+      assert.ok(allPages(app).indexOf('pages/diag/diag') >= 0, 'app.json 应注册 diag 页（分包）');
       // 图标（40x40 小体积）
       ['images/tool-power.png', 'images/tool-diag.png'].forEach(function (f) {
         assert.ok(fs.existsSync(path.join(ROOT, f)), '缺少图标 ' + f);

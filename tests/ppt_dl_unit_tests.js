@@ -19,6 +19,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
@@ -719,8 +720,8 @@ async function run(test) {
     await test('PPT-DL-F1 app.json 注册 pptdl（共 24 页、不新增 tabBar）、页面 4 文件 + 分享 handler；VERSION 2.0.0', function () {
       purge();
       const app = JSON.parse(src('app.json'));
-      assert.ok(app.pages.indexOf('pages/pptdl/pptdl') >= 0, '注册下载详情页');
-      assert.ok(app.pages.indexOf('pages/pptplay/pptplay') >= 0, '旧播放器保留（预览入口）');
+      assert.ok(allPages(app).indexOf('pages/pptdl/pptdl') >= 0, '注册下载详情页（分包）');
+      assert.ok(allPages(app).indexOf('pages/pptplay/pptplay') >= 0, '旧播放器保留（预览入口，分包）');
       assert.strictEqual(app.tabBar.list.length, 3, '不新增 tabBar');
       ['.js', '.wxml', '.wxss', '.json'].forEach(function (ext) {
         assert.ok(fs.existsSync(path.join(ROOT, 'pages/pptdl/pptdl' + ext)), '缺少 ppdl' + ext);

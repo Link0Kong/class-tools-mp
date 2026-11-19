@@ -6,6 +6,7 @@
     "pages/tt/tt",
     "pages/me/me",
     "pages/data/data",
+    "pages/legal/legal",
     "pages/group/group",
     "pages/sum/sum",
     "pages/hw/hw",
@@ -22,15 +23,69 @@
     "pages/water/water",
     "pages/vote/vote",
     "pages/votedetail/votedetail",
-    "pages/diag/diag",
-    "pages/ppt/ppt",
-    "pages/pptdl/pptdl",
-    "pages/pptplay/pptplay",
-    "pages/cloudspace/cloudspace",
-    "pages/screencast/screencast",
-    "pages/drawrec/drawrec",
-    "pages/map/map"
+    "pages/drawrec/drawrec"
   ],
+  "subPackages": [
+    {
+      "root": "pages/ppt",
+      "name": "ppt",
+      "pages": [
+        "ppt"
+      ]
+    },
+    {
+      "root": "pages/pptdl",
+      "name": "pptdl",
+      "pages": [
+        "pptdl"
+      ]
+    },
+    {
+      "root": "pages/pptplay",
+      "name": "pptplay",
+      "pages": [
+        "pptplay"
+      ]
+    },
+    {
+      "root": "pages/diag",
+      "name": "diag",
+      "pages": [
+        "diag"
+      ]
+    },
+    {
+      "root": "pages/cloudspace",
+      "name": "cloudspace",
+      "pages": [
+        "cloudspace"
+      ]
+    },
+    {
+      "root": "pages/screencast",
+      "name": "screencast",
+      "pages": [
+        "screencast"
+      ]
+    },
+    {
+      "root": "pages/map",
+      "name": "map",
+      "pages": [
+        "map"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/all/all": {
+      "network": "wifi",
+      "packages": [
+        "pages/ppt",
+        "pages/pptdl",
+        "pages/pptplay"
+      ]
+    }
+  },
   "window": {
     "navigationBarBackgroundColor": "@navBgColor",
     "navigationBarTitleText": "班级工具",

@@ -17,6 +17,7 @@ const cloud = require('../../utils/cloud.js');
 const vote = require('../../utils/vote.js');
 const util = require('../../utils/util.js');
 const share = require('../../utils/share.js');
+const sharecard = require('../../utils/sharecard.js');
 
 const ROUTE = 'pages/votedetail/votedetail';
 const QUICK_EXTEND = [5, 10, 30, 60, 120];
@@ -69,7 +70,13 @@ Page({
     this._schedulePoll();
   },
   onHide() { this._hidden = true; this._stopPoll(); this._stopTick(); },
-  onUnload() { this._dead = true; this._hidden = true; this._stopPoll(); this._stopTick(); },
+  onUnload() {
+    this._dead = true;
+    this._hidden = true;
+    this._stopPoll();
+    this._stopTick();
+    if (this._shareT) { clearTimeout(this._shareT); this._shareT = null; }
+  },
   onPullDownRefresh() {
     this.load(true).then(function () {
       try { wx.stopPullDownRefresh(); } catch (e) { /* ignore */ }
@@ -168,6 +175,7 @@ Page({
     const v = vote.detailView(this._detail, { now: Date.now(), choices: this._choices });
     if (!v) { this.setData({ state: 'error', errorText: '投票数据不完整' }); return; }
     this.setData({ state: 'ready', d: v, choices: v.selected, errorText: '' });
+    this._scheduleShareCard();
   },
   retryLoad() {
     this.setData({ state: 'loading', errorText: '' });
@@ -338,18 +346,57 @@ Page({
 
   goAll() { wx.switchTab({ url: '/pages/all/all' }); },
 
-  onShareAppMessage() {
+  /* ---------------- 原生分享（2026-11-19）：可见按钮 + 标题=投票标题 + 详情深链 ----------------
+   * 分享图优先用 canvas 摘要（标题/状态/前 4 个选项与百分比）；结果隐藏时不画票数。
+   * onShareAppMessage 必须同步返回，所以这里提前生成，失败/未就绪回退 images/share/default.png。
+   */
+  _shareId() {
+    let id = String(this._id || '');
+    try { id = decodeURIComponent(id); } catch (e) { /* 保持原串 */ }
+    return id;
+  },
+  _shareTitle() {
+    const d = this.data.d;
+    return (d && d.title) ? String(d.title) : '班级投票';
+  },
+  _scheduleShareCard() {
+    if (this._shareT) { clearTimeout(this._shareT); this._shareT = null; }
+    if (!this.data.d) return;
+    const self = this;
+    this._shareT = setTimeout(function () {
+      self._shareT = null;
+      self._makeShareCard();
+    }, 180);
+  },
+  _makeShareCard() {
+    if (this._dead || !this.data.d) return;
+    const view = sharecard.buildVoteView({ detail: this.data.d, time: util.timeStr() });
+    const sig = sharecard.signature(view);
+    if (sig === this._shareSig && this._shareImg) return;
+    this._shareSig = sig;
+    const self = this;
+    sharecard.render(this, 'shareCanvas', view).then(function (p) {
+      if (!self._dead && p) self._shareImg = p;
+    }).catch(function () { /* 画图失败：分享继续用静态封面 */ });
+  },
+  onShareAppMessage(e) {
+    const dsId = e && e.target && e.target.dataset ? String(e.target.dataset.id || '') : '';
+    const id = dsId || this._shareId();
+    const title = this._shareTitle();
+    if (!id) return share.message({ title: '班级投票', path: '/pages/vote/vote', imageUrl: this._shareImg || '/images/share/default.png' });
     return share.message({
-      title: '班级工具｜投票',
-      path: '/pages/votedetail/votedetail?id=' + encodeURIComponent(this._id || ''),
-      imageUrl: '/images/share/default.png'
+      title: title,
+      path: '/pages/votedetail/votedetail',
+      query: 'id=' + encodeURIComponent(id),
+      imageUrl: this._shareImg || '/images/share/default.png'
     });
   },
   onShareTimeline() {
+    const id = this._shareId();
     return share.timeline({
-      title: '班级工具｜投票 · 实时结果',
-      query: this._id ? ('id=' + encodeURIComponent(this._id)) : '',
-      imageUrl: '/images/share/default.png'
+      title: this._shareTitle(),
+      query: id ? ('id=' + encodeURIComponent(id)) : '',
+      imageUrl: this._shareImg || '/images/share/default.png'
     });
   }
 });

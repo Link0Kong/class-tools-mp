@@ -14,6 +14,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const HERE = __dirname;
@@ -292,7 +293,7 @@ function run(outerTest) {
   // D. 工程接线 -------------------------------------------------------------
   T('D1 app.json 注册 pages/cloudspace/cloudspace', function () {
     const app = JSON.parse(src('app.json'));
-    assert.ok(app.pages.indexOf('pages/cloudspace/cloudspace') >= 0);
+    assert.ok(allPages(app).indexOf('pages/cloudspace/cloudspace') >= 0);
   });
   T('D2 utils/tools.js 含 key=file 入口（与网页 TOOLS 对齐）', function () {
     const t = src('utils/tools.js');

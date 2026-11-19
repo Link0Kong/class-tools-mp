@@ -403,7 +403,7 @@ function run(test) {
         assert.ok(!/演示模式|审核用|审核员/.test(t), f + ' 不应再有审核文案');
       });
       const idWxml = src('pages/identity/identity.wxml');
-      assert.ok(/bindtap="submit"/.test(idWxml), '身份页应保留学号+姓名登录');
+      assert.ok(/bindtap="(submit|submitTap)"/.test(idWxml), '身份页应保留学号+姓名登录');
       // 文档允许说明「本版不实现审核模式」，但不得再把审核入口/模式描述成可用功能
       const readme = src('README.md');
       assert.ok(!/审核模式入口|审核模式预览|（审核用）|审核员可/.test(readme), 'README 不应再把演示/审核模式描述为可用功能');

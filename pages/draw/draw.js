@@ -17,6 +17,7 @@ const roster = require('../../utils/roster.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 const drawproof = require('../../utils/drawproof.js');
+const sharecard = require('../../utils/sharecard.js');
 
 const SORT_LABEL = { draw: '按抽取顺序', num: '按序号升序', desc: '从大到小', rand: '随机打乱' };
 const PROOF_SLOW_MS = 6000;   // 存证超过约 6s 未回包 → 按「未存证」展示（请求仍在，成功后会自愈）
@@ -50,6 +51,10 @@ Page({
     this._pendEvents = [];       // 存证在途期间的剔除/补抽事件（成功后补发）
     this._agent = agent.pick(this);            // AI 页面接力（wx.onAgentHandoff），只消费一次
     this._agentQ = agent.pickQuery(options);   // 备用：handoff query 随页面参数传入
+    // 朋友圈从抽签页分享「存证」时只能带 query（当前页是 draw）：打开后转去存证详情页
+    let sharedId = String(options.id || '');
+    try { sharedId = decodeURIComponent(sharedId); } catch (e) { /* 保持原串 */ }
+    this._sharedId = sharedId;
     this._first = true;
     this.setData({ th: util.nativeTheme() });
     if (wx.onThemeChange) {
@@ -61,6 +66,12 @@ Page({
     share.enable();
     scrollmem.restore(this);
     if (!identity.ensure()) return;
+    // 分享到朋友圈的存证链接（当前页固定是 draw）：转到只读存证详情；只跳一次，返回后仍停留在抽签页
+    if (this._sharedId && !this._sharedNav) {
+      this._sharedNav = true;
+      wx.navigateTo({ url: '/pages/drawrec/drawrec?id=' + encodeURIComponent(this._sharedId) });
+      return;
+    }
     this.setData({ th: util.nativeTheme() });
     try { store.reload(); } catch (e) { /* ignore */ }
     try { roster.migrate(); } catch (e) { /* 旧自定义名单迁移失败不阻塞页面 */ }
@@ -80,6 +91,7 @@ Page({
     this._dead = true;
     if (this._t) { clearTimeout(this._t); this._t = null; }
     if (this._proofSlowT) { clearTimeout(this._proofSlowT); this._proofSlowT = null; }
+    if (this._shareT) { clearTimeout(this._shareT); this._shareT = null; }
     if (this._onTheme && wx.offThemeChange) { wx.offThemeChange(this._onTheme); this._onTheme = null; }
   },
   onPullDownRefresh() { this.load(); wx.stopPullDownRefresh(); },
@@ -438,6 +450,7 @@ Page({
     });
     this.applyProof(st.proof || null);
     this.syncSteps();
+    this._scheduleShareCard();
   },
 
   // 步骤条完成态（只读 flow，不改动任何业务数据）
@@ -611,17 +624,66 @@ Page({
     canvas.exportAndSave(this, '#card', this.buildExportOpt());
   },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
+
+  /* ---------------- 原生分享（2026-11-19）：结果页可见按钮 + 具体标题 + 存证深链 ----------------
+   * - 有存证：path=/pages/drawrec/drawrec?id=<存证 id>（点击卡片直达只读存证详情）
+   * - 无存证：path=/pages/draw/draw（带明确标题，至少不是泛品牌文案）
+   * - 5:4 图：结果渲染后异步 canvas 生成，失败/未就绪回退 images/share/draw.png（onShareAppMessage 必须同步返回）
+   */
+  _shareInfo() {
+    const st = flow.getFlow().draw || {};
+    const ready = drawproof.proofReady(st.proof);
+    const n = (this.data.rows || []).length;
+    const cfg = this.data.cfg || {};
+    let title = n ? ('抽签结果 · ' + n + ' 个') : '抽签｜抽号 · 分组 · 结果单';
+    if (n && cfg.range) title += '（' + cfg.range + (cfg.dup === '是' ? ' · 可重复' : '') + '）';
+    if (ready && st.proof && st.proof.id) {
+      return { title: title, path: '/pages/drawrec/drawrec', query: 'id=' + encodeURIComponent(String(st.proof.id)) };
+    }
+    return { title: title, path: '/pages/draw/draw', query: '' };
+  },
+  _scheduleShareCard() {
+    if (this._shareT) { clearTimeout(this._shareT); this._shareT = null; }
+    if (!(this.data.rows || []).length) { this._shareImg = ''; this._shareSig = ''; return; }
+    const self = this;
+    this._shareT = setTimeout(function () {
+      self._shareT = null;
+      self._makeShareCard();
+    }, 180);
+  },
+  _makeShareCard() {
+    if (this._dead || !(this.data.rows || []).length) return;
+    const st = flow.getFlow().draw || {};
+    const view = sharecard.buildDrawView({
+      rows: this.data.rows,
+      cfg: this.data.cfg,
+      proofReady: drawproof.proofReady(st.proof),
+      proofId: st.proof && st.proof.id,
+      time: util.timeStr()
+    });
+    const sig = sharecard.signature(view);
+    if (sig === this._shareSig && this._shareImg) return;
+    this._shareSig = sig;
+    const self = this;
+    sharecard.render(this, 'shareCanvas', view).then(function (p) {
+      if (!self._dead && p) self._shareImg = p;
+    }).catch(function () { /* 画图失败：分享继续用静态封面 */ });
+  },
   onShareAppMessage() {
+    const info = this._shareInfo();
     return share.message({
-      title: '班级抽签｜抽号 · 分组 · 结果单',
-      path: '/pages/draw/draw',
-      imageUrl: '/images/share/draw.png'
+      title: info.title,
+      path: info.path,
+      query: info.query,
+      imageUrl: this._shareImg || sharecard.FALLBACK.draw
     });
   },
   onShareTimeline() {
+    const info = this._shareInfo();
     return share.timeline({
-      title: '班级抽签｜抽号 · 分组 · 结果单',
-      imageUrl: '/images/share/draw.png'
+      title: info.title,
+      query: info.query,
+      imageUrl: this._shareImg || sharecard.FALLBACK.draw
     });
   }
 });

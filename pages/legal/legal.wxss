@@ -1,0 +1,83 @@
+/* pages/legal/legal.wxss —— 隐私政策 / 用户协议正文；只用 app.wxss 的 M3 token，无新配色 */
+.lg-page { padding-top: 20rpx; }
+
+/* ---------- 页头 ---------- */
+.lg-head {
+  padding: 32rpx 32rpx 26rpx; margin-bottom: 22rpx; border-radius: var(--md-shape-xl);
+  background: var(--md-surface-container-low); box-shadow: var(--md-elev-1);
+}
+.lg-kicker { font-size: 20rpx; letter-spacing: 1rpx; color: var(--md-on-surface-variant); line-height: 1.5; }
+.lg-title { margin-top: 10rpx; font-size: 44rpx; font-weight: 700; line-height: 1.25; color: var(--md-on-surface); }
+.lg-meta { display: flex; flex-wrap: wrap; margin-top: 16rpx; }
+.lg-meta-i {
+  margin: 0 12rpx 10rpx 0; padding: 4rpx 14rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant); font-size: 22rpx;
+}
+.lg-lead { margin-top: 10rpx; font-size: 28rpx; line-height: 1.65; color: var(--md-on-surface); }
+.lg-basis {
+  margin-top: 14rpx; padding: 12rpx 16rpx; border-radius: var(--md-shape-md);
+  background: var(--md-surface-container-high); color: var(--md-on-surface-variant);
+  font-size: 22rpx; line-height: 1.6;
+}
+.lg-actions { display: flex; flex-wrap: wrap; margin-top: 20rpx; }
+.lg-btn {
+  min-width: 140rpx; height: 80rpx; padding: 0 28rpx; margin-right: 16rpx;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); background: var(--md-surface-container-high);
+  color: var(--md-primary); font-size: 26rpx; font-weight: 600;
+}
+.lg-btn--on { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+
+/* ---------- 目录 ---------- */
+.lg-toc { padding: 20rpx 24rpx; margin-bottom: 22rpx; border-radius: var(--md-shape-lg); background: var(--md-surface-container-low); }
+.lg-toc-t { font-size: 26rpx; font-weight: 600; color: var(--md-on-surface-variant); margin-bottom: 12rpx; }
+.lg-toc-wrap { display: flex; flex-wrap: wrap; }
+.lg-toc-i {
+  margin: 0 12rpx 12rpx 0; padding: 8rpx 18rpx; border-radius: var(--md-shape-full);
+  background: var(--md-surface-container-high); color: var(--md-on-surface); font-size: 22rpx; line-height: 1.5;
+}
+
+/* ---------- 正文 ---------- */
+.lg-body { padding: 4rpx 4rpx 0; }
+.lg-h2 {
+  margin: 36rpx 0 14rpx; padding-top: 22rpx; border-top: 1rpx solid var(--md-outline-variant);
+  font-size: 34rpx; font-weight: 700; line-height: 1.4; color: var(--md-on-surface);
+}
+.lg-h2:first-child { margin-top: 8rpx; padding-top: 0; border-top: 0; }
+.lg-h3 { margin: 26rpx 0 8rpx; font-size: 30rpx; font-weight: 600; line-height: 1.5; color: var(--md-on-surface); }
+.lg-p { margin: 10rpx 0; font-size: 29rpx; line-height: 1.8; color: var(--md-on-surface); word-break: break-word; }
+.lg-li { display: flex; align-items: flex-start; margin: 8rpx 0; padding-left: 6rpx; }
+.lg-dot { flex: none; width: 26rpx; color: var(--md-primary); font-size: 26rpx; line-height: 1.8; }
+.lg-li-t { flex: 1; min-width: 0; font-size: 29rpx; line-height: 1.8; color: var(--md-on-surface); word-break: break-word; }
+
+/* 提示框 / 表格行（法律页源文件的 callout、table 转为移动端可读的行） */
+.lg-note {
+  margin: 18rpx 0; padding: 18rpx 22rpx; border-radius: var(--md-shape-md);
+  background: var(--md-tertiary-container); color: var(--md-on-tertiary-container);
+}
+.lg-note-t { font-size: 27rpx; font-weight: 700; line-height: 1.5; margin-bottom: 6rpx; }
+.lg-note-l { font-size: 26rpx; line-height: 1.7; word-break: break-word; }
+.lg-table {
+  margin: 16rpx 0 22rpx; padding: 16rpx 20rpx; border-radius: var(--md-shape-md);
+  background: var(--md-surface-container-low);
+}
+.lg-cap { font-size: 25rpx; font-weight: 600; color: var(--md-on-surface); margin-bottom: 8rpx; }
+.lg-thead {
+  padding: 10rpx 0; border-bottom: 1rpx solid var(--md-outline-variant);
+  font-size: 24rpx; font-weight: 600; line-height: 1.6; color: var(--md-on-surface-variant); word-break: break-word;
+}
+.lg-tr {
+  padding: 12rpx 0; border-bottom: 1rpx solid var(--md-outline-variant);
+  font-size: 24rpx; line-height: 1.7; color: var(--md-on-surface); word-break: break-word;
+}
+.lg-tr:last-child { border-bottom: 0; padding-bottom: 0; }
+
+.lg-foot {
+  margin: 30rpx 0 0; padding-top: 18rpx; border-top: 1rpx solid var(--md-outline-variant);
+  font-size: 22rpx; line-height: 1.6; color: var(--md-on-surface-variant); word-break: break-word;
+}
+.lg-back {
+  margin: 22rpx 0 8rpx; height: 88rpx; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--md-shape-full); background: var(--md-surface-container-high);
+  color: var(--md-primary); font-size: 26rpx; font-weight: 500;
+}

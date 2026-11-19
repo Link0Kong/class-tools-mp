@@ -22,6 +22,7 @@ Page({
     sid: '',
     err: '',
     verifying: false,
+    agreed: false,
     identity: null
   },
 
@@ -111,6 +112,21 @@ Page({
   onSid(e) {
     const v = String(e.detail.value || '').replace(/[^\d]/g, '').slice(0, 10);
     this.setData({ sid: v, err: '' });
+  },
+
+  // 协议勾选 / 打开原生正文（2026-11-19）
+  toggleAgree() { this.setData({ agreed: !this.data.agreed }); },
+  openLegal(e) {
+    const type = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.type) || 'privacy');
+    wx.navigateTo({ url: '/pages/legal/legal?type=' + (type === 'terms' ? 'terms' : 'privacy') });
+  },
+  // 真实用户点按钮：必须先勾选；submit() 核心逻辑保持不变（自动化/深链仍可直接调用）
+  submitTap() {
+    if (!this.data.agreed) {
+      wx.showToast({ title: '请先勾选同意《用户协议》《隐私政策》', icon: 'none' });
+      return;
+    }
+    this.submit();
   },
 
   submit() {

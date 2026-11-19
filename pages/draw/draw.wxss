@@ -5,6 +5,16 @@
 .sel-wrap { display: flex; flex-wrap: wrap; align-items: center; margin-top: 18rpx; }
 .ph { color: var(--md-on-surface-variant); }
 .exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
+/* 5:4 分享卡画布（离屏；页面渲染结果后异步生成，失败回退 images/share/draw.png） */
+.share-canvas { position: fixed; left: -10000rpx; top: 0; width: 500px; height: 400px; pointer-events: none; }
+.share-btn {
+  margin: 0 8rpx; padding: 0 24rpx; height: 64rpx; min-height: 64rpx; line-height: 64rpx;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--md-shape-full);
+  background: var(--md-primary-container); color: var(--md-on-primary-container);
+  font-size: 24rpx; font-weight: 600;
+}
+.share-btn::after { border: 0; }
 
 /* —— 存证状态行（契约 web/draw/CONTRACT.md §3.2）—— */
 .proof-line { display: flex; align-items: center; flex-wrap: wrap; margin-top: 14rpx; }

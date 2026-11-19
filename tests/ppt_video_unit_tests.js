@@ -20,6 +20,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
@@ -627,7 +628,7 @@ async function run(test) {
       assert.strictEqual(play.pageOrientation, 'auto');
       assert.strictEqual(play.disableScroll, true);
       const app = JSON.parse(src('app.json'));
-      assert.strictEqual(app.pages.indexOf('pages/pptplay/pptplay') >= 0, true);
+      assert.strictEqual(allPages(app).indexOf('pages/pptplay/pptplay') >= 0, true);
       const wxml = src('pages/pptplay/pptplay.wxml');
       assert.ok(!/wx\.cloud/.test(wxml) && !/web-view/.test(wxml), '不引入云开发 SDK / web-view');
       assert.ok(/webp="\{\{true\}\}"/.test(wxml), '图片仍必须 webp=true（真机 .webp）');

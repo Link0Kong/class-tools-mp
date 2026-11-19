@@ -21,6 +21,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
@@ -1343,12 +1344,13 @@ async function run(test) {
     await test('VOTE-D1 app.json：两页已注册（水位之后、PPT 之前）且页面 4 件套齐全', function () {
       const app = JSON.parse(src('app.json'));
       assert.ok(Array.isArray(app.pages));
-      assert.ok(app.pages.indexOf(VOTE_PAGE) >= 0, 'app.json 未注册 pages/vote/vote');
-      assert.ok(app.pages.indexOf(DETAIL_PAGE) >= 0, 'app.json 未注册 pages/votedetail/votedetail');
+      assert.ok(allPages(app).indexOf(VOTE_PAGE) >= 0, 'app.json 未注册 pages/vote/vote');
+      assert.ok(allPages(app).indexOf(DETAIL_PAGE) >= 0, 'app.json 未注册 pages/votedetail/votedetail');
       const iWater = app.pages.indexOf('pages/water/water');
       const iVote = app.pages.indexOf(VOTE_PAGE);
-      const iPpt = app.pages.indexOf('pages/ppt/ppt');
-      assert.ok(iWater >= 0 && iVote > iWater && iVote < iPpt, '投票页应位于 water 后、ppt 前');
+      const iPpt = allPages(app).indexOf('pages/ppt/ppt');
+      assert.ok(iWater >= 0 && iVote > iWater, '投票页应位于 water 之后');
+      assert.ok(iPpt >= 0, 'PPT 页应在主包或分包注册');
       [VOTE_PAGE, DETAIL_PAGE].forEach(function (p) {
         ['.js', '.wxml', '.json', '.wxss'].forEach(function (ext) {
           assert.ok(fs.existsSync(fileOf(p + ext)), 'MISSING ' + p + ext);

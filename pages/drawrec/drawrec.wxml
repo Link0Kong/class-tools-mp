@@ -99,6 +99,7 @@
       <view class="dr-link dr-mono dr-break">{{detail.verifyUrl}}</view>
       <view class="dr-actions">
         <view class="m3-btn m3-btn--tonal m3-btn--sm" bindtap="copyVerify">复制核验链接</view>
+        <button class="share-btn" open-type="share">分享存证</button>
         <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="goBack">返回</view>
       </view>
     </view>

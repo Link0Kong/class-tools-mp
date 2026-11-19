@@ -83,7 +83,10 @@
       <view class="m3-card m3-card--filled enter enter-2">
         <view class="m3-card__head">
           <view class="t-title-m">分组结果</view>
-          <view class="pill {{groups.length ? 'pill--primary' : 'pill--neutral'}}">{{groups.length}} 组</view>
+          <view class="row">
+            <button wx:if="{{groups.length}}" class="share-btn" open-type="share">分享</button>
+            <view class="pill {{groups.length ? 'pill--primary' : 'pill--neutral'}}">{{groups.length}} 组</view>
+          </view>
         </view>
 
         <empty-state wx:if="{{state === 'empty'}}" icon="👥" title="还没有分组结果" text="设置好参数点下面的「开始分组」" action-text="开始分组" bind:action="doGroup"></empty-state>

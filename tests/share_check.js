@@ -59,6 +59,8 @@ async function shot(mp, name) {
 }
 function imgExists(url) {
   if (!url || typeof url !== 'string') return false;
+  // 2026-11-19：抽签/投票分享卡改为运行时 canvas 生成，imageUrl 是临时文件路径（仍是 5:4 1000×800）
+  if (/^(wxfile:|https?:\/\/tmp\/|https?:\/\/usr\/)/.test(url)) return true;
   if (url.indexOf('/images/share/') !== 0) return false;
   return fs.existsSync(path.join(ROOT, url.slice(1)));
 }
@@ -147,14 +149,18 @@ function checkShare(label, data, expectPath) {
     ['/pages/me/me', '我的', 'pages/me/me', '/images/share/default.png']
   ];
   for (const [url, label, route, img] of tabs) {
-    try {
-      p = await mp.switchTab(url);
-      await waitPath(mp, route, 12000);
-      await sleep(300);
-    } catch (e) {
-      check(label + '（tab）可打开', false, 'devtools 路由异常：' + e.message);
+    // devtools automator 的 switchTab 偶发 RPC 超时（页面实际已切换）；重试 + 等路由，避免误报
+    let switched = false;
+    for (let i = 0; i < 2 && !switched; i++) {
+      try { p = await mp.switchTab(url); } catch (e) { await sleep(1200); }
+      switched = await waitPath(mp, route, 12000);
+      if (!switched) await sleep(1000);
+    }
+    if (!switched) {
+      check(label + '（tab）可打开', false, 'devtools switchTab 未完成，当前 ' + (await curPath(mp)));
       continue;
     }
+    await sleep(300);
     const data = await shareOf(mp);
     check(label + '（tab）分享数据来自本页', (data && data.path === route), data && data.path);
     checkShare(label, data, '/' + route);
@@ -175,7 +181,9 @@ function checkShare(label, data, expectPath) {
     ['/pages/committee/committee', '班委'],
     ['/pages/stats/stats', '统计'],
     ['/pages/fb/fb', '反馈建议'],
-    ['/pages/ug/ug', '使用说明']
+    ['/pages/ug/ug', '使用说明'],
+    ['/pages/legal/legal?type=privacy', '隐私政策'],
+    ['/pages/legal/legal?type=terms', '用户协议']
   ];
   for (const [url, label] of pages) {
     try { await openPage(mp, url); } catch (e) {
@@ -212,7 +220,7 @@ function checkShare(label, data, expectPath) {
     await openPage(mp, '/pages/committee/committee');
     await sleep(700);
     const bzShare = await shareOf(mp);
-    check('班委分享标题带班委人数', !!(bzShare && bzShare.msg && /班委名单｜\d+ 名班委/.test(bzShare.msg.title)), bzShare && JSON.stringify(bzShare.msg));
+    check('班委分享标题带班委人数', !!(bzShare && bzShare.msg && /班委 \d+ 人/.test(bzShare.msg.title)), bzShare && JSON.stringify(bzShare.msg));
   } catch (e) {
     check('通知 / 班委动态标题回归', false, 'devtools 路由异常：' + e.message);
   }

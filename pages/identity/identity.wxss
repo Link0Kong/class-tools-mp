@@ -16,3 +16,19 @@
 .id-priv__row:last-child { border-bottom: none; }
 .id-priv__k { flex: none; width: 128rpx; font-size: 24rpx; font-weight: 500; color: var(--md-on-surface-variant); }
 .id-priv__v { flex: 1; font-size: 24rpx; line-height: 1.5; color: var(--md-on-surface); }
+
+/* 协议勾选 / 原生正文链接（2026-11-19）：整行可点，避免 40px 以下小勾选框 */
+.id-agree { display: flex; flex-direction: row; align-items: flex-start; margin-top: 18rpx; padding: 8rpx 0; }
+.id-check {
+  flex: none; width: 40rpx; height: 40rpx; margin: 0 14rpx 0 2rpx;
+  display: flex; align-items: center; justify-content: center;
+  border: 2rpx solid var(--md-outline); border-radius: 8rpx; box-sizing: border-box;
+  color: var(--md-on-primary); background: transparent;
+}
+.id-check--on { background: var(--md-primary); border-color: var(--md-primary); }
+.id-check-t { font-size: 26rpx; line-height: 1; font-weight: 700; }
+.id-agree-txt { flex: 1; min-width: 0; font-size: 24rpx; line-height: 1.6; color: var(--md-on-surface-variant); }
+.id-link { color: var(--md-primary); font-weight: 600; padding: 4rpx 0; }
+.id-legal { display: flex; align-items: center; justify-content: center; margin-top: 16rpx; padding: 10rpx 0; }
+.id-legal-link { color: var(--md-primary); font-size: 24rpx; font-weight: 600; padding: 8rpx 10rpx; }
+.id-legal-sep { color: var(--md-on-surface-variant); font-size: 24rpx; }

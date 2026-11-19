@@ -2258,6 +2258,9 @@ const fakeCanvas = (() => {
   /* ---------------- 2026-11-18 自建后端切流（三档 base）+ 网络层体验优化（断言在 net_layer_tests.js） ---------------- */
   await require('./net_layer_tests.js').run(test);
 
+  /* ---------------- 2026-11-19 分享卡（抽签/投票 canvas）+ 法律正文 + 分包（断言在 share_legal_unit.js） ---------------- */
+  await require('./share_legal_unit.js').run(test);
+
   /* ---------------- 汇总 ---------------- */
   const summary = { total: passN + failN, pass: passN, fail: failN, results, at: new Date().toISOString() };
   fs.writeFileSync(path.join(__dirname, 'unit-result.json'), JSON.stringify(summary, null, 2), 'utf8');

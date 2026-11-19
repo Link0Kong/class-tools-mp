@@ -311,17 +311,23 @@ Page({
     });
   },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
+  _shareTitle() {
+    const n = (this.data.groups || []).length;
+    const cfg = this.data.cfg || {};
+    if (!n) return '班级分组｜按组数或人数一键分组';
+    return '分组结果 · ' + n + ' 组' + (cfg.total ? (' / ' + cfg.total + ' 人') : '');
+  },
   onShareAppMessage() {
     return share.message({
-      title: '班级分组｜按组数或人数一键分组',
+      title: this._shareTitle(),
       path: '/pages/group/group',
-      imageUrl: '/images/share/default.png'
+      imageUrl: '/images/share/draw.png'
     });
   },
   onShareTimeline() {
     return share.timeline({
-      title: '班级分组｜按组数或人数一键分组',
-      imageUrl: '/images/share/default.png'
+      title: this._shareTitle(),
+      imageUrl: '/images/share/draw.png'
     });
   }
 });

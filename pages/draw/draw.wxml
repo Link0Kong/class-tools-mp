@@ -113,6 +113,7 @@
           <view class="t-title-m">抽签结果</view>
           <view class="row">
             <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="openRecords">抽签记录</touchable>
+            <button wx:if="{{rows.length}}" class="share-btn" open-type="share">分享</button>
             <view class="pill {{rows.length ? 'pill--primary' : 'pill--neutral'}}">{{rows.length}} 个</view>
           </view>
         </view>
@@ -148,6 +149,7 @@
   </block>
 
   <canvas type="2d" id="card" class="exp-canvas"></canvas>
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
 
   <!-- —— 底部固定操作条 —— -->
   <view class="actionbar">

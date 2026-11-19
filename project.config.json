@@ -14,6 +14,38 @@
       {
         "type": "folder",
         "value": "tests"
+      },
+      {
+        "type": "folder",
+        "value": "docs"
+      },
+      {
+        "type": "folder",
+        "value": ".vscode"
+      },
+      {
+        "type": "file",
+        "value": "README.md"
+      },
+      {
+        "type": "file",
+        "value": "CHANGELOG.md"
+      },
+      {
+        "type": "file",
+        "value": "sync_repos.py"
+      },
+      {
+        "type": "file",
+        "value": "sync-repos.cmd"
+      },
+      {
+        "type": "file",
+        "value": "1.keystore"
+      },
+      {
+        "type": "file",
+        "value": "debug.log"
       }
     ],
     "include": []

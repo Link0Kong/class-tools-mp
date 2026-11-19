@@ -203,16 +203,18 @@ Page({
   /* ---------------- 分享（详情深链 ?id=） ---------------- */
   onShareAppMessage() {
     const id = this.data.detailId || '';
+    const n = this.data.detail && this.data.detail.rows ? this.data.detail.rows.length : 0;
     return share.message({
-      title: '班级抽签存证',
+      title: n ? ('抽签结果 · ' + n + ' 个 · 可核验') : '班级抽签存证 · 可核验',
       path: '/pages/drawrec/drawrec' + (id ? ('?id=' + encodeURIComponent(id)) : ''),
       imageUrl: '/images/share/draw.png'
     });
   },
   onShareTimeline() {
     const id = this.data.detailId || '';
+    const n = this.data.detail && this.data.detail.rows ? this.data.detail.rows.length : 0;
     return share.timeline({
-      title: '班级抽签存证 · 可核验',
+      title: n ? ('抽签结果 · ' + n + ' 个 · 可核验') : '班级抽签存证 · 可核验',
       query: id ? ('id=' + encodeURIComponent(id)) : '',
       imageUrl: '/images/share/draw.png'
     });

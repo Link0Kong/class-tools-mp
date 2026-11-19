@@ -15,6 +15,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { allPages } = require('./_app_pages.js');
 const assert = require('assert');
 
 const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools';
@@ -312,9 +313,10 @@ module.exports.run = async function (test) {
   await test('外观 I：全部页面 WXML 接 page-meta themeStyle + 根节点 themeClass（静态）', function () {
     purge();
     const app = JSON.parse(src('app.json'));
-    assert.ok(app.pages.length >= 29, '页面数 ' + app.pages.length);
+    const pages = allPages(app);
+    assert.ok(pages.length >= 31, '页面数 ' + pages.length);
     const missingMeta = [], missingClass = [], badMeta = [];
-    app.pages.forEach(function (p) {
+    pages.forEach(function (p) {
       const wxml = src(p + '.wxml');
       if (wxml.indexOf('<page-meta') < 0) { missingMeta.push(p); return; }
       if (!/<page-meta[^>]*page-style="\{\{themeStyle\}\}/.test(wxml)) {
