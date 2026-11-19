@@ -62,7 +62,14 @@ page {
   --md-space-5: 24rpx;
   --md-space-6: 32rpx;
   --md-space-7: 48rpx;
+  /* 鸿蒙间隔参数（2026-11-19）：手机屏幕边距 16vp=32rpx；卡片间 12vp=24rpx；
+     元素间大 16vp=32rpx / 普通 8vp=16rpx；主次文本纵 2vp=4rpx / 横 8vp=16rpx。 */
   --md-page-pad: 32rpx;
+  --md-gap-card: 24rpx;
+  --md-gap-elem-lg: 32rpx;
+  --md-gap-elem: 16rpx;
+  --md-gap-text: 4rpx;
+  --md-gap-text-h: 16rpx;
   --md-list-min-h: 112rpx;
 
   /* —— 动效（M3 motion）—— */
@@ -165,7 +172,7 @@ page {
 .ellipsis  { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .divider   { height: 1rpx; background: var(--md-outline-variant); margin: var(--md-space-4) 0; }
 .section-gap { height: var(--md-space-6); }
-.sec-title { padding: var(--md-space-5) 0 var(--md-space-3); }
+.sec-title { padding: var(--md-gap-elem-lg) 0 var(--md-gap-elem); }
 
 /* ===================== 页面进入动效（级联） ===================== */
 @keyframes mdEnter {
@@ -205,7 +212,7 @@ page {
 /* ===================== 按钮（Filled / Tonal / Outlined / Text） ===================== */
 .m3-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 96rpx; padding: 0 48rpx; box-sizing: border-box;
+  height: 96rpx; padding: 0 var(--md-gap-elem-lg); box-sizing: border-box;
   border-radius: var(--md-shape-full); border: none;
   font-size: 28rpx; font-weight: 500; line-height: 1;
   position: relative; overflow: hidden;
@@ -214,17 +221,17 @@ page {
 .m3-btn--filled   { background: var(--md-primary); color: var(--md-on-primary); box-shadow: var(--md-elev-1); }
 .m3-btn--tonal    { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
 .m3-btn--outlined { background: transparent; color: var(--md-primary); border: 2rpx solid var(--md-outline); }
-.m3-btn--text     { background: transparent; color: var(--md-primary); padding: 0 24rpx; }
+.m3-btn--text     { background: transparent; color: var(--md-primary); padding: 0 var(--md-gap-elem); }
 .m3-btn--error    { background: var(--md-error); color: var(--md-on-error); }
 .m3-btn--block    { display: flex; width: 100%; }
 .m3-btn--sm       { height: 72rpx; padding: 0 32rpx; font-size: 26rpx; }
 .m3-btn--disabled { opacity: .38; }
-.m3-btn--gap      { margin-right: var(--md-space-3); }
+.m3-btn--gap      { margin-right: var(--md-gap-elem); }
 
 /* ===================== 芯片（Chip / FilterChip） ===================== */
 .m3-chip {
-  display: inline-flex; align-items: center; height: 64rpx; padding: 0 28rpx;
-  margin: 0 var(--md-space-3) var(--md-space-3) 0;
+  display: inline-flex; align-items: center; height: 64rpx; padding: 0 var(--md-gap-elem-lg);
+  margin: 0 var(--md-gap-elem) var(--md-gap-elem) 0;
   border-radius: var(--md-shape-full);
   border: 2rpx solid var(--md-outline-variant);
   background: transparent; color: var(--md-on-surface-variant);
@@ -240,7 +247,7 @@ page {
 .m3-card {
   background: var(--md-surface-container-low); color: var(--md-on-surface);
   border-radius: var(--md-shape-lg); padding: var(--md-space-6); box-sizing: border-box;
-  margin-bottom: var(--md-space-4);
+  margin-bottom: var(--md-gap-card);
   transition: box-shadow var(--md-dur-short) var(--md-ease-standard);
 }
 .m3-card--xl       { border-radius: var(--md-shape-xl); }
@@ -249,28 +256,28 @@ page {
 .m3-card--outlined { background: var(--md-surface); border: 2rpx solid var(--md-outline-variant); }
 .m3-card--primary  { background: var(--md-primary-container); color: var(--md-on-primary-container); }
 .m3-card--hero     { background: var(--md-primary-container); color: var(--md-on-primary-container); border-radius: var(--md-shape-xl); padding: var(--md-space-6); }
-.m3-card__head     { display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: var(--md-space-4); }
+.m3-card__head     { display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: var(--md-gap-elem); }
 
 /* ===================== 列表项（ListItem：leading tonal 圆 + 标题/副标 + chevron） ===================== */
 .m3-li {
   display: flex; flex-direction: row; align-items: center;
-  min-height: var(--md-list-min-h); padding: var(--md-space-3) var(--md-space-4);
+  min-height: var(--md-list-min-h); padding: var(--md-gap-elem) var(--md-gap-elem);
   border-radius: var(--md-shape-md); background: transparent;
   transition: background var(--md-dur-short) var(--md-ease-standard);
 }
-.m3-li--card { background: var(--md-surface-container-low); margin-bottom: var(--md-space-4); }
+.m3-li--card { background: var(--md-surface-container-low); margin-bottom: var(--md-gap-card); }
 .m3-li__lead {
   width: 76rpx; height: 76rpx; border-radius: var(--md-shape-full);
   background: #7D9EBB; color: #FFFFFF;
   display: flex; align-items: center; justify-content: center;
-  font-size: 34rpx; margin-right: var(--md-space-5); flex: none;
+  font-size: 34rpx; margin-right: var(--md-gap-elem); flex: none;
 }
 .m3-li__lead--primary   { background: #5E8F87; color: #FFFFFF; }
 .m3-li__lead--tertiary  { background: #C6A475; color: #FFFFFF; }
 .m3-li__body { flex: 1; min-width: 0; }
 .m3-li__title { font-size: 32rpx; font-weight: 500; color: var(--md-on-surface); }
-.m3-li__sub   { font-size: 26rpx; color: var(--md-on-surface-variant); margin-top: 4rpx; }
-.m3-li__trail { color: var(--md-on-surface-variant); font-size: 32rpx; margin-left: var(--md-space-3); }
+.m3-li__sub   { font-size: 26rpx; color: var(--md-on-surface-variant); margin-top: var(--md-gap-text); }
+.m3-li__trail { color: var(--md-on-surface-variant); font-size: 32rpx; margin-left: var(--md-gap-elem); }
 .chev::after { content: "›"; font-size: 40rpx; color: var(--md-on-surface-variant); line-height: 1; }
 
 /* ===================== 表单（.field 版式） ===================== */
@@ -494,4 +501,12 @@ page {
   .m3-btn, .m3-chip, .m3-li, .m3-card, .fab, .lp-bubble, .lp-chip, .progress__bar {
     transition: none !important;
   }
+}
+
+/* 鸿蒙间隔参数：折叠屏 / 平板屏幕左右边距（手机 16vp 已是默认 32rpx）。 */
+@media (min-width: 600px) {
+  page { --md-page-pad: 48rpx; }
+}
+@media (min-width: 900px) {
+  page { --md-page-pad: 64rpx; }
 }

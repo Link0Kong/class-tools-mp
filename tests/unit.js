@@ -2261,6 +2261,9 @@ const fakeCanvas = (() => {
   /* ---------------- 2026-11-19 分享卡（抽签/投票 canvas）+ 法律正文 + 分包（断言在 share_legal_unit.js） ---------------- */
   await require('./share_legal_unit.js').run(test);
 
+  /* ---------------- 2026-11-19 鸿蒙间隔参数（16/24/32vp 边距、12vp 卡片、16/8vp 元素、2/8vp 文本） ---------------- */
+  await require('./interval_unit.js').run(test);
+
   /* ---------------- 汇总 ---------------- */
   const summary = { total: passN + failN, pass: passN, fail: failN, results, at: new Date().toISOString() };
   fs.writeFileSync(path.join(__dirname, 'unit-result.json'), JSON.stringify(summary, null, 2), 'utf8');

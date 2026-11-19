@@ -716,7 +716,7 @@ function run(test) {
       purge();
       const css = src('pages/power/power.wxss');
       // tiles：必须 grid repeat(2, minmax(0,1fr))，tile width:auto/min-width:0；禁止零余量 50%-6rpx
-      assert.ok(/\.pw-tiles \{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*gap: 12rpx;/.test(css), 'tiles 必须 CSS Grid 两列（不依赖百分比取整）');
+      assert.ok(/\.pw-tiles \{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*gap: 24rpx;/.test(css), 'tiles 必须 CSS Grid 两列（12vp=24rpx，不依赖百分比取整）');
       assert.ok(/\.pw-tile \{[^}]*width: auto;[^}]*min-width: 0;/.test(css), 'tile 宽 auto + min-width:0（grid 列内不被内容撑破）');
       assert.ok(!/calc\(50% - 6rpx\)/.test(css), '禁止零余量 50%-6rpx（真机会掉成一列）');
       assert.ok(!/\.pw-tile[^}]*width: calc\(50%/.test(css), 'tile 不再使用百分比宽度');
@@ -3803,7 +3803,7 @@ function run(test) {
       assert.ok(/class="pw-pick"/.test(pwWxmlSrc) && !/pw-pick-main/.test(pwWxmlSrc), '顶部关注宿舍改为单行入口');
       assert.ok(/pw-dash-main/.test(pwWxmlSrc) && /pw-refresh-btn/.test(pwWxmlSrc) && !/m3-btn--block pw-refresh/.test(pwWxmlSrc), 'Hero 紧凑布局 + 右上角小刷新按钮');
       assert.ok(/\.pw-ring \{[^}]*width: 220rpx; height: 220rpx;/.test(pwWxssSrc) && /\.pw-q \{ font-size: 56rpx/.test(pwWxssSrc), 'Hero 小环 220rpx + 合适字号');
-      assert.ok(/\.pw-tile \{[^}]*padding: 20rpx 22rpx;/.test(pwWxssSrc) && /\.pw-tile-v \{ margin-top: 6rpx; font-size: 38rpx;/.test(pwWxssSrc), 'tiles 紧凑 padding/字号');
+      assert.ok(/\.pw-tile \{[^}]*padding: 24rpx;/.test(pwWxssSrc) && /\.pw-tile-v \{ margin-top: 4rpx; font-size: 38rpx;/.test(pwWxssSrc), 'tiles 紧凑 padding/字号（12vp/2vp）');
       ['utils/power.js', 'README.md', 'CHANGELOG.md'].forEach(function (f) {
         const t = src(f);
         assert.ok(!/30–100|30-100|>100 充足|>100 充足|≥100 充足|100 度偏低/.test(t), f + ' 不应残留旧「30–100 偏低 / >100 充足」阈值');

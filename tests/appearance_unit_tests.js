@@ -70,7 +70,7 @@ function parseWxssTokens(css, begin, end) {
   while ((m = re.exec(block))) out[m[1]] = m[2].trim();
   return out;
 }
-const NON_THEME = /^md-(shape-|space-|page-pad$|list-min-h$|ease-|dur-)/;
+const NON_THEME = /^md-(shape-|space-|page-pad$|gap-|list-min-h$|ease-|dur-)/;
 
 module.exports.run = async function (test) {
   const C = createCtx();

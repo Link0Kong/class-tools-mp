@@ -195,9 +195,19 @@ Page({
     if (this._measureFallbackT) { clearTimeout(this._measureFallbackT); this._measureFallbackT = null; }
   },
   onResize() { this._cwMeasured = false; this._renderWhenReady(); },   // v4：窗口变化重新量宽/重绘  onPageScroll(e) { scrollmem.onScroll(this, e); },
+  /* 下拉刷新：等回弹结束、页面回到原位后再重新量宽/绘线。
+     否则 canvas 原生层会在回弹中按中间宽度/高度绘制，曲线与 x/y 轴覆盖层出现“漂移”。 */
+  _finishPullDown() {
+    try { wx.stopPullDownRefresh(); } catch (e) { /* 旧基础库/单测无此 API */ }
+    setTimeout(() => {
+      if (!this._row || this.data.state !== 'ready') return;
+      this._cwMeasured = false;
+      this._renderWhenReady();
+    }, 90);
+  },
   onPullDownRefresh() {
     if (!this.data.hasSel) { wx.stopPullDownRefresh(); this.setData({ state: 'idle' }); return; }
-    this.load(true).then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh());
+    this.load(true).then(() => this._finishPullDown()).catch(() => this._finishPullDown());
   },
   // 云端 userdata 应用后（换端选择变化）同步关注宿舍并重载
   onCloudSync() {

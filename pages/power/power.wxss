@@ -3,8 +3,8 @@
 
 /* —— 关注宿舍：单行入口（点击区域 ≥44px） —— */
 .pw-pick {
-  display: flex; flex-direction: row; align-items: center; gap: 12rpx;
-  min-height: 88rpx; padding: 0 24rpx; margin-bottom: 16rpx; box-sizing: border-box;
+  display: flex; flex-direction: row; align-items: center; gap: 16rpx;
+  min-height: 88rpx; padding: 0 32rpx; margin-bottom: var(--md-gap-card); box-sizing: border-box;
   border-radius: var(--md-shape-lg); background: var(--md-surface-container-low);
   border: 1rpx solid var(--md-outline-variant);
 }
@@ -17,15 +17,15 @@
 .pw-pick-chev { flex: none; font-size: 36rpx; line-height: 1; color: var(--md-on-surface-variant); }
 
 /* —— 引导 / 失败 —— */
-.pw-guide { padding: 40rpx 32rpx; text-align: center; }
+.pw-guide { padding: 32rpx; text-align: center; }
 .pw-guide-t { font-size: 34rpx; font-weight: 700; color: var(--md-on-surface); }
-.pw-guide-s { margin-top: 14rpx; font-size: 25rpx; line-height: 1.6; color: var(--md-on-surface-variant); }
+.pw-guide-s { margin-top: 4rpx; font-size: 25rpx; line-height: 1.6; color: var(--md-on-surface-variant); }
 
 /* —— 仪表盘主卡（紧凑 Hero）—— */
-.pw-dash { padding: 24rpx; margin-bottom: 16rpx; text-align: left; }
+.pw-dash { padding: 32rpx; margin-bottom: var(--md-gap-card); text-align: left; }
 .pw-dash-main { display: flex; flex-direction: row; align-items: center; gap: 24rpx; }
 .pw-dash-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
-.pw-dash-top { display: flex; align-items: center; gap: 12rpx; width: 100%; }
+.pw-dash-top { display: flex; align-items: center; gap: 16rpx; width: 100%; }
 .pw-state {
   flex: none; font-size: 21rpx; font-weight: 700; padding: 5rpx 16rpx; border-radius: 999rpx;
   background: var(--md-primary-container); color: var(--md-on-primary-container);
@@ -34,7 +34,7 @@
 .pw-state--warn { background: var(--md-tertiary-container); color: var(--md-on-tertiary-container); }
 .pw-state--low { background: var(--md-error-container); color: var(--md-on-error-container); }
 .pw-state--idle { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
-.pw-dash-cap { margin-top: 14rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
+.pw-dash-cap { margin-top: 4rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
 .pw-dash-upd {
   margin-top: 4rpx; max-width: 100%; font-size: 21rpx; line-height: 1.4; color: var(--md-on-surface-variant);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
@@ -72,8 +72,8 @@
 .pw-low-r { flex: none; font-size: 20rpx; font-weight: 600; opacity: .82; }
 
 /* —— 趋势卡：区间 chips + canvas 2d 折线 + y/x 轴刻度 —— */
-.pw-card { margin-bottom: 16rpx; padding: 24rpx; }
-.pw-trend-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; }
+.pw-card { margin-bottom: var(--md-gap-card); padding: 32rpx; }
+.pw-trend-hd { display: flex; align-items: center; flex-wrap: wrap; gap: 4rpx 16rpx; }
 .pw-trend-hd .t-title-m { font-size: 30rpx; }
 .pw-slow {
   flex: none; max-width: 100%;
@@ -95,8 +95,8 @@
   background: var(--md-tertiary-container); color: var(--md-on-tertiary-container);
 }
 /* 区间行（左：24h/7天/30天；右：固定信息气泡，位于绘图区外、趋势图右上角上部） */
-.pw-trend-top { display: flex; align-items: flex-start; gap: 12rpx; width: 100%; max-width: 100%; margin-top: 12rpx; }
-.pw-ranges { display: flex; flex-wrap: wrap; gap: 10rpx; flex: 1 1 auto; min-width: 0; margin-top: 0; }
+.pw-trend-top { display: flex; align-items: flex-start; gap: 16rpx; width: 100%; max-width: 100%; margin-top: 16rpx; }
+.pw-ranges { display: flex; flex-wrap: wrap; gap: 16rpx; flex: 1 1 auto; min-width: 0; margin-top: 0; }
 .pw-range {
   min-height: 78rpx; padding: 0 24rpx; border-radius: 999rpx;
   display: flex; align-items: center; justify-content: center;
@@ -104,7 +104,7 @@
   background: var(--md-surface-container-high);
 }
 .pw-range--on { background: var(--md-primary); color: #FFFFFF; }
-.pw-trend { margin-top: 12rpx; max-width: 100%; overflow: hidden; }
+.pw-trend { margin-top: 16rpx; max-width: 100%; overflow: hidden; }
 /* v4：绘图区可横滑 + 固定 y 轴 + 固定 x 轴覆盖层 */
 .pw-trend-body { position: relative; display: flex; flex-direction: row; align-items: stretch; width: 100%; max-width: 100%; overflow: hidden; }
 /* 绘图区 = 固定宽 canvas + 透明 scroll 代理；canvas 永不超出绘图区 */
@@ -167,9 +167,9 @@
 .pw-b { font-weight: 800; color: var(--md-on-surface); }
 
 /* —— 4 个指标 tile（2×2：CSS Grid，真机 DPR/小数取整也不会掉成一列） —— */
-.pw-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12rpx; }
+.pw-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24rpx; }
 .pw-tile {
-  width: auto; min-width: 0; box-sizing: border-box; padding: 20rpx 22rpx;
+  width: auto; min-width: 0; box-sizing: border-box; padding: 24rpx;
   border-radius: 20rpx; background: var(--md-surface-container-low);
   border: 1rpx solid var(--md-outline-variant);
 }
@@ -182,9 +182,9 @@
   font-size: 17rpx; color: var(--md-on-surface-variant);
   background: var(--md-surface-container-high);
 }
-.pw-tile-v { margin-top: 6rpx; font-size: 38rpx; font-weight: 800; line-height: 1.1; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
+.pw-tile-v { margin-top: 4rpx; font-size: 38rpx; font-weight: 800; line-height: 1.1; color: var(--md-on-surface); font-variant-numeric: tabular-nums; }
 .pw-tile-u { margin-left: 5rpx; font-size: 20rpx; font-weight: 600; color: var(--md-on-surface-variant); }
-.pw-tile-s { margin-top: 6rpx; font-size: 19rpx; line-height: 1.4; color: var(--md-on-surface-variant); }
+.pw-tile-s { margin-top: 4rpx; font-size: 19rpx; line-height: 1.4; color: var(--md-on-surface-variant); }
 /* 自然周期同期比较（2026-11-15，对齐网页 .pw-cmp / 安卓 v4.55）：独立一行、可换行完整显示；
    用电变多=暖沙（up），变少=灰蓝（down），与网页 .opt-up/.opt-down 同义。 */
 .pw-tile-cmp {
