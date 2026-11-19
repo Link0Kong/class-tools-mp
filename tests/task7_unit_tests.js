@@ -461,15 +461,15 @@ function run(test) {
     /* ============================================================
        C. 第 6 条 水量共享
        ============================================================ */
-    await test('C1 water.isFixed4 / fixedPersons：23A/23B 固定 4 人间，13/16 号楼 4/6 可选', function () {
+    await test('C1 water.isFixed4 / fixedPersons：固定四人间已取消，所有宿舍 1–6 自选', function () {
       purge();
       const water = R('utils/water.js');
-      assert.strictEqual(water.isFixed4('4-23A---324'), true);
-      assert.strictEqual(water.isFixed4('4-23B---423'), true);
+      assert.strictEqual(water.isFixed4('4-23A---324'), false);
+      assert.strictEqual(water.isFixed4('4-23B---423'), false);
       assert.strictEqual(water.isFixed4('1-13---324'), false);
       assert.strictEqual(water.isFixed4('1-16---305'), false);
-      assert.strictEqual(water.fixedPersons('4-23A---321', 6), 4, '23A 强制 4 人');
-      assert.strictEqual(water.fixedPersons('1-13---324', 6), 6, '其它楼栋可 6 人');
+      assert.strictEqual(water.fixedPersons('4-23A---321', 6), 6, '23A 也可 6 人');
+      assert.strictEqual(water.fixedPersons('1-13---324', 5), 5, '5 人间合法');
       assert.strictEqual(water.fixedPersons('1-13---324', 99), 4, '非法 → 默认 4');
     });
 
@@ -514,7 +514,7 @@ function run(test) {
       assert.strictEqual(after.length, 1);
       assert.strictEqual(after[0].op, 'del');
       assert.strictEqual(water.normOps([null, 1, 'x', { op: 'persons', rv: '4-23A---321', p: 6 }]).length, 1, '坏项过滤');
-      assert.strictEqual(water.normOps([{ op: 'persons', rv: '4-23A---321', p: 6 }])[0].p, 4, '23A 人数 op 固定 4');
+      assert.strictEqual(water.normOps([{ op: 'persons', rv: '4-23A---321', p: 6 }])[0].p, 6, '23A 人数 op 保留 6');
     });
 
     await test('C4 cloud.water*：PostgREST 口径（GET/POST/DELETE + Prefer + on_conflict，唯一 CloudBase 通道）', async function () {
@@ -550,14 +550,14 @@ function run(test) {
       assert.strictEqual(roomUp.ok, true);
       const rpost = C.reqLog().filter(function (o) { return o.method === 'POST' && String(o.url).indexOf('/water_room?') >= 0; })[0];
       assert.ok(/on_conflict=roomverify/.test(rpost.url), 'water_room on_conflict=roomverify');
-      assert.deepStrictEqual(rpost.data, { roomverify: '4-23A---321', persons: 4 }, '23A 固定写 4 人');
+      assert.deepStrictEqual(rpost.data, { roomverify: '4-23A---321', persons: 6 }, '23A 可写 6 人');
       // 失败返回 ok:false（页面进离线队列），不 throw
       C.setReq(function (o) { o.success({ statusCode: 500, data: {} }); });
       const fail = await cloud.waterUpsert('1-13---324', '2026-12', 130, 4);
       assert.strictEqual(fail.ok, false, 'HTTP 失败 → ok:false（不抛异常）');
     });
 
-    await test('C5 水量页：云端共享接线 / 23A 固定 4 / 离线 pending 重试 / 文案无「免费」', async function () {
+    await test('C5 水量页：云端共享接线 / 23A 1–6 自选 / 离线 pending 重试 / 文案无「免费」', async function () {
       purge();
       C.clearMem(); C.setIdentity();
       const store = R('utils/store.js');
@@ -575,13 +575,13 @@ function run(test) {
       ctx.onLoad();
       ctx._render();
       assert.strictEqual(ctx.data.persons, 4);
-      assert.strictEqual(ctx.data.personsLocked, true, '23A 人数锁定');
+      assert.strictEqual(ctx.data.personsLocked, false, '23A 人数不再锁定');
       ctx.pickPersons({ currentTarget: { dataset: { p: 6 } } });
-      assert.strictEqual(store.get().water.rooms['4-23A---321'].p, 4, '23A 不允许改成 6 人间');
+      assert.strictEqual(store.get().water.rooms['4-23A---321'].p, 6, '23A 可改成 6 人间');
       await ctx._cloudSync(true);
       await sleep(30);
       assert.strictEqual(store.get().water.rooms['4-23A---321'].recs[1].r, 111, '云端同月覆盖本地');
-      assert.strictEqual(ctx.data.persons, 4, '云端 water_room 也不改 23A 的固定 4 人');
+      assert.strictEqual(ctx.data.persons, 6, '云端 water_room 也采用 6 人');
       assert.ok(/宿舍共享|已同步/.test(ctx.data.syncText), '页脚显示云端共享状态：' + ctx.data.syncText);
       // 离线保存 → pending；恢复后重试清空
       C.setReq(function (o) { o.success({ statusCode: 500, data: {} }); });

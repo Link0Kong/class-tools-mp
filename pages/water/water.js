@@ -16,7 +16,7 @@
 //   * 保存 / 删除 / 改人数：先写本机 + store.save()（UD v6 water 继续作离线缓存）→ 再尽力写云端；
 //     失败进 store.waterPend，onShow/进页/联网时自动重试（契约 §3.2）；
 //   * 云端数据为宿舍共享：同宿舍任一同学写入后，其他人进入即可看到（以宿舍为单位）；
-//   * 23A/23B 固定四人间：人数选择器禁用并显示「4 人间（固定）」，首次进入自动 upsert water_room.persons=4；
+//   * 2026-11-19：取消 23A/23B 固定四人间，所有宿舍均可自选 1–6 人间（不再强制 upsert=4）；
 //   * 隐私：只显示规范楼栋 + 房间号，不含姓名 / 学号（与电费同一红线）。
 const store = require('../../utils/store.js');
 const identity = require('../../utils/identity.js');
@@ -58,7 +58,7 @@ Page({
     selLabel: '',
     persons: 4,
     personsLocked: false,     // 23A/23B 固定 4 人间（契约 §4）
-    personsOptions: water.ruleView(4).personsOptions,   // 「4 人间」/「6 人间」（不再含每月免费 N 吨水）
+    personsOptions: water.ruleView(4).personsOptions,   // 「1 人间」…「6 人间」（2026-11-19 自选）
     personQuota: water.quotaOf(4),
     month: '',
     reading: '',

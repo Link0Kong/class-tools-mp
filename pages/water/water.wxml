@@ -54,14 +54,11 @@
       </block>
     </view>
 
-    <!-- 宿舍人数（4 / 6）→ 每月定额；23A/23B 固定 4 人间不可改（2026-11-11 契约 §4/§5） -->
+    <!-- 宿舍人数（1–6 自选）→ 每月定额；2026-11-19 取消 23A/23B 固定四人间 -->
     <view class="m3-card m3-card--outlined wt-card">
       <view class="wt-row">
         <text class="wt-label">宿舍人数</text>
-        <view class="wt-persons" wx:if="{{personsLocked}}">
-          <view class="wt-person wt-person--on wt-person--lock">4 人间（固定）</view>
-        </view>
-        <view class="wt-persons" wx:else>
+        <view class="wt-persons">
           <view wx:for="{{personsOptions}}" wx:key="p"
                 class="wt-person {{item.p === persons ? 'wt-person--on' : ''}}"
                 data-p="{{item.p}}" bindtap="pickPersons">{{item.label}}</view>

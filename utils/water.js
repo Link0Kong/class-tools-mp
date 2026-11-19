@@ -28,7 +28,7 @@ const RULES = {
   waterFreePP: 2,           // 吨/人/月（定额）
   elecFreePP: 5,            // 度/人/月（定额）
   personsDef: 4,
-  personsOpts: [4, 6],
+  personsOpts: [1, 2, 3, 4, 5, 6],
   cycleMonths: 10,          // 每学年按 10 个月划拨（寒暑假无）
   waterDate: '2025-09-05',
   elecDate: '2025-09-05',
@@ -60,8 +60,8 @@ function shiftMonth(m, delta) {
   const t = new Date(y, mo, 1);
   return monthOf(t);
 }
-// 人数：只接受 4 / 6，其余按默认 4
-function normPersons(v) { return Number(v) === 6 ? 6 : RULES.personsDef; }
+// 人数：1–6 人间自选（2026-11-19 用户要求），非法值回落默认 4
+function normPersons(v) { const n = Math.round(Number(v)); return (isFinite(n) && n >= 1 && n <= 6) ? n : RULES.personsDef; }
 // 单条读数归一（2 位小数、非负）
 function normReading(v) { const n = Number(v); return (isFinite(n) && n >= 0) ? round2(n) : null; }
 
@@ -239,9 +239,9 @@ function withRecs(water, rv, recs) {
   return w;
 }
 // ---------------------------------------------------------------- 2026-11-11 云端共享（契约 §1–§4）
-// 23 号楼 A/B 座固定 4 人间（不可改）；其它楼栋 4/6 可选
-function isFixed4(rv) { return FIXED4_RE.test(String(rv == null ? '' : rv)); }
-function fixedPersons(rv, persons) { return isFixed4(rv) ? RULES.personsDef : normPersons(persons); }
+// 2026-11-19：取消 23A/23B 固定四人间；所有宿舍均可自选 1–6 人间
+function isFixed4(rv) { return false; }
+function fixedPersons(rv, persons) { return normPersons(persons); }
 // 云端 water 行 [{month,reading,persons,updated_at}] → 本机 recs [{m,r,ts}]（坏行丢弃、按月唯一取 updated_at 较新者）
 function cloudRecsOf(rows) {
   return normRecs((Array.isArray(rows) ? rows : []).map(function (x) {
@@ -344,12 +344,12 @@ function ruleView(persons) {
     cycle: '无阶梯、无额外加价；定额当月有效、每学年 ' + RULES.cycleMonths + ' 个月、寒暑假无',
     source: '福建中医药大学后勤基建处 2025-09-05 说明 / 学生公寓管理规定（2021）',
     note: '以学校最新通知为准',
-    // 人数选择文案（契约 §5：只留「4 人间」「6 人间」，不再出现每月免费 N 吨水）
+    // 人数选择文案（2026-11-19：1–6 人间自选，不再出现每月免费 N 吨水）
     personsOptions: RULES.personsOpts.map(function (x) {
       return { p: x, label: x + ' 人间' };
     }),
-    // 23A/23B 固定四人间提示（页面在 personsLocked 时展示）
-    fixedText: p + ' 人间（固定）'
+    // 兼容字段：固定四人间已取消，页面不再使用
+    fixedText: ''
   };
 }
 

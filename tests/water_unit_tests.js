@@ -1,7 +1,7 @@
 /* water_unit_tests.js —— 宿舍「水量统计」专项单测（2026-11-06，随 unit.js 运行）
  *
  * 覆盖 web/tools/tests/_water_contract.md §0/§1/§2/§6 的小程序侧：
- *   A. 计费常量与水费公式（4/6 人间、未超定额=0 元、保留 2 位、折合扣电 1 位）；
+ *   A. 计费常量与水费公式（1–6 人间、未超定额=0 元、保留 2 位、折合扣电 1 位）；
  *   B. 用量对比 / 删除后重算 / 同月覆盖 / 读数回退拒绝 / 120 条上限 / 2 位归一；
  *   C. store 旧数据默认 {rooms:{}} + 坏数据归一；
  *   D. UD water section：udSections / udApply（web→mp）/ 合并默认值；
@@ -49,7 +49,7 @@ function pageCtx(def) {
 
 async function run(test) {
   /* ============================ A. 计费公式 ============================ */
-  await test('water：计费常量与 web 契约 §0 一致（0.58 / 3.03 / 2 吨+5 度 / 4|6 人）', function () {
+  await test('water：计费常量与 web 契约 §0 一致（0.58 / 3.03 / 2 吨+5 度 / 1–6 人）', function () {
     purge();
     const water = R('utils/water.js');
     assert.strictEqual(water.RULES.elec, 0.58);
@@ -57,14 +57,17 @@ async function run(test) {
     assert.strictEqual(water.RULES.waterFreePP, 2);
     assert.strictEqual(water.RULES.elecFreePP, 5);
     assert.strictEqual(water.RULES.personsDef, 4);
-    assert.deepStrictEqual(water.RULES.personsOpts, [4, 6]);
+    assert.deepStrictEqual(water.RULES.personsOpts, [1, 2, 3, 4, 5, 6]);
     assert.strictEqual(water.RULES.waterDate, '2025-09-05');
     assert.strictEqual(water.RULES.elecDate, '2025-09-05');
     assert.strictEqual(water.RULES.quotaDate, '2021-07');
     assert.strictEqual(water.normPersons(4), 4);
     assert.strictEqual(water.normPersons(6), 6);
-    assert.strictEqual(water.normPersons(5), 4, '非法人数 → 默认 4');
+    assert.strictEqual(water.normPersons(5), 5, '5 人间合法');
+    assert.strictEqual(water.normPersons(0), 4, '0 人非法 → 默认 4');
+    assert.strictEqual(water.normPersons(7), 4, '7 人非法 → 默认 4');
     assert.strictEqual(water.quotaOf(4), 8);
+    assert.strictEqual(water.quotaOf(5), 10);
     assert.strictEqual(water.quotaOf(6), 12);
     assert.strictEqual(water.quotaElecOf(4), 20);
   });
@@ -267,8 +270,8 @@ async function run(test) {
       'saveRecord', 'delRecord', 'goPower', 'onCloudSync', 'onShareAppMessage', 'onShareTimeline', '_render'].forEach(function (k) {
       assert.strictEqual(typeof def[k], 'function', 'water 页缺少 ' + k);
     });
-    assert.ok(def.data && def.data.persons === 4 && def.data.personsOptions.map(function (o) { return o.p; }).join(',') === '4,6', '默认 4 人间、可选 4/6');
-    assert.ok(def.data.personsOptions[0].label === '4 人间' && def.data.personsOptions[1].label === '6 人间', '人数文案不再出现每月免费 N 吨水（契约 §5）：' + JSON.stringify(def.data.personsOptions));
+    assert.ok(def.data && def.data.persons === 4 && def.data.personsOptions.map(function (o) { return o.p; }).join(',') === '1,2,3,4,5,6', '默认 4 人间、可选 1–6');
+    assert.ok(def.data.personsOptions[0].label === '1 人间' && def.data.personsOptions[5].label === '6 人间', '人数文案不再出现每月免费 N 吨水（契约 §5）：' + JSON.stringify(def.data.personsOptions));
     const js = src('pages/water/water.js');
     ['onShareAppMessage', 'onShareTimeline', 'share.enable()', 'utils/share.js'].forEach(function (k) {
       assert.ok(js.indexOf(k) >= 0, 'water 页缺少 ' + k);
@@ -281,7 +284,7 @@ async function run(test) {
       assert.ok(js.indexOf(k) >= 0, '水量页缺少云端共享调用 ' + k);
     });
     assert.ok(/waterPend/.test(js) && /_flushPending/.test(js), '水量页应有离线待补发队列（契约 §3.2）');
-    assert.ok(/isFixed4|personsLocked/.test(js), '水量页应处理 23A/23B 固定 4 人间（契约 §4）');
+    assert.ok(/isFixed4|personsLocked/.test(js), '水量页保留固定四人间兼容字段（现已取消，所有宿舍 1–6 自选）');
     assert.ok(/is_admin|admin/.test(js) === false, '水量页不涉及管理员逻辑');
     const wxml = src('pages/water/water.wxml');
     ['wt-pick', 'wt-persons', 'wt-field', 'wt-preview', 'wt-hrow', 'wt-del', 'wt-rule', 'wt-save',
@@ -297,7 +300,7 @@ async function run(test) {
     const rv4 = R('utils/water.js').ruleView(4);
     assert.strictEqual(rv4.freeText, '每人 2 吨水/月（4 人间 = 8 吨）', '水费规则卡只提水定额');
     assert.deepStrictEqual(rv4.personsOptions.map(function (o) { return o.label; }),
-      ['4 人间', '6 人间'], '人数文案只留 4 人间/6 人间（契约 §5：去掉每月免费 N 吨水）');
+      ['1 人间', '2 人间', '3 人间', '4 人间', '5 人间', '6 人间'], '人数文案 1–6 人间（不再出现每月免费 N 吨水）');
     assert.ok(!/免费/.test(rv4.freeText + rv4.formula + rv4.personsOptions.map(function (o) { return o.label; }).join('')),
       '水费规则/人数文案不得再出现「免费」字样（契约 §5）');
     assert.strictEqual(rv4.elecPrice, undefined, '水量页规则不再含电费单价字段');
@@ -313,7 +316,7 @@ async function run(test) {
     const store = R('utils/store.js');
     const def = loadPage('pages/water/water.js');
     setIdentity();
-    // 电费页已关注 13 号楼 324（power.sel 是两侧共用的真源；13/16 号楼 4/6 人间可选）
+    // 电费页已关注 13 号楼 324（power.sel 是两侧共用的真源；所有宿舍 1–6 人间可选）
     store.get().power = { sel: '1-13---324', at: Date.now(), low: 30 };
     store.get().water = { rooms: { '1-13---324': { p: 4, recs: RECS.slice() } } };
     store.save();

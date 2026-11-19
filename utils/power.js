@@ -51,7 +51,7 @@ function deductOf(pts) {
 // 电量统计「计费规则」条数据（与网站 #pwBill 同文案/同口径）：
 //   电价 / 区间电费≈¥ / 免费 5 度电·人·月（按人数）/ 水费 3.03 元/吨从电费账户扣（1 吨≈5.2 度）/ 已忽略扣减摘要
 function billOf(dRange, persons) {
-  const p = Number(persons) === 6 ? 6 : waterUtil.RULES.personsDef;
+  const p = waterUtil.normPersons(persons);
   const R = waterUtil.RULES;
   const drop = (dRange && dRange.drop != null && isFinite(dRange.drop) && dRange.drop > 0) ? dRange.drop : null;
   const fee = drop == null ? null : round2(drop * R.elec);
