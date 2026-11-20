@@ -1002,30 +1002,92 @@ const fakeCanvas = (() => {
   });
 
   /* ============================================================
-     6. 访问统计（visits，按账号）
+     6. 访问统计（visits，按账号；契约 2026-11-20 ver/dev 详细统计）
      ============================================================ */
-  await test('统计：visitLog 写 {id:sid|slot|mp, slot, sid, name, did, client, ts}，按账号+端每小时去重', async () => {
+  function loadStatsPage() {
+    let def = null;
+    const file = path.join(ROOT, 'pages/stats/stats.js');
+    try { delete require.cache[require.resolve(file)]; } catch (e) { /* ignore */ }
+    global.Page = (d) => { def = d; };
+    try { require(file); } finally { delete global.Page; }
+    return def;
+  }
+  function statsCtx(def, rows, range) {
+    const ctx = {
+      data: JSON.parse(JSON.stringify(def.data)),
+      _rows: rows,
+      lastPayload: null,
+      setData(o, cb) {
+        this.lastPayload = Object.keys(o);
+        Object.assign(this.data, o);
+        if (cb) cb();
+      }
+    };
+    ctx.data.range = range || 'today';
+    return ctx;
+  }
+
+  await test('统计：visitLog 写 ver/dev（品牌不重复/回退系统信息/最终微信小程序），仍按账号+端每小时去重', async () => {
     const { cloud, store } = cloudFresh();
     setIdentity(ID);
     reqImpl = ok([]);
-    assert.strictEqual(await cloud.visitLog(), true);
-    const req = reqLog.find((o) => urlOf(o).indexOf('/visits') >= 0);
-    assert.ok(req);
-    const row = req.data[0];
-    assert.strictEqual(req.header['X-Class-Token'], ID.token);
-    assert.strictEqual(row.sid, ID.sid);
-    assert.strictEqual(row.name, ID.name);
-    assert.ok(/^\d{4}-\d{2}-\d{2}-\d{2}$/.test(row.slot));
-    assert.strictEqual(row.id, ID.sid + '|' + row.slot + '|mp');
-    assert.strictEqual(row.client, 'mp', '记录具体登录端');
-    assert.strictEqual(row.did, store.get().did);
-    assert.ok(row.ts > 0);
-    reqLog = [];
-    assert.strictEqual(await cloud.visitLog(), false, '同一小时同一账号不重复上报');
-    assert.strictEqual(reqLog.length, 0);
+    const version = require(path.join(ROOT, 'utils/version.js'));
+    const rowsOf = () => reqLog.filter((o) => urlOf(o).indexOf('/visits') >= 0);
+    const lastRow = () => rowsOf()[rowsOf().length - 1].data[0];
+    const clearDedupe = () => { mem['zq_visit_slot_' + ID.sid + '_mp'] = ''; };
+    const hadDevice = Object.prototype.hasOwnProperty.call(wx, 'getDeviceInfo');
+    const oldDevice = wx.getDeviceInfo;
+    const hadSystem = Object.prototype.hasOwnProperty.call(wx, 'getSystemInfoSync');
+    const oldSystem = wx.getSystemInfoSync;
+    try {
+      wx.getDeviceInfo = () => ({ brand: 'Xiaomi', model: 'Xiaomi 14', system: 'Android 15' });
+      assert.strictEqual(await cloud.visitLog(), true);
+      const req = rowsOf()[0];
+      assert.ok(req);
+      const row = req.data[0];
+      assert.strictEqual(req.header['X-Class-Token'], ID.token);
+      assert.strictEqual(row.sid, ID.sid);
+      assert.strictEqual(row.name, ID.name);
+      assert.ok(/^\d{4}-\d{2}-\d{2}-\d{2}$/.test(row.slot));
+      assert.strictEqual(row.id, ID.sid + '|' + row.slot + '|mp');
+      assert.strictEqual(row.client, 'mp', '记录具体登录端');
+      assert.strictEqual(row.did, store.get().did);
+      assert.strictEqual(row.ver, version.VERSION, 'ver 取 utils/version.js 的 VERSION');
+      assert.strictEqual(row.dev, 'Xiaomi 14 · Android 15', '型号已含品牌时不重复品牌');
+      assert.ok(row.dev.length > 0 && row.dev.length <= 48, '设备短标签非空且 ≤48：' + row.dev);
+      assert.ok(row.ts > 0);
+      reqLog = [];
+      assert.strictEqual(await cloud.visitLog(), false, '同一小时同一账号不重复上报');
+      assert.strictEqual(reqLog.length, 0);
+
+      // wx.getDeviceInfo 不可用 → wx.getSystemInfoSync
+      clearDedupe();
+      wx.getDeviceInfo = () => { throw new Error('no deviceInfo'); };
+      wx.getSystemInfoSync = () => ({ brand: 'Apple', model: 'iPhone 15', system: 'iOS 18.1' });
+      assert.strictEqual(await cloud.visitLog(), true);
+      assert.strictEqual(lastRow().dev, 'Apple iPhone 15 · iOS 18.1', '回退 getSystemInfoSync');
+
+      // 两个 API 都失败 → 「微信小程序」
+      clearDedupe();
+      wx.getSystemInfoSync = () => { throw new Error('no systemInfo'); };
+      assert.strictEqual(await cloud.visitLog(), true);
+      assert.strictEqual(lastRow().dev, '微信小程序', '设备信息全拿不到时写微信小程序');
+      assert.ok(lastRow().dev.length <= 48);
+
+      // 超长信息截断到 48，且不阻断上报
+      clearDedupe();
+      wx.getDeviceInfo = () => ({ brand: 'BrandName', model: 'Model-' + 'X'.repeat(80), system: 'System-' + 'Y'.repeat(20) });
+      assert.strictEqual(await cloud.visitLog(), true);
+      assert.strictEqual(lastRow().dev.length, 48, '设备标签截断 48');
+      assert.strictEqual(lastRow().ver, version.VERSION);
+      assert.strictEqual(lastRow().ver.length <= 32, true);
+    } finally {
+      if (hadDevice) wx.getDeviceInfo = oldDevice; else delete wx.getDeviceInfo;
+      if (hadSystem) wx.getSystemInfoSync = oldSystem; else delete wx.getSystemInfoSync;
+    }
   });
 
-  await test('统计：statsPull 仅管理员可查，普通账号零请求', async () => {
+  await test('统计：statsPull 仅管理员可查，普通账号零请求；查询含 client,ver,dev,did', async () => {
     const { cloud } = cloudFresh();
     setIdentity(ID2);
     reqImpl = ok([{ id: 'x', slot: '2026-11-04-10', sid: ID2.sid, name: ID2.name, ts: 1 }]);
@@ -1036,8 +1098,11 @@ const fakeCanvas = (() => {
     assert.strictEqual(rows.length, 1);
     const req = reqLog[0];
     assert.strictEqual(req.header['X-Class-Token'], ID.token);
-    assert.ok(urlOf(req).indexOf('slot=gte.2026-10-29-00') >= 0);
-    assert.ok(urlOf(req).indexOf('ts,client') >= 0, '统计查询需带 ts/client');
+    const url = urlOf(req);
+    assert.ok(url.indexOf('select=slot,sid,name,ts,client,ver,dev,did') >= 0, '查询字段顺序按契约：' + url);
+    assert.ok(url.indexOf('slot=gte.2026-10-29-00') >= 0);
+    assert.ok(url.indexOf('order=ts.desc') >= 0);
+    assert.ok(url.indexOf('limit=5000') >= 0);
   });
 
   await test('统计：canDelete 管理员全可删，发布者按 owner=学号，其余不可删', () => {
@@ -1050,63 +1115,223 @@ const fakeCanvas = (() => {
     assert.strictEqual(cloud.canDelete({ content: '本机未上云' }), true);
   });
 
-  await test('统计页：按访问次数优先、次数相同按最近访问；分钟时间/登录端/忽略测试账号', () => {
-    const captured = {};
-    global.Page = (def) => { captured.def = def; };
-    try { require(path.join(ROOT, 'pages/stats/stats.js')); } finally { delete global.Page; }
-    const def = captured.def;
-    assert.ok(def && typeof def.render === 'function', 'stats 页未注册 Page');
+  await test('统计页：摘要/趋势/登录端/版本/设备/账号明细聚合（过滤、排序、旧行未记录、展开）', () => {
+    const def = loadStatsPage();
+    assert.ok(def && typeof def.render === 'function' && typeof def.toggleRow === 'function', 'stats 页未注册 Page');
     assert.strictEqual(def.data.range, 'today', '默认打开今天');
     setIdentity(ID);
     const now = new Date();
     const p2 = (n) => ('0' + n).slice(-2);
-    const day = (off) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - off); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); };
+    const ymd = (d) => d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+    const day = (off) => ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - off));
     const at = (off, h, m) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - off, h, m, 0, 0).getTime();
+    const fmt = (ts) => { const d = new Date(ts); return p2(d.getMonth() + 1) + '/' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()); };
     const today = day(0), yest = day(1);
-    const mmdd = p2(now.getMonth() + 1) + '/' + p2(now.getDate());
-    const ctx = {
-      data: JSON.parse(JSON.stringify(def.data)),
-      _rows: [
-        { slot: today + '-10', sid: '', name: '', did: 'dev1', ts: at(0, 10, 1) },                 // 历史匿名行
-        { slot: today + '-09', sid: '', name: '未知账号', did: 'dev1', ts: at(0, 9, 2) },
-        { slot: today + '-09', sid: '3260799999', name: '测试账号', ts: at(0, 9, 3) },             // 官方测试
-        { slot: today + '-08', sid: '9999000001', name: '测试同学', ts: at(0, 8, 4) },             // QA 测试
-        { slot: today + '-09', sid: '9000000002', name: '李四', ts: at(0, 9, 7), client: 'mp' },
-        { slot: today + '-10', sid: '9000000001', name: '张三', ts: at(0, 10, 42), client: 'web' },
-        { slot: today + '-11', sid: '9000000001', name: '张三', ts: at(0, 11, 5), client: 'android' },
-        { slot: today + '-07', sid: '9000000003', name: '王五', ts: at(0, 7, 0), client: 'web' },
-        { slot: today + '-07', sid: '9000000003', name: '王五', ts: at(0, 7, 30), client: 'web' },
-        { slot: yest + '-20', sid: '9000000003', name: '王五', ts: at(1, 20, 15), client: 'win' }
-      ],
-      setData(o) { Object.assign(this.data, o); }
-    };
-    ctx.data.range = 'week';
+    // 纯虚构 9000 段聚合夹具（9999 段会被当作测试账号过滤），不出现任何真实学号。
+    const rows = [
+      // 张三：今天网页 2 次（同一设备 d1）+ 安卓 1 次；昨天网页 1 次（1.0.8）→ 4 次
+      { slot: today + '-10', sid: '9000000001', name: '张三', did: 'd1', client: 'web', ver: '2.0.0', dev: 'Windows · Edge 131', ts: at(0, 10, 42) },
+      { slot: today + '-10', sid: '9000000001', name: '张三', did: 'd1', client: 'web', ver: '2.0.0', dev: 'Windows · Edge 131', ts: at(0, 10, 50) },
+      { slot: today + '-11', sid: '9000000001', name: '张三', did: 'd2', client: 'android', ver: '2.0.0', dev: 'Xiaomi 14 · Android 15', ts: at(0, 11, 5) },
+      { slot: yest + '-20', sid: '9000000001', name: '张三', did: 'd1', client: 'web', ver: '1.0.8', dev: 'Windows · Edge 131', ts: at(1, 20, 0) },
+      // 李四：今天小程序 1 次
+      { slot: today + '-09', sid: '9000000002', name: '李四', did: 'd3', client: 'mp', ver: '1.0.0-beta14', dev: 'Apple iPhone 15 · iOS 18.1', ts: at(0, 9, 7) },
+      // 王五：旧行（无 ver/dev/did）网页 2 次 + 昨天 win 1 次 → 旧数据「未记录」
+      { slot: today + '-07', sid: '9000000003', name: '王五', client: 'web', ts: at(0, 7, 0) },
+      { slot: today + '-07', sid: '9000000003', name: '王五', client: 'web', ts: at(0, 7, 30) },
+      { slot: yest + '-20', sid: '9000000003', name: '王五', client: 'win', ts: at(1, 20, 15) },
+      // 赵六：空 client 旧行（显示未记录）+ 版本/设备有值
+      { slot: today + '-09', sid: '9000000004', name: '赵六', did: '', client: '', ver: '1.0.8', dev: 'Xiaomi 14 · Android 15', ts: at(0, 9, 7) },
+      // 过滤项：官方测试 / 9999 段 / 匿名 / 未来 / 7 天窗口外
+      { slot: today + '-09', sid: '3260799999', name: '测试账号', client: 'mp', ts: at(0, 9, 3) },
+      { slot: today + '-08', sid: '9999000001', name: '测试同学', client: 'mp', ts: at(0, 8, 4) },
+      { slot: today + '-10', sid: '', name: '未知账号', did: 'd9', client: 'web', ts: at(0, 10, 1) },
+      { slot: today + '-10', sid: '   ', name: '', client: 'web', ts: at(0, 10, 2) },
+      { slot: today + '-12', sid: '9000000001', name: '张三', client: 'web', ver: '9.9.9', dev: 'Future', ts: at(-1, 12, 0) },
+      { slot: day(7) + '-10', sid: '9000000005', name: '旧数据', client: 'web', ts: at(7, 10, 0) }
+    ];
+    const ctx = statsCtx(def, rows, 'week');
     def.render.call(ctx);
-    assert.strictEqual(ctx.data.accounts.length, 3, '忽略测试账号后 3 个账号');
-    assert.strictEqual(ctx.data.accounts[0].name, '王五', '访问次数优先（3 次，即使最近访问更早）');
-    assert.strictEqual(ctx.data.accounts[0].clientText, '网页', '同一账号取最近登录端（今天 07:30）');
-    assert.strictEqual(ctx.data.accounts[0].count, 3);
-    assert.strictEqual(ctx.data.accounts[1].name, '张三', '次数相同再按最近访问');
-    assert.strictEqual(ctx.data.accounts[1].clientText, '安卓');
-    assert.strictEqual(ctx.data.accounts[1].lastText, mmdd + ' 11:05', '时间精确到分钟');
-    assert.strictEqual(ctx.data.accounts[2].name, '李四');
-    assert.strictEqual(ctx.data.accounts[2].clientText, '小程序');
-    assert.strictEqual(ctx.data.accounts[0].sidMask, undefined, '统计页不再展示学号');
-    assert.strictEqual(ctx.data.accounts[0].sid, undefined, '统计页不再展示学号');
-    assert.strictEqual(ctx.data.accounts[1].count, 2);
-    assert.strictEqual(ctx.data.summary.visits, 6);
-    assert.strictEqual(ctx.data.summary.accounts, 3);
-    assert.ok(ctx.data.accounts.every((a) => a.name !== '测试账号' && a.name !== '测试同学'));
-    assert.ok(ctx.data.accounts.every((a) => a.name !== '未知账号'));
 
-    /* 今天口径：只保留今天的行；张三/王五均 2 次，张三最近访问更晚排前 */
+    // —— 汇总 4 格（近 7 天）——
+    assert.deepStrictEqual(ctx.data.summary, { accounts: 4, visits: 9, activeToday: 4, devices: 6 }, JSON.stringify(ctx.data.summary));
+
+    // —— 账号排序：count 降序 → lastTs 降序 → name 升序 ——
+    assert.deepStrictEqual(ctx.data.accounts.map((a) => a.name), ['张三', '王五', '李四', '赵六']);
+    assert.strictEqual(ctx.data.accounts[0].count, 4);
+    assert.strictEqual(ctx.data.accounts[0].pct, 100, '账号条分母 = 最大账号次数');
+    assert.strictEqual(ctx.data.accounts[1].pct, 75);
+    assert.strictEqual(ctx.data.accounts[2].pct, 25);
+    assert.strictEqual(ctx.data.accounts[0].sid, undefined, '统计页不展示学号');
+
+    // —— 张三：最近端/版本/设备 + 活跃天数 + 详情文本 + 展开数据 ——
+    const zs = ctx.data.accounts[0];
+    assert.strictEqual(zs.clientText, '安卓');
+    assert.strictEqual(zs.verText, '2.0.0');
+    assert.strictEqual(zs.devText, 'Xiaomi 14 · Android 15');
+    assert.strictEqual(zs.lastText, fmt(at(0, 11, 5)));
+    assert.strictEqual(zs.firstText, fmt(at(1, 20, 0)));
+    assert.strictEqual(zs.activeDays, 2);
+    assert.strictEqual(zs.activeToday, true);
+    assert.strictEqual(zs.deviceCount, 2, 'did 去重：d1/d2');
+    assert.strictEqual(zs.detailText, '活跃 2/7 天 · 首次 ' + fmt(at(1, 20, 0)) + ' · 最近 ' + fmt(at(0, 11, 5)));
+    assert.deepStrictEqual(zs.clients.map((c) => [c.label, c.count, c.pct]), [['网页', 3, 75], ['安卓', 1, 25]]);
+    assert.deepStrictEqual(zs.versions.map((v) => [v.label, v.count, v.pct]), [['2.0.0', 3, 75], ['1.0.8', 1, 25]]);
+    assert.strictEqual(zs.devices.length, 2);
+    assert.strictEqual(zs.devices[0].label, '网页');
+    assert.strictEqual(zs.devices[0].devLabel, 'Windows · Edge 131');
+    assert.strictEqual(zs.devices[0].count, 3);
+    assert.strictEqual(zs.devices[1].devLabel, 'Xiaomi 14 · Android 15');
+    assert.strictEqual(zs.clientDetail, '网页 3 · 安卓 1');
+    assert.strictEqual(zs.versionDetail, '2.0.0 ×3 · 1.0.8 ×1');
+
+    // —— 旧行：无 ver/dev 显示未记录；无 did 时 client|dev 兜底设备数 ——
+    const ww = ctx.data.accounts[1];
+    assert.strictEqual(ww.clientText, '网页');
+    assert.strictEqual(ww.verText, '未记录');
+    assert.strictEqual(ww.devText, '未记录');
+    assert.strictEqual(ww.versions[0].label, '未记录');
+    assert.strictEqual(ww.versions[0].count, 3);
+    assert.strictEqual(ww.deviceCount, 2, '无 did 按 client|dev 兜底');
+    assert.deepStrictEqual(ww.devices.map((d) => d.devLabel), ['未记录', '未记录']);
+    assert.ok(ww.devices.every((d) => d.dev === '未记录'), 'devices[].dev 空值写未记录');
+    assert.strictEqual(ctx.data.accounts[3].clientText, '未记录', '空 client 显示未记录');
+
+    // —— 趋势：近 7 天 7 根（今天高亮 / 次数口径）——
+    assert.strictEqual(ctx.data.trend.length, 7);
+    assert.deepStrictEqual(ctx.data.trend.map((b) => b.count), [0, 0, 0, 0, 0, 2, 7]);
+    assert.strictEqual(ctx.data.trend[6].isToday, true);
+    assert.strictEqual(ctx.data.trend[6].label, p2(now.getMonth() + 1) + '/' + p2(now.getDate()));
+    assert.strictEqual(ctx.data.trend.filter((b) => b.isToday).length, 1);
+
+    // —— 登录端堆叠（含空 client「未记录」）——
+    assert.strictEqual(ctx.data.clients[0].label, '网页');
+    assert.strictEqual(ctx.data.clients[0].count, 5);
+    assert.strictEqual(ctx.data.clients[0].color, '#4E9082');
+    const unknownClient = ctx.data.clients.filter((c) => c.label === '未记录');
+    assert.strictEqual(unknownClient.length, 1, '空 client 合并为未记录');
+    assert.strictEqual(unknownClient[0].count, 1);
+    assert.strictEqual(unknownClient[0].color, '#9AA5A1');
+    assert.strictEqual(ctx.data.clients.reduce((s, c) => s + c.pct, 0), 100, '最后一段补齐到 100%');
+
+    // —— 版本 / 设备分布（全局，最多 6 行 + 其他）——
+    assert.deepStrictEqual(ctx.data.versions.map((v) => [v.label, v.count]), [['2.0.0', 3], ['未记录', 3], ['1.0.8', 2], ['1.0.0-beta14', 1]]);
+    assert.strictEqual(ctx.data.versions.reduce((s, v) => s + v.pct, 0), 100);
+    assert.strictEqual(ctx.data.devicesList.length, 6);
+    assert.strictEqual(ctx.data.devicesList[0].label, '网页');
+    assert.strictEqual(ctx.data.devicesList[0].devLabel, 'Windows · Edge 131');
+    assert.strictEqual(ctx.data.devicesList[0].count, 3);
+    assert.strictEqual(ctx.data.devicesList[1].devLabel, '未记录');
+    assert.strictEqual(ctx.data.devicesList[1].count, 2);
+    assert.strictEqual(ctx.data.devicesList.reduce((s, d) => s + d.pct, 0), 100);
+
+    // —— 展开：一次只展开一个，setData 只更新 expandedKey ——
+    assert.strictEqual(def.data.expandedKey, '');
+    ctx.lastPayload = null;
+    const k1 = ctx.data.accounts[0].key;
+    def.toggleRow.call(ctx, { currentTarget: { dataset: { key: k1 } } });
+    assert.strictEqual(ctx.data.expandedKey, k1);
+    assert.deepStrictEqual(ctx.lastPayload, ['expandedKey'], '展开只 setData expandedKey');
+    const k2 = ctx.data.accounts[1].key;
+    def.toggleRow.call(ctx, { currentTarget: { dataset: { key: k2 } } });
+    assert.strictEqual(ctx.data.expandedKey, k2, '切换账号时上一个自动收起');
+    def.toggleRow.call(ctx, { currentTarget: { dataset: { key: k2 } } });
+    assert.strictEqual(ctx.data.expandedKey, '', '再点同一行收起');
+
+    // WXML 只渲染：展开条件 / 行点击 / 不再有模式切换
+    const wxml = fs.readFileSync(path.join(ROOT, 'pages/stats/stats.wxml'), 'utf8');
+    assert.ok(/bindtap="toggleRow"/.test(wxml), '账号行绑定展开');
+    assert.ok(/expandedKey === item\.key/.test(wxml), 'WXML 用 expandedKey 判断展开');
+    assert.ok(!/st-fgroup--mode/.test(wxml) && !/setMode/.test(wxml), '不再有按账号/天/小时模式切换');
+
+    /* —— 今天口径：只保留今天的行；detailText 省略活跃段 —— */
     ctx.data.range = 'today';
-    ctx.data.accounts = [];
     def.render.call(ctx);
-    assert.strictEqual(ctx.data.accounts.length, 3);
-    assert.strictEqual(ctx.data.accounts[0].name, '张三', '次数相同按最近访问排序');
-    assert.strictEqual(ctx.data.accounts[1].name, '王五');
-    assert.strictEqual(ctx.data.summary.visits, 5);
+    assert.deepStrictEqual(ctx.data.summary, { accounts: 4, visits: 7, activeToday: 4, devices: 5 }, JSON.stringify(ctx.data.summary));
+    assert.deepStrictEqual(ctx.data.accounts.map((a) => [a.name, a.count]), [['张三', 3], ['王五', 2], ['李四', 1], ['赵六', 1]]);
+    assert.strictEqual(ctx.data.accounts[0].activeDays, 1);
+    assert.strictEqual(ctx.data.accounts[0].detailText, '首次 ' + fmt(at(0, 10, 42)) + ' · 最近 ' + fmt(at(0, 11, 5)));
+    assert.strictEqual(ctx.data.trend.length, 24);
+    assert.strictEqual(ctx.data.trend[0].label, '00');
+    assert.strictEqual(ctx.data.trend[23].label, '23');
+    assert.strictEqual(ctx.data.trend[7].count, 2);
+    assert.strictEqual(ctx.data.trend[9].count, 2);
+    assert.strictEqual(ctx.data.trend[10].count, 2);
+    assert.strictEqual(ctx.data.trend[11].count, 1);
+    assert.strictEqual(ctx.data.trend[7].showLabel, false);
+    assert.strictEqual(ctx.data.trend[9].showLabel, true);
+  });
+
+  await test('统计页：版本/设备超过 6 组 → 6 行 + 其他，占比补齐 100%', () => {
+    const def = loadStatsPage();
+    setIdentity(ID);
+    const now = new Date();
+    const p2 = (n) => ('0' + n).slice(-2);
+    const today = now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate());
+    const ts = Math.max(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), now.getTime() - 60000);
+    const rows = [];
+    for (let i = 1; i <= 8; i++) {
+      rows.push({
+        slot: today + '-12', sid: '9000000009', name: '测试成员', did: '',
+        client: 'web', ver: '1.0.' + i, dev: 'Test Phone ' + i, ts: ts + i
+      });
+    }
+    const ctx = statsCtx(def, rows, 'today');
+    def.render.call(ctx);
+    assert.strictEqual(ctx.data.accounts.length, 1);
+    assert.strictEqual(ctx.data.accounts[0].versions.length, 7, '账号版本 6 + 其他');
+    assert.strictEqual(ctx.data.accounts[0].versions[6].isOther, true);
+    assert.strictEqual(ctx.data.accounts[0].versions[6].count, 2);
+    assert.strictEqual(ctx.data.accounts[0].devices.length, 7, '账号设备 6 + 其他');
+    assert.strictEqual(ctx.data.versions.length, 7, '全局版本 6 + 其他');
+    assert.strictEqual(ctx.data.versions[6].isOther, true);
+    assert.strictEqual(ctx.data.versions[6].count, 2);
+    assert.strictEqual(ctx.data.devicesList.length, 7, '全局设备 6 + 其他');
+    assert.strictEqual(ctx.data.devicesList[6].isOther, true);
+    assert.strictEqual(ctx.data.devicesList[6].devLabel, '其余 2 类');
+    assert.strictEqual(ctx.data.summary.devices, 8, '8 个不同 client|dev');
+    assert.strictEqual(ctx.data.versions.reduce((s, v) => s + v.pct, 0), 100);
+    assert.strictEqual(ctx.data.devicesList.reduce((s, d) => s + d.pct, 0), 100);
+  });
+
+  await test('统计页：空态摘要归零、按范围显示今天/近 7 天暂无访问（不渲染空图表）', () => {
+    const def = loadStatsPage();
+    const ctx = statsCtx(def, [], 'today');
+    def.render.call(ctx);
+    assert.strictEqual(ctx.data.state, 'empty');
+    assert.deepStrictEqual(ctx.data.summary, { accounts: 0, visits: 0, activeToday: 0, devices: 0 });
+    assert.strictEqual(ctx.data.accounts.length, 0);
+    assert.strictEqual(ctx.data.clients.length, 0);
+    const wxml = fs.readFileSync(path.join(ROOT, 'pages/stats/stats.wxml'), 'utf8');
+    assert.ok(/wx:if="\{\{state === 'empty'\}\}"/.test(wxml), '空态使用独立分支');
+    assert.ok(wxml.indexOf('今天暂无访问') >= 0 && wxml.indexOf('近 7 天暂无访问') >= 0, '空态文案随范围变化');
+  });
+
+  await test('统计页：账号明细最多 120 条，超出截断并标记 truncated（汇总是全量）', () => {
+    const def = loadStatsPage();
+    setIdentity(ID);
+    const now = new Date();
+    const p2 = (n) => ('0' + n).slice(-2);
+    const today = now.getFullYear() + '-' + p2(now.getMonth() + 1) + '-' + p2(now.getDate());
+    const ts = Math.max(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), now.getTime() - 60000);
+    const rows = [];
+    for (let i = 0; i < 121; i++) {
+      rows.push({
+        slot: today + '-12', sid: '8000' + ('00000' + i).slice(-6), name: '测试成员' + ('000' + i).slice(-3),
+        did: 'did' + i, client: 'web', ver: '2.0.0', dev: 'Windows · Edge 131', ts: ts
+      });
+    }
+    const ctx = statsCtx(def, rows, 'today');
+    def.render.call(ctx);
+    assert.strictEqual(ctx.data.summary.accounts, 121, '摘要账号数为全量');
+    assert.strictEqual(ctx.data.summary.visits, 121);
+    assert.strictEqual(ctx.data.accounts.length, 120, '账号明细截断到 120');
+    assert.strictEqual(ctx.data.truncated, true);
+    assert.strictEqual(ctx.data.accounts[0].name, '测试成员000', '同次数同时间按姓名升序');
+    assert.strictEqual(ctx.data.accounts[119].name, '测试成员119');
+    assert.strictEqual(ctx.data.summary.devices, 121);
+    const wxml = fs.readFileSync(path.join(ROOT, 'pages/stats/stats.wxml'), 'utf8');
+    assert.ok(wxml.indexOf('仅显示前 120 个账号') >= 0, 'WXML 有截断提示');
   });
 
   /* ============================================================

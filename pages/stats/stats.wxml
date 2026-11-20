@@ -3,16 +3,11 @@
 <view class="page pad-b {{themeClass}}">
   <view class="page-head">
     <view class="t-headline-m">访问统计</view>
-    <view class="t-body-m muted">按访问次数排序 · 仅管理员 · 不显示学号</view>
+    <view class="t-body-m muted">仅管理员 · 按访问次数 · 不显示学号</view>
   </view>
 
-  <!-- 筛选：两组各自 nowrap；空间不足时整组换行（不再用 grow 把范围组挤掉单个 chip） -->
+  <!-- 范围：今天 / 近 7 天（每次进入重置今天；不再有按账号/天/小时模式切换） -->
   <view class="st-filters enter enter-1">
-    <view class="st-fgroup st-fgroup--mode">
-      <touchable cls="m3-chip st-chip {{mode === 'account' ? 'm3-chip--selected' : ''}}" data-v="account" bindtap="setMode">按账号</touchable>
-      <touchable cls="m3-chip st-chip {{mode === 'day' ? 'm3-chip--selected' : ''}}" data-v="day" bindtap="setMode">按天</touchable>
-      <touchable cls="m3-chip st-chip {{mode === 'hour' ? 'm3-chip--selected' : ''}}" data-v="hour" bindtap="setMode">按小时</touchable>
-    </view>
     <view class="st-fgroup st-fgroup--range">
       <touchable cls="m3-chip st-chip {{range === 'today' ? 'm3-chip--selected' : ''}}" data-v="today" bindtap="setRange">今天</touchable>
       <touchable cls="m3-chip st-chip {{range === 'week' ? 'm3-chip--selected' : ''}}" data-v="week" bindtap="setRange">近 7 天</touchable>
@@ -33,53 +28,142 @@
   </block>
 
   <block wx:else>
+    <!-- 摘要 4 格：窄屏 2×2，宽屏 1×4 -->
     <view class="m3-card m3-card--filled enter enter-2">
       <view class="st-sum">
         <view class="st-sum__item">
-          <view class="stat__value t-num">{{summary.accounts}}</view>
-          <view class="stat__label">访问账号</view>
+          <view class="st-sum__value">{{summary.accounts}}</view>
+          <view class="st-sum__label">访问账号</view>
         </view>
         <view class="st-sum__item">
-          <view class="stat__value t-num">{{summary.visits}}</view>
-          <view class="stat__label">访问次数</view>
+          <view class="st-sum__value">{{summary.visits}}</view>
+          <view class="st-sum__label">访问次数</view>
         </view>
-        <text class="t-label-m muted st-sum__upd">更新 {{atText}}</text>
+        <view class="st-sum__item">
+          <view class="st-sum__value">{{summary.activeToday}}</view>
+          <view class="st-sum__label">今日活跃</view>
+        </view>
+        <view class="st-sum__item">
+          <view class="st-sum__value">{{summary.devices}}</view>
+          <view class="st-sum__label">访问设备</view>
+        </view>
       </view>
     </view>
 
-    <!-- —— 按账号 —— -->
-    <block wx:if="{{mode === 'account'}}">
-      <view wx:if="{{accounts.length}}" class="m3-card m3-card--outlined enter enter-3">
-        <view class="st-acc" wx:for="{{accounts}}" wx:key="key">
-          <view class="st-acc__badge">{{index + 1}}</view>
-          <view class="grow">
-            <view class="st-acc__name">{{item.name}}</view>
-          </view>
-          <view class="st-acc__right">
-            <view class="st-acc__n">{{item.count}} 次</view>
-            <view class="st-acc__last">最近 {{item.lastText}} · {{item.clientText}}</view>
-          </view>
-        </view>
-      </view>
-      <view wx:else class="m3-card m3-card--outlined enter enter-3">
-        <empty-state icon="📊" title="还没有访问数据" text="同学完成身份验证并打开工具后，这里会按账号出现统计"></empty-state>
+    <!-- 空态：摘要保留 0，不显示空图表 -->
+    <block wx:if="{{state === 'empty'}}">
+      <view class="m3-card m3-card--outlined enter enter-3">
+        <empty-state icon="📊" title="{{range === 'today' ? '今天暂无访问' : '近 7 天暂无访问'}}" text="同学完成身份验证并使用工具后，这里会出现统计。"></empty-state>
       </view>
     </block>
 
-    <!-- —— 按天 / 按小时 —— -->
     <block wx:else>
+      <!-- 趋势卡：今天 24 根小时柱 / 近 7 天 7 根日柱 -->
       <view class="m3-card m3-card--outlined enter enter-3">
         <view class="m3-card__head">
-          <view class="t-title-m">{{mode === 'day' ? '按天 · 访问账号数' : '按小时 · 访问账号数'}}</view>
-          <view class="t-label-m muted">{{range === 'today' ? '今天' : '近 7 天'}}</view>
+          <view class="t-title-m">{{trendTitle}}</view>
+          <view class="t-label-m muted">{{summary.visits}} 次</view>
         </view>
-        <view class="strow" wx:for="{{bars}}" wx:key="label">
-          <text class="lb">{{item.label}}</text>
-          <view class="stbar"><view class="fill" style="width:{{item.pct}}%"></view></view>
-          <text class="vv">{{item.n}}</text>
+        <view class="st-trend">
+          <view class="st-tb {{item.isToday ? 'st-tb--today' : ''}}" wx:for="{{trend}}" wx:key="label">
+            <view class="st-tb__num">{{item.count ? item.count : ''}}</view>
+            <view class="st-tb__bar">
+              <view class="st-tb__fill" style="height:{{item.height}}rpx"></view>
+            </view>
+            <view class="st-tb__lb">{{item.showLabel ? item.label : ''}}</view>
+          </view>
         </view>
-        <view wx:if="{{!bars.length}}" class="t-body-m muted" style="padding:20rpx 0">当前范围暂无访问数据</view>
+      </view>
+
+      <!-- 登录端：堆叠占比条 + 图例 -->
+      <view class="m3-card m3-card--outlined enter enter-4">
+        <view class="m3-card__head">
+          <view class="t-title-m">登录端分布</view>
+          <view class="t-label-m muted">{{summary.visits}} 次</view>
+        </view>
+        <view class="st-stack">
+          <view wx:for="{{clients}}" wx:key="key" class="st-stack__seg" style="width:{{item.pct}}%;background:{{item.color}}"></view>
+        </view>
+        <view class="st-leg">
+          <view wx:for="{{clients}}" wx:key="key" class="st-leg__row">
+            <view class="st-leg__dot" style="background:{{item.color}}"></view>
+            <text class="st-leg__name">{{item.label}}</text>
+            <text class="st-leg__n">{{item.count}}</text>
+            <text class="st-leg__p">{{item.pct}}%</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 版本 / 设备：宽屏双栏，窄屏上下；各最多 6 行 + 其他 -->
+      <view class="st-duo enter enter-5">
+        <view class="m3-card m3-card--outlined">
+          <view class="m3-card__head">
+            <view class="t-title-m">版本分布</view>
+          </view>
+          <view class="st-dist" wx:for="{{versions}}" wx:key="label">
+            <view class="st-dist__top">
+              <text class="st-dist__label">{{item.label}}</text>
+              <text class="st-dist__n">{{item.count}} 次</text>
+              <text class="st-dist__p">{{item.pct}}%</text>
+            </view>
+            <view class="st-dist__track"><view class="st-dist__fill" style="width:{{item.pct}}%"></view></view>
+          </view>
+        </view>
+        <view class="m3-card m3-card--outlined">
+          <view class="m3-card__head">
+            <view class="t-title-m">设备分布</view>
+          </view>
+          <view class="st-dist" wx:for="{{devicesList}}" wx:key="key">
+            <view class="st-dist__top">
+              <text class="st-dist__label">{{item.label}}</text>
+              <text class="st-dist__dev">{{item.devLabel}}</text>
+              <text class="st-dist__n">{{item.count}} 次</text>
+              <text class="st-dist__p">{{item.pct}}%</text>
+            </view>
+            <view class="st-dist__track"><view class="st-dist__fill" style="width:{{item.pct}}%"></view></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 账号明细：一次只展开一个账号 -->
+      <view class="m3-card m3-card--outlined enter enter-6">
+        <view class="m3-card__head">
+          <view class="t-title-m">账号明细</view>
+          <view class="t-label-m muted">{{summary.accounts}} 个账号</view>
+        </view>
+        <view wx:if="{{truncated}}" class="st-note">仅显示前 120 个账号</view>
+        <view class="st-acc" wx:for="{{accounts}}" wx:key="key">
+          <view class="st-acc__main" data-key="{{item.key}}" bindtap="toggleRow" hover-class="st-acc__main--hover">
+            <view class="st-acc__badge {{index < 3 ? 'is-top' : ''}}">{{index + 1}}</view>
+            <view class="st-acc__info">
+              <view class="st-acc__name">{{item.name}}</view>
+              <view class="st-acc__tags">
+                <text class="st-tag">{{item.clientText}}</text>
+                <text class="st-tag">{{item.verText}}</text>
+                <text class="st-tag st-tag--dev">{{item.devText}}</text>
+              </view>
+            </view>
+            <view class="st-acc__right">
+              <view class="st-acc__n">{{item.count}}<text class="st-acc__unit">次</text></view>
+              <view class="st-acc__chev">{{expandedKey === item.key ? '▴' : '▾'}}</view>
+            </view>
+          </view>
+          <view class="st-acc__bar"><view class="st-acc__fill" style="width:{{item.pct}}%"></view></view>
+          <view wx:if="{{expandedKey === item.key}}" class="st-detail enter">
+            <view class="st-detail__line">{{item.detailText}}</view>
+            <view class="st-detail__line"><text class="st-detail__k">登录端</text>{{item.clientDetail}}</view>
+            <view class="st-detail__line"><text class="st-detail__k">版本</text>{{item.versionDetail}}</view>
+            <view class="st-detail__line"><text class="st-detail__k">设备</text></view>
+            <view class="st-dev" wx:for="{{item.devices}}" wx:for-item="d" wx:for-index="di" wx:key="key">
+              <text class="st-dev__name">{{d.label}} · {{d.devLabel}}</text>
+              <text class="st-dev__n">{{d.count}} 次</text>
+              <text class="st-dev__time" wx:if="{{d.lastText}}">最近 {{d.lastText}}</text>
+            </view>
+          </view>
+        </view>
       </view>
     </block>
+
+    <view class="footer-note">按访问次数排序（次数相同按最近访问）；同一账号同一登录端每小时记一次；设备/版本自 2026-11-20 起记录，旧数据为「未记录」；已忽略测试账号。</view>
   </block>
 </view>

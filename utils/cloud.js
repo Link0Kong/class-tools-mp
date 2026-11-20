@@ -21,6 +21,7 @@ const util = require('./util.js');
 const cache = require('./cache.js');
 const privacy = require('./privacy.js');
 const waterUtil = require('./water.js');
+const versionInfo = require('./version.js');
 
 const CONFIG = {
   enabled: false,
@@ -1793,7 +1794,8 @@ function fbDone(id, row) {
 }
 
 // ---------------------------------------------------------------- 访问统计（visits，按账号）
-// 云同步每次访问写：{id: sid+"|"+slot+"|mp", slot, sid, name, did, client:"mp", ts}，带 X-Class-Token。
+// 云同步每次访问写：{id: sid+"|"+slot+"|mp", slot, sid, name, did, client:"mp", ver, dev, ts}，带 X-Class-Token。
+// 2026-11-20 契约：ver=utils/version.js VERSION、dev=品牌型号+系统短标签（≤48，不含姓名/学号/UA 全串）。
 // 统计页只读汇总，仅管理员可见（服务端 RLS 再校验 token）。
 function didOf() {
   const d = store.get();
@@ -1809,6 +1811,38 @@ function hourSlot(date) {
   const n = date || new Date();
   return n.getFullYear() + '-' + ('0' + (n.getMonth() + 1)).slice(-2) + '-' + ('0' + n.getDate()).slice(-2) + '-' + ('0' + n.getHours()).slice(-2);
 }
+// 访问版本（契约 2026-11-20 §1/§5）：utils/version.js 的 VERSION，去前缀 v、去空白、截断 32；
+// 取不到写空串（不能因为新字段阻断上报）。
+function visitVersion() {
+  try {
+    return String(versionInfo.VERSION || '').trim().replace(/^v/i, '').replace(/\s+/g, '').slice(0, 32);
+  } catch (e) { return ''; }
+}
+function cleanDevicePart(s) {
+  return String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+}
+// 设备短标签（契约 §1/§5）：品牌 + 型号（型号已含品牌不重复）+ " · " + 系统，去多余空格，截断 48；
+// wx.getDeviceInfo() 拿不到再用 wx.getSystemInfoSync()，都失败写「微信小程序」。
+function visitDevice() {
+  try {
+    let info = null;
+    try { if (typeof wx.getDeviceInfo === 'function') info = wx.getDeviceInfo(); } catch (e) { info = null; }
+    let brand = cleanDevicePart(info && info.brand);
+    let model = cleanDevicePart(info && info.model);
+    let system = cleanDevicePart(info && info.system);
+    if (!brand && !model && !system) {
+      try { if (typeof wx.getSystemInfoSync === 'function') info = wx.getSystemInfoSync(); } catch (e2) { info = null; }
+      brand = cleanDevicePart(info && info.brand);
+      model = cleanDevicePart(info && info.model);
+      system = cleanDevicePart(info && info.system);
+    }
+    let head = model;
+    if (brand && (!model || model.toLowerCase().indexOf(brand.toLowerCase()) < 0)) head = brand + (model ? ' ' + model : '');
+    let label = head && system ? head + ' · ' + system : (head || system);
+    label = cleanDevicePart(label).slice(0, 48);
+    return label || '微信小程序';
+  } catch (e3) { return '微信小程序'; }
+}
 function visitLog() {
   const id = identity.get();
   if (!id || !isEnabled() || udOff()) return Promise.resolve(false);
@@ -1818,7 +1852,10 @@ function visitLog() {
     const mark = id.sid + '|' + slot + '|mp';
     const storageKey = 'zq_visit_slot_' + id.sid + '_mp';
     try { if (wx.getStorageSync(storageKey) === mark) return Promise.resolve(false); } catch (e) { /* ignore */ }
-    const row = { id: mark, slot: slot, sid: id.sid, name: id.name, did: didOf(), client: 'mp', ts: Date.now() };
+    const row = {
+      id: mark, slot: slot, sid: id.sid, name: id.name, did: didOf(),
+      client: 'mp', ver: visitVersion(), dev: visitDevice(), ts: Date.now()
+    };
     // 2026-11-17：同一账号同一小时重复写（换设备/清缓存/重装）会撞主键 409，是请求错误率的
     // 真实来源之一。visits 无 UPDATE 权限，不能用 merge-duplicates；用 ignore-duplicates
     // （ON CONFLICT DO NOTHING）幂等忽略，成功返回 2xx，不再计一次失败请求。
@@ -1864,7 +1901,7 @@ function ntGroupFull(gid) {
 function statsPull(fromSlot) {
   if (!isEnabled() || !identity.isAdmin()) return Promise.resolve([]);
   const from = String(fromSlot || '').trim();
-  const q = 'select=id,slot,sid,name,ts,client&slot=gte.' + encodeURIComponent(from) + '&order=ts.desc&limit=5000';
+  const q = 'select=slot,sid,name,ts,client,ver,dev,did&slot=gte.' + encodeURIComponent(from) + '&order=ts.desc&limit=5000';
   return request('GET', CONFIG.restBase + CONFIG.tables.visits + '?' + q, undefined, headers(false))
     .then(function (list) { return Array.isArray(list) ? list : []; })
     .catch(function () { return []; });

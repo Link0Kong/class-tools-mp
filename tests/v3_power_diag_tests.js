@@ -737,32 +737,35 @@ function run(test) {
       });
     });
 
-    await test('stats 布局：筛选两组 nowrap（模式3/范围2）、汇总可换行、列表 label/bar/value 不挤行', function () {
+    await test('stats 布局：范围 2 chip 等分、摘要 4 格（窄屏 2×2/宽屏 1×4）、趋势/堆叠/分布/账号明细不溢出', function () {
       purge();
       const wxml = src('pages/stats/stats.wxml');
       const wxss = src('pages/stats/stats.wxss');
-      // 筛选：两个 group，各自 nowrap；模式组 3 chips / 范围组 2 chips；不再使用 grow 弹簧
-      assert.ok(/class="st-filters[^"]*"/.test(wxml) && /st-fgroup--mode/.test(wxml) && /st-fgroup--range/.test(wxml), '筛选改为两个 group');
-      const modeBlock = (wxml.match(/<view class="st-fgroup st-fgroup--mode">([\s\S]*?)<\/view>/) || [])[1] || '';
+      // 筛选：只剩范围 group（今天/近 7 天），不再有按账号/天/小时模式切换
+      assert.ok(/class="st-filters[^"]*"/.test(wxml) && /st-fgroup--range/.test(wxml), '范围筛选 group');
+      assert.ok(!/st-fgroup--mode/.test(wxml) && !/setMode/.test(wxml), '不再有模式切换');
       const rangeBlock = (wxml.match(/<view class="st-fgroup st-fgroup--range">([\s\S]*?)<\/view>/) || [])[1] || '';
-      assert.strictEqual((modeBlock.match(/cls="m3-chip st-chip/g) || []).length, 3, '模式组 3 个 chip');
       assert.strictEqual((rangeBlock.match(/cls="m3-chip st-chip/g) || []).length, 2, '范围组 2 个 chip');
-      assert.ok(!/<view class="grow"><\/view>/.test(wxml), '筛选区不再用空 grow 弹簧');
       assert.ok(/\.st-fgroup \{[^}]*display: flex;[^}]*flex-wrap: nowrap;/.test(wxss), 'group 内不拆行');
       assert.ok(/\.st-fgroup--range \{[^}]*display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(wxss), '范围组 2 等分 grid');
       assert.ok(/\.st-chip \{[^}]*flex: 1 1 0;[^}]*min-width: 0;[^}]*min-height: 80rpx;/.test(wxss), 'chip 等分 + ≥40px 触控');
-      // 汇总：可换行 + 更新时间 margin-left:auto；列表 label 120rpx/value 64rpx + 不换行
-      assert.ok(/\.st-sum \{[^}]*flex-wrap: wrap;/.test(wxss) && /\.st-sum__upd \{[^}]*margin-left: auto;/.test(wxss), '汇总卡允许换行、更新时间靠右');
-      assert.ok(/\.lb \{[^}]*width: 120rpx;[^}]*white-space: nowrap;/.test(wxss), '列表 label 固定 120rpx 不换行');
-      assert.ok(/\.vv \{[^}]*width: 64rpx;[^}]*white-space: nowrap;/.test(wxss), '列表 value 64rpx 不换行');
-      // 数学契约：320/360/390/414 下模式 3 chip 组 + 范围 2 chip 组的总最小宽可控，单组换行不产生单 chip 掉行
-      [320, 360, 390, 414].forEach(function (w) {
+      // 摘要 4 格：窄屏 2×2，宽屏 1×4
+      assert.strictEqual((wxml.match(/class="st-sum__item"/g) || []).length, 4, '摘要 4 格');
+      assert.ok(/\.st-sum \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/.test(wxss), '摘要窄屏 2×2');
+      assert.ok(/@media \(min-width: 700px\) \{\s*\.st-sum \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/.test(wxss), '摘要宽屏 1×4');
+      // 趋势柱 / 登录端堆叠 + 图例 / 版本设备 / 账号明细可展开（WXML 只渲染）
+      assert.ok(/wx:for="\{\{trend\}\}"/.test(wxml) && /st-tb__fill/.test(wxml), '趋势柱状图');
+      assert.ok(/wx:for="\{\{clients\}\}"/.test(wxml) && /st-stack__seg/.test(wxml) && /st-leg__row/.test(wxml), '登录端堆叠 + 图例');
+      assert.ok(/st-duo/.test(wxml) && /wx:for="\{\{versions\}\}"/.test(wxml) && /wx:for="\{\{devicesList\}\}"/.test(wxml), '版本/设备分布');
+      assert.ok(/wx:for="\{\{accounts\}\}"/.test(wxml) && /expandedKey === item\.key/.test(wxml), '账号明细可展开');
+      // 数学：360/390/414 下摘要两列、24 根小时柱都不溢出内容宽
+      [360, 390, 414].forEach(function (w) {
         const rpx = w / 750;
-        const content = w - 64 * rpx;                 // page 左右 32rpx
-        const rangeMin = 2 * 104 * rpx + 10 * rpx;    // 范围组 2×min-width + gap
-        assert.ok(rangeMin < content, w + 'px 范围组最小宽 < 内容宽（可整组换行）');
-        const modeMin = 3 * 56 * rpx + 2 * 10 * rpx;  // 模式 chip 文字最小预估（3 个 56rpx + gaps）
-        assert.ok(modeMin < content, w + 'px 模式组最小宽 < 内容宽');
+        const content = w - 64 * rpx;                       // page 左右 32rpx
+        const cell = (content - 16 * rpx) / 2;              // 2 列 + 16rpx gap
+        assert.ok(cell > 120, w + 'px 摘要单格宽 >120px：' + cell);
+        const bar = (content - 23 * 4 * rpx) / 24;          // 24 柱 + 23 个 4rpx gap
+        assert.ok(bar > 6, w + 'px 24 小时柱宽 >6px：' + bar);
       });
     });
 

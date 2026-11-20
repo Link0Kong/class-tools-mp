@@ -356,7 +356,7 @@ module.exports.run = async function (test) {
       'pages/tt/tt.wxss': ['.ttp.theme-dark', '.theme-dark .tt-c0'],
       'pages/ft/ft.wxss': ['.theme-dark .ft-cell', '.theme-dark .m3-card--hero'],
       'pages/roll/roll.wxss': ['.theme-dark .rs-in', '.theme-dark .rpill'],
-      'pages/stats/stats.wxss': ['.theme-dark .stbar']
+      'pages/stats/stats.wxss': ['.theme-dark .st-stack']
     };
     Object.keys(pages).forEach(function (f) {
       const css = src(f);
