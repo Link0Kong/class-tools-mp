@@ -7,8 +7,10 @@ const identity = require('../../utils/identity.js');
 const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',
     errorText: '',
@@ -186,17 +188,37 @@ Page({
     util.copyText(this.data.text);
   },
 
-  exportImg() {
-    if (!this.data.viewBlocks.length) { util.toast('先完成抽签或分组'); return; }
-    canvas.exportAndSave(this, '#card', {
+  _sharePosterOpt() {
+    if (!this.data.viewBlocks.length) return null;
+    return {
       title: '班级工具 · 结果单',
       sub: this.data.sub,
       config: this.data.cfg.map(function (kv) { return [kv.k, kv.v]; }),
       blocks: this.data._api || [],
       foot: '生成时间 ' + util.timeStr(),
       rec: util.recId('SUM')
-    });
+    };
   },
+  exportImg() {
+    if (!this.data.viewBlocks.length) { util.toast('先完成抽签或分组'); return; }
+    canvas.exportAndSave(this, '#card', this._sharePosterOpt());
+  },
+  _shareOpenOpts() {
+    if (!this.data.viewBlocks.length) { util.toast('先完成抽签或分组'); return null; }
+    return {
+      title: '抽签分组结果单',
+      view: sharecard.buildSumView({
+        blocks: this.data.viewBlocks,
+        cfg: this.data.cfg,
+        sub: this.data.sub,
+        time: util.timeStr()
+      }),
+      posterOpt: this._sharePosterOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
 
   onStep(e) {
     const i = e.detail.index;
@@ -208,15 +230,15 @@ Page({
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onShareAppMessage() {
     return share.message({
-      title: '抽签分组结果单｜可复制 · 可导出图片',
+      title: this.data.sub ? ('抽签分组结果单 · ' + this.data.sub) : '抽签分组结果单',
       path: '/pages/sum/sum',
-      imageUrl: '/images/share/default.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.sum
     });
   },
   onShareTimeline() {
     return share.timeline({
-      title: '抽签分组结果单｜可复制 · 可导出图片',
-      imageUrl: '/images/share/default.png'
+      title: this.data.sub ? ('抽签分组结果单 · ' + this.data.sub) : '抽签分组结果单',
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.sum
     });
   }
-});
+}));

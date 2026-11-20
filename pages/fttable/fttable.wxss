@@ -1,4 +1,11 @@
 .page-head { padding: 40rpx 0 20rpx; }
+.ftt-share {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 16rpx; padding: 0 26rpx; min-height: 64rpx;
+  border-radius: 999rpx; font-size: 24rpx; font-weight: 600;
+  color: var(--md-on-primary-container); background: var(--md-primary-container);
+}
+.ftt-share--tap { opacity: .72; }
 .ftt-scroll { width: 100%; }
 .ftt-table { display: inline-block; min-width: 100%; }
 .ftt-row { display: flex; flex-direction: row; align-items: stretch; border-bottom: 1rpx solid var(--md-outline-variant, #E6E9E8); }

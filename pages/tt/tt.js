@@ -8,6 +8,8 @@ const cloud = require('../../utils/cloud.js');
 const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const PERIODS = [
@@ -100,7 +102,7 @@ function decodeShare(s) {
   } catch (e) { return null; }
 }
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',
     errorText: '',
@@ -877,13 +879,15 @@ Page({
     });
   },
 
-  exportImg() {
-    if (this._tapBlocked()) return;   // 与网页一致：滑动后的第一下点击被忽略
+  _weekCourseList() {
     const all = this._courses || [];
     const wk = this.data.wk;
-    if (!all.length) { util.toast('课表是空的'); return; }
-    const list = all.filter(function (c) { return active(c, wk); });
-    if (!list.length) { util.toast('这一周没有课'); return; }
+    return { list: all.filter(function (c) { return active(c, wk); }), wk: wk };
+  },
+  _sharePosterOpt() {
+    const got = this._weekCourseList();
+    const list = got.list;
+    if (!list.length) return null;
     const blocks = [];
     DAYS.forEach(function (dn, di) {
       const cs = list.filter(function (c) { return c.day === di; }).sort(function (a, b) { return a.start - b.start; });
@@ -897,39 +901,66 @@ Page({
         })
       });
     });
-    canvas.exportAndSave(this, '#card', {
-      title: wk ? ('第 ' + wk + ' 周课表') : '课程表',
+    return {
+      title: got.wk ? ('第 ' + got.wk + ' 周课表') : '课程表',
       sub: this.data.weekRange || '未设置开学日期',
       config: [
         ['开学日期', this._term || '未设置'],
         ['课程数', String(list.length)],
-        ['周次', wk ? ('第 ' + wk + ' 周') : '全部']
+        ['周次', got.wk ? ('第 ' + got.wk + ' 周') : '全部']
       ],
       blocks: blocks,
       foot: '生成时间 ' + util.timeStr(),
       rec: util.recId('TT')
-    });
+    };
   },
+  exportImg() {
+    if (this._tapBlocked()) return;   // 与网页一致：滑动后的第一下点击被忽略
+    const all = this._courses || [];
+    if (!all.length) { util.toast('课表是空的'); return; }
+    const got = this._weekCourseList();
+    if (!got.list.length) { util.toast('这一周没有课'); return; }
+    canvas.exportAndSave(this, '#card', this._sharePosterOpt());
+  },
+  _shareOpenOpts() {
+    if (this._tapBlocked()) return null;
+    const all = this._courses || [];
+    if (!all.length) { util.toast('课表是空的'); return null; }
+    const got = this._weekCourseList();
+    if (!got.list.length) { util.toast('这一周没有课'); return null; }
+    return {
+      title: (got.wk ? ('第 ' + got.wk + ' 周课表') : '课程表') + ' · ' + got.list.length + ' 门课',
+      view: sharecard.buildTtView({
+        courses: got.list, wk: got.wk, weekRange: this.data.weekRange, term: this._term, time: util.timeStr()
+      }),
+      posterOpt: this._sharePosterOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   onShareAppMessage() {
     const wk = this.data.wk;
+    const n = this._weekCourseList().list.length;
     return share.message({
-      title: '班级课表｜第 ' + (wk || '?') + ' 周',
+      title: '班级课表｜第 ' + (wk || '?') + ' 周' + (n ? (' · ' + n + ' 门课') : ''),
       path: '/pages/tt/tt',
       query: wk ? ('wk=' + wk) : '',
-      imageUrl: '/images/share/tt.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.tt
     });
   },
   onShareTimeline() {
     const wk = this.data.wk;
+    const n = this._weekCourseList().list.length;
     return share.timeline({
-      title: '班级课表｜第 ' + (wk || '?') + ' 周',
+      title: '班级课表｜第 ' + (wk || '?') + ' 周' + (n ? (' · ' + n + ' 门课') : ''),
       query: wk ? ('wk=' + wk) : '',
-      imageUrl: '/images/share/tt.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.tt
     });
   },
   openMap() {
     const n = this.data.next || {};
     const room = n.room || '';
     wx.navigateTo({ url: '/pages/map/map' + (room ? '?room=' + encodeURIComponent(room) : '') });
-  },
-});
+  }
+}));

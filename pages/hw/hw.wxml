@@ -102,13 +102,18 @@
   </block>
 
   <canvas type="2d" id="card" class="exp-canvas"></canvas>
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
   
 
   <view class="actionbar" wx:if="{{state !== 'loading' && state !== 'error'}}">
     <view class="actionbar__inner" style="margin-bottom:16rpx">
       <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="pullCloud">同步</touchable>
       <view class="grow"></view>
-      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="exportImg">导出图片</touchable>
+      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="openShare">分享</touchable>
     </view>
     <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="openSheet">添加作业</touchable>
   </view>

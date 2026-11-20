@@ -25,6 +25,8 @@ const vote = require('../../utils/vote.js');
 const roster = require('../../utils/roster.js');
 const util = require('../../utils/util.js');
 const share = require('../../utils/share.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const LIST_POLL_MS = 10000;          // 列表轮询（页面可见时）
 const IMG_MAX_SIDE = 640;            // 配图长边上限（契约 §1.3）
@@ -106,7 +108,7 @@ function drawToTempFile(scope, path, maxSide, quality) {
   });
 }
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',          // loading | ready | denied
     tab: 'open',               // open | closed
@@ -638,16 +640,84 @@ Page({
     this.load(true);
   },
 
+  _listRowOf(id) {
+    const list = this.data.rows || [];
+    for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  },
+  _fallbackVoteView(row) {
+    const tags = (row && row.tags || []).map(function (t) { return t.text; }).filter(Boolean).slice(0, 2);
+    return sharecard.infoView({
+      title: (row && row.title) || '班级投票', badge: '投票',
+      subtitle: [row && row.statusText, row && row.modeText, row && row.deadlineText].filter(Boolean).join(' · '),
+      stats: [
+        { k: '发起人', v: row && row.owner ? row.owner : '' },
+        { k: '时限', v: row && row.modeText },
+        { k: '可见', v: row && row.audienceTag ? row.audienceTag : '全班' }
+      ],
+      lines: tags.map(function (t) { return { label: '规则', text: t }; }).concat([{ label: '结果', text: '打开投票页查看' }]),
+      footer: '班级投票 · 结果请打开投票页查看',
+      time: util.timeStr()
+    });
+  },
+  _renderListShare(id, view) {
+    const self = this;
+    shareflow.renderCard(this, 'shareCanvas', view).then(function (p) {
+      if (self._dead || self.data.shareGid !== id || !self.data.shareSheet) return;
+      self.setData({ shareImg: p || '', shareBusy: false, shareHint: p ? '' : '卡片封面生成失败，将使用默认封面' });
+    }).catch(function () {
+      if (self._dead || self.data.shareGid !== id) return;
+      self.setData({ shareImg: '', shareBusy: false, shareHint: '卡片封面生成失败，将使用默认封面' });
+    });
+  },
+  // 列表卡片分享：先拉一次详情（标题/说明/规则/选项），保证卡片信息足够；失败时用列表信息生成。
+  openShare(e) {
+    const id = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || '');
+    const row = this._listRowOf(id);
+    if (!id || !row) { util.toast('投票已更新，请刷新'); return; }
+    this.setData({
+      shareSheet: true, shareGid: id, shareTitle: row.title || '班级投票',
+      shareImg: '', sharePoster: '', shareBusy: true, shareHint: ''
+    });
+    const self = this;
+    cloud.pollDetail(id).then(function (r) {
+      if (self._dead || self.data.shareGid !== id || !self.data.shareSheet) return;
+      const d = (r && r.ok && r.poll) ? vote.detailView(r, { now: Date.now() }) : null;
+      if (d && d.title) self.setData({ shareTitle: d.title });
+      self._renderListShare(id, d ? sharecard.buildVoteView({ detail: d, time: util.timeStr() }) : self._fallbackVoteView(row));
+    }).catch(function () {
+      if (self._dead || self.data.shareGid !== id || !self.data.shareSheet) return;
+      self._renderListShare(id, self._fallbackVoteView(row));
+    });
+  },
+  closeShare() {
+    this.setData({ shareSheet: false, shareGid: '', shareImg: '', sharePoster: '', shareBusy: false, shareHint: '' });
+  },
+  shareImage() {
+    if (this.data.shareBusy) { util.toast('预览图生成中，请稍候'); return; }
+    shareflow.showImage(this.data.shareImg);
+  },
+
   onShareAppMessage(e) {
-    // 列表卡片上的「分享」按钮：data-id 指定要分享的投票，标题用该投票的真实标题（不是泛品牌文案）
+    // 列表卡片上的「分享」入口：分享弹层打开时优先按当前投票生成卡片
+    const gid = (this.data.shareSheet && this.data.shareGid) ? String(this.data.shareGid) : '';
+    if (gid) {
+      const row = this._listRowOf(gid);
+      return share.message({
+        title: row && row.title ? row.title : (this.data.shareTitle || '班级投票'),
+        path: '/pages/votedetail/votedetail',
+        query: 'id=' + encodeURIComponent(gid),
+        imageUrl: this.data.shareImg || '/images/share/default.png'
+      });
+    }
     const id = e && e.target && e.target.dataset ? String(e.target.dataset.id || '') : '';
-    const row = id ? (this.data.rows || []).filter(function (r) { return r.id === id; })[0] : null;
+    const row = id ? this._listRowOf(id) : null;
     if (id) {
       return share.message({
         title: (row && row.title) ? row.title : '班级投票',
         path: '/pages/votedetail/votedetail',
         query: 'id=' + encodeURIComponent(id),
-        imageUrl: '/images/share/default.png'
+        imageUrl: this.data.shareImg || '/images/share/default.png'
       });
     }
     return share.message({
@@ -657,9 +727,18 @@ Page({
     });
   },
   onShareTimeline() {
+    const gid = String(this.data.shareGid || '');
+    if (gid) {
+      const row = this._listRowOf(gid);
+      return share.timeline({
+        title: row && row.title ? row.title : '班级投票',
+        query: 'id=' + encodeURIComponent(gid),
+        imageUrl: this.data.shareImg || '/images/share/default.png'
+      });
+    }
     return share.timeline({
       title: '班级投票 · 限时/长时，实时结果',
       imageUrl: '/images/share/default.png'
     });
   }
-});
+}));

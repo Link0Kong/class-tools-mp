@@ -18,11 +18,12 @@ const vote = require('../../utils/vote.js');
 const util = require('../../utils/util.js');
 const share = require('../../utils/share.js');
 const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const ROUTE = 'pages/votedetail/votedetail';
 const QUICK_EXTEND = [5, 10, 30, 60, 120];
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',        // loading | ready | denied | error
     errorText: '',
@@ -360,6 +361,45 @@ Page({
     const d = this.data.d;
     return (d && d.title) ? String(d.title) : '班级投票';
   },
+  // 图片分享用完整长图：标题 / 状态 / 发起人 / 时限 / 规则 / 说明 / 全部选项（仍不含任何结果）
+  _sharePosterOpt() {
+    const d = this.data.d;
+    if (!d) return null;
+    const lines = (d.options || []).map(function (o, i) {
+      return (i + 1) + '. ' + o.text + (o.desc ? ('  ' + o.desc) : '');
+    });
+    const cfg = [
+      ['状态', d.statusText || ''],
+      ['发起人', d.ownerText || ''],
+      ['时限', d.modeText || ''],
+      ['截止', d.deadlineText || ''],
+      ['可见范围', d.audienceTag || '全班'],
+      ['结果', '打开投票页查看']
+    ];
+    return {
+      title: '投票 · ' + (d.title || '班级投票'),
+      sub: [d.statusText, d.modeText, d.deadlineText].filter(Boolean).join(' · '),
+      config: cfg,
+      blocks: [
+        { label: '投票说明', lines: [d.desc || '（无补充说明）'] },
+        { label: '选项（' + (d.options || []).length + '）', lines: lines }
+      ],
+      foot: '生成时间 ' + util.timeStr(),
+      rec: util.recId('VOTE')
+    };
+  },
+  _shareOpenOpts() {
+    const d = this.data.d;
+    if (!d) { util.toast('投票还没加载完'); return null; }
+    return {
+      title: this._shareTitle(),
+      view: sharecard.buildVoteView({ detail: d, time: util.timeStr() }),
+      posterOpt: this._sharePosterOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   _scheduleShareCard() {
     if (this._shareT) { clearTimeout(this._shareT); this._shareT = null; }
     if (!this.data.d) return;
@@ -376,7 +416,7 @@ Page({
     if (sig === this._shareSig && this._shareImg) return;
     this._shareSig = sig;
     const self = this;
-    sharecard.render(this, 'shareCanvas', view).then(function (p) {
+    shareflow.renderCard(this, 'shareCanvas', view).then(function (p) {
       if (!self._dead && p) self._shareImg = p;
     }).catch(function () { /* 画图失败：分享继续用静态封面 */ });
   },
@@ -384,12 +424,12 @@ Page({
     const dsId = e && e.target && e.target.dataset ? String(e.target.dataset.id || '') : '';
     const id = dsId || this._shareId();
     const title = this._shareTitle();
-    if (!id) return share.message({ title: '班级投票', path: '/pages/vote/vote', imageUrl: this._shareImg || '/images/share/default.png' });
+    if (!id) return share.message({ title: '班级投票', path: '/pages/vote/vote', imageUrl: this.data.shareImg || this._shareImg || '/images/share/default.png' });
     return share.message({
       title: title,
       path: '/pages/votedetail/votedetail',
       query: 'id=' + encodeURIComponent(id),
-      imageUrl: this._shareImg || '/images/share/default.png'
+      imageUrl: this.data.shareImg || this._shareImg || '/images/share/default.png'
     });
   },
   onShareTimeline() {
@@ -397,7 +437,7 @@ Page({
     return share.timeline({
       title: this._shareTitle(),
       query: id ? ('id=' + encodeURIComponent(id)) : '',
-      imageUrl: this._shareImg || '/images/share/default.png'
+      imageUrl: this.data.shareImg || this._shareImg || '/images/share/default.png'
     });
   }
-});
+}));

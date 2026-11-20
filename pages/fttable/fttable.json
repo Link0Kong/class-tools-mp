@@ -1,6 +1,7 @@
 {
   "navigationStyle": "default",
   "usingComponents": {
-    "touchable": "/components/touchable/index"
+    "touchable": "/components/touchable/index",
+    "share-sheet": "/components/share-sheet/index"
   }
 }

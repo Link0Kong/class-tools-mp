@@ -6,6 +6,7 @@
     "segmented": "/components/segmented/index",
     "empty-state": "/components/empty-state/index",
     "swipe-item": "/components/swipe-item/index",
-    "roster-picker": "/components/roster-picker/index"
+    "roster-picker": "/components/roster-picker/index",
+    "share-sheet": "/components/share-sheet/index"
   }
 }

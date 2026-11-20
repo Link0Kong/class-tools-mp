@@ -81,6 +81,7 @@
   font-size: 24rpx; font-weight: 600;
 }
 .vote-share::after { border: 0; }
+.vote-share--tap { opacity: .72; }
 
 /* ---------- 空态 ---------- */
 .vote-empty { padding: 120rpx 0; display: flex; flex-direction: column; align-items: center; }

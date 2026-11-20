@@ -110,14 +110,15 @@ async function shot(mp, name) {
       const pg = getCurrentPages()[getCurrentPages().length - 1];
       return {
         sheet: pg.data.shareSheet, gid: pg.data.shareGid, title: pg.data.shareTitle,
-        busy: pg.data.shareBusy, img: pg.data.shareImg, hint: pg.data.shareHint
+        busy: pg.data.shareBusy, img: pg.data.shareImg, poster: pg.data.sharePoster, hint: pg.data.shareHint
       };
     }, null, 2);
     if (state && state.busy === false) break;
     await sleep(300);
   }
   check('预览图生成完成（非生成中）', !!(state && state.busy === false), JSON.stringify(state));
-  check('预览图是 canvas 临时文件（不是静态封面）', !!(state && /^https?:\/\/tmp\//.test(state.img)), state && state.img);
+  check('5:4 卡片封面是 canvas 临时文件', !!(state && /^https?:\/\/tmp\//.test(state.img)), state && state.img);
+  check('完整长图是 canvas 临时文件', !!(state && /^https?:\/\/tmp\//.test(state.poster)), state && state.poster);
   check('弹层标题=通知标题', !!(state && state.title === CARD.title), state && state.title);
 
   let stat = null;
@@ -130,7 +131,19 @@ async function shot(mp, name) {
       });
     }), state.img, 2);
   }
-  check('预览图文件有效（> 10KB）', !!(stat && stat.ok && stat.size > 10000), JSON.stringify(stat));
+  check('卡片封面文件有效（> 10KB）', !!(stat && stat.ok && stat.size > 10000), JSON.stringify(stat));
+
+  let pstat = null;
+  if (state && state.poster) {
+    pstat = await ev(mp, (p) => new Promise((resolve) => {
+      wx.getFileSystemManager().stat({
+        path: p,
+        success: (r) => resolve({ ok: true, size: r.stats.size }),
+        fail: (e) => resolve({ ok: false, err: String(e && e.errMsg || e) })
+      });
+    }), state.poster, 2);
+  }
+  check('完整长图文件有效（> 20KB）', !!(pstat && pstat.ok && pstat.size > 20000), JSON.stringify(pstat));
 
   const msg = await ev(mp, () => {
     const pg = getCurrentPages()[getCurrentPages().length - 1];
@@ -138,34 +151,19 @@ async function shot(mp, name) {
   }, null, 2);
   check('微信卡片标题=班级通知｜<标题>', !!(msg && msg.title === ('班级通知｜' + CARD.title)), msg && msg.title);
   check('微信卡片深链带 gid', !!(msg && msg.path === '/pages/nt/nt?gid=' + CARD.id), msg && msg.path);
-  check('微信卡片封面=本次预览图', !!(msg && msg.imageUrl === state.img), msg && msg.imageUrl);
-
-  const page = await mp.currentPage();
-  const opts = page ? await page.$$('.nt-share-opt') : [];
-  check('弹层两个分享选项（图片 / 微信卡片）', !!(opts && opts.length === 2), 'options=' + (opts && opts.length));
-
-  const rects = await ev(mp, () => new Promise((resolve) => {
-    const pg = getCurrentPages()[getCurrentPages().length - 1];
-    try {
-      const q = wx.createSelectorQuery().in(pg);
-      q.select('.nt-share-opts').boundingClientRect();
-      q.select('.nt-share-opt--btn').boundingClientRect();
-      q.exec((res) => resolve((res || []).map((r) => r && { w: r.width, h: r.height })));
-    } catch (e) { resolve([]); }
-  }), null, 2);
-  check('微信卡片按钮与选项区同宽（整行可点）',
-    !!(rects && rects[0] && rects[1] && Math.abs(rects[0].w - rects[1].w) <= 2),
-    JSON.stringify(rects));
+  check('微信卡片封面=本次 5:4 卡片', !!(msg && msg.imageUrl === state.img), msg && msg.imageUrl);
 
   check('分享弹层截图', await shot(mp, 'share_sheet'), path.join(OUT, 'share_sheet.png'));
 
   /* ---------- 2. 投票分享视图不含结果（渲染一张，供人工核对）---------- */
   const vote = await ev(mp, () => new Promise((resolve) => {
-    const pg = getCurrentPages()[getCurrentPages().length - 1];
     const sc = require('utils/sharecard.js');
     const view = sc.buildVoteView({
       detail: {
         title: '周三班会时间投票', statusText: '进行中', modeText: '限时', total: 12,
+        ownerText: '发起人 测试账号', deadlineText: '截止 11-21 18:00',
+        desc: '请选择方便参加的时间，地点在 A301 教室。',
+        tags: [{ text: '匿名' }, { text: '投票后可见' }],
         options: [
           { text: '周三 18:00', showBar: true, pct: 50, count: 6 },
           { text: '周三 19:00', showBar: true, pct: 33, count: 4 },
@@ -175,16 +173,23 @@ async function shot(mp, name) {
       },
       time: '2026-11-20 12:30'
     });
-    resolve({ masked: view.resultsMasked, hasPct: Object.prototype.hasOwnProperty.call(view.options[0], 'pct'), parts: view });
+    resolve({
+      masked: view.resultsMasked, hasPct: Object.prototype.hasOwnProperty.call(view.options[0], 'pct'),
+      owner: view.ownerText, desc: view.desc, tags: view.tags.length, options: view.options
+    });
   }), null, 2);
-  check('投票分享视图 resultsMasked 且无百分比字段', !!(vote && vote.masked === true && vote.hasPct === false), JSON.stringify(vote && vote.options));
+  check('投票分享视图含发起人/说明/规则且无百分比', !!(vote && vote.masked === true && vote.hasPct === false && vote.owner && vote.desc && vote.tags === 2), JSON.stringify(vote));
 
   await ev(mp, () => {
     const pg = getCurrentPages()[getCurrentPages().length - 1];
     const sc = require('utils/sharecard.js');
+    const flow = require('utils/shareflow.js');
     const view = sc.buildVoteView({
       detail: {
         title: '周三班会时间投票', statusText: '进行中', modeText: '限时', total: 12,
+        ownerText: '发起人 测试账号', deadlineText: '截止 11-21 18:00',
+        desc: '请选择方便参加的时间，地点在 A301 教室。',
+        tags: [{ text: '匿名' }, { text: '投票后可见' }],
         options: [
           { text: '周三 18:00', showBar: true, pct: 50, count: 6 },
           { text: '周三 19:00', showBar: true, pct: 33, count: 4 },
@@ -194,7 +199,7 @@ async function shot(mp, name) {
       },
       time: '2026-11-20 12:30'
     });
-    return sc.render(pg, 'shareCanvas', view).then((p) => {
+    return flow.renderCard(pg, 'shareCanvas', view).then((p) => {
       pg.setData({ shareImg: p, shareTitle: '周三班会时间投票', shareBusy: false, shareHint: '' });
       return true;
     });

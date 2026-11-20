@@ -1,0 +1,37 @@
+<bottom-sheet show="{{show}}" title="{{sheetTitle}}" bind:close="onClose">
+  <view class="ss">
+    <view class="ss-tabs" wx:if="{{previewAlt}}">
+      <view class="ss-tab {{previewMode === 'card' ? 'ss-tab--on' : ''}}" data-m="card" bindtap="pickMode">微信卡片封面</view>
+      <view class="ss-tab {{previewMode === 'image' ? 'ss-tab--on' : ''}}" data-m="image" bindtap="pickMode">分享长图</view>
+    </view>
+
+    <view class="ss-prevwrap">
+      <image wx:if="{{previewMode === 'image' ? previewAlt : preview}}" class="ss-prev"
+             src="{{previewMode === 'image' ? previewAlt : preview}}" mode="widthFix"></image>
+      <view wx:else class="ss-prev ss-prev--ph">
+        <text class="ss-ph">{{busy ? '预览图生成中…' : '暂无预览图'}}</text>
+      </view>
+    </view>
+    <view wx:if="{{titleText}}" class="ss-for">「{{titleText}}」</view>
+    <view wx:if="{{hint}}" class="ss-hint">{{hint}}</view>
+
+    <view class="ss-opts">
+      <view class="ss-opt" bindtap="onImage" hover-class="ss-opt--tap">
+        <view class="ss-ico">图</view>
+        <view class="ss-bd">
+          <view class="ss-t">{{imageLabel}}</view>
+          <view class="ss-s">{{imageSub || (previewAlt ? '发送完整长图给好友或保存到相册' : '发送 5:4 分享图给好友或保存到相册')}}</view>
+        </view>
+      </view>
+      <!-- 微信卡片分享必须是原生 open-type=share 按钮；页面 onShareAppMessage 读 data.shareImg -->
+      <button class="ss-opt ss-opt--btn" open-type="share" data-key="{{shareKey}}" hover-class="ss-opt--tap">
+        <view class="ss-ico ss-ico--card">卡</view>
+        <view class="ss-bd">
+          <view class="ss-t">{{cardLabel}}</view>
+          <view class="ss-s">{{cardSub}}</view>
+        </view>
+      </button>
+    </view>
+    <view wx:if="{{tip}}" class="ss-tip">{{tip}}</view>
+  </view>
+</bottom-sheet>

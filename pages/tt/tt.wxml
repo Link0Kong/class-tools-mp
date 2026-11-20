@@ -34,7 +34,7 @@
           <view class="tbtn" wx:if="{{!isThisWeek}}" bindtap="thisWeek">本周</view>
           <!-- 2026-11-08 课表登录：登录后个人课表（ttLocal）优先于公共课表；再次点击可清除回退 -->
           <view class="tbtn tbtn--login" wx:if="{{!shared}}" bindtap="openLogin">{{mine ? '我的课表' : '登录教务'}}</view>
-          <view class="tbtn" bindtap="exportImg">导出图片</view>
+          <view class="tbtn" bindtap="openShare">分享</view>
           <text class="syncst {{mine ? 'syncst--mine' : ''}}">{{srcText}}</text>
         </view>
       </view>
@@ -145,6 +145,11 @@
   </block>
 
   <canvas type="2d" id="card" class="exp-canvas"></canvas>
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
 
   <!-- 课程详情 -->
   <bottom-sheet show="{{showDetail}}" title="课程详情" bind:close="closeDetail">

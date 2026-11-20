@@ -11,6 +11,8 @@ const share = require('../../utils/share.js');
 const roster = require('../../utils/roster.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 function parseNames(txt) {
   const out = [];
@@ -23,7 +25,7 @@ function parseNames(txt) {
   return out;
 }
 
-Page({
+Page(shareflow.install({
   data: {
     list: [], sum: { inN: 0, abN: 0, un: 0 },
     namesCount: 0, selCount: 0, rollSel: [], picker: false
@@ -135,20 +137,43 @@ Page({
     });
   },
 
+  _shareOpenOpts() {
+    if (!this.data.list.length) { util.toast('先选择点名名单'); return null; }
+    const s = this.data.sum || {};
+    return {
+      title: '点名统计 · 已到 ' + (s.inN || 0) + ' / 请假 ' + (s.abN || 0) + ' / 未点 ' + (s.un || 0),
+      view: sharecard.infoView({
+        title: '本轮点名', badge: '点名',
+        subtitle: '已到 ' + (s.inN || 0) + ' · 请假 ' + (s.abN || 0) + ' · 未点 ' + (s.un || 0),
+        stats: [{ k: '已到', v: s.inN || 0 }, { k: '请假', v: s.abN || 0 }, { k: '未点', v: s.un || 0 }],
+        lines: [
+          { label: '名单', text: this.data.list.length + ' 人（来自班级名单）' },
+          { label: '隐私', text: '分享卡仅含统计，不含姓名与学号' }
+        ],
+        footer: '班级工具 · 点名统计',
+        time: util.timeStr()
+      })
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onHide() { scrollmem.save(this); },
   onUnload() { scrollmem.save(this); },
   onShareAppMessage() {
+    const s = this.data.sum || {};
     return share.message({
-      title: '班级点名｜到 / 假 / 沉底',
+      title: '班级点名 · 已到 ' + (s.inN || 0) + ' / 请假 ' + (s.abN || 0) + ' / 未点 ' + (s.un || 0),
       path: '/pages/roll/roll',
-      imageUrl: '/images/share/default.png'
+      imageUrl: this.data.shareImg || '/images/share/default.png'
     });
   },
   onShareTimeline() {
+    const s = this.data.sum || {};
     return share.timeline({
-      title: '班级点名｜到 / 假 / 沉底',
-      imageUrl: '/images/share/default.png'
+      title: '班级点名 · 已到 ' + (s.inN || 0) + ' / 请假 ' + (s.abN || 0) + ' / 未点 ' + (s.un || 0),
+      imageUrl: this.data.shareImg || '/images/share/default.png'
     });
   }
-});
+}));

@@ -45,7 +45,9 @@
   font-size: 26rpx; font-weight: 600;
 }
 .share-btn::after { border: 0; }
+.share-btn--tap { opacity: .72; }
 /* 5:4 分享卡画布（离屏；详情渲染后异步生成，失败回退 images/share/default.png） */
+.exp-canvas { position: fixed; left: -10000rpx; top: 0; width: 750rpx; height: 2000rpx; pointer-events: none; }
 .share-canvas { position: fixed; left: -10000rpx; top: 0; width: 500px; height: 400px; pointer-events: none; }
 
 .vd-hide {

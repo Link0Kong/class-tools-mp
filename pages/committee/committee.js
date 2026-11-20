@@ -13,6 +13,8 @@ const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 const roster = require('../../utils/roster.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const TABS = ['committee', 'league', 'all'];
 const TAB_LABEL = { committee: '班委', league: '团员', all: '全班' };
@@ -33,7 +35,7 @@ function fmtSync(ts) {
   return util.pad(d.getMonth() + 1) + '-' + util.pad(d.getDate()) + ' ' + util.pad(d.getHours()) + ':' + util.pad(d.getMinutes());
 }
 
-Page({
+Page(shareflow.install({
   data: {
     tab: 'committee',
     edit: false,
@@ -367,18 +369,34 @@ Page({
     this.pull(true);
   },
 
+  _shareTitle() {
+    const tab = this.data.tab;
+    const label = TAB_LABEL[tab] || '名单';
+    const n = tab === 'league' ? this.data.counts.league : (tab === 'all' ? this.data.counts.all : this.data.counts.committee);
+    return n ? ('名单｜' + label + ' ' + n + ' 人') : ('名单｜' + label);
+  },
+  _shareOpenOpts() {
+    if (!this.data.list.length) { util.toast('名单还没加载出来'); return null; }
+    return {
+      title: this._shareTitle(),
+      view: sharecard.buildRosterView({
+        tab: this.data.tab, list: this.data.list, counts: this.data.counts, time: util.timeStr()
+      })
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
+
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onHide() { scrollmem.save(this); this._swClear(); },
   onUnload() { scrollmem.save(this); this._swClear(); },
 
   onShareAppMessage() {
-    const tab = this.data.tab;
-    const label = TAB_LABEL[tab] || '名单';
-    const n = tab === 'league' ? this.data.counts.league : (tab === 'all' ? this.data.counts.all : this.data.counts.committee);
     return share.message({
-      title: n ? ('名单｜' + label + ' ' + n + ' 人') : ('名单｜' + label),
+      title: this._shareTitle(),
       path: '/pages/committee/committee',
-      imageUrl: '/images/share/bz.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.roster
     });
   },
   onShareTimeline() {
@@ -386,7 +404,7 @@ Page({
     const label = TAB_LABEL[tab] || '名单';
     return share.timeline({
       title: '名单｜班委 · 团员 · 全班（' + label + '）',
-      imageUrl: '/images/share/bz.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.roster
     });
   }
-});
+}));

@@ -18,6 +18,7 @@
       <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="useDraw">沿用抽签名单</touchable>
       <view class="grow"></view>
       <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="reset">重置本轮</touchable>
+      <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="openShare">分享统计</touchable>
     </view>
     <view class="row between" style="margin-top:20rpx">
       <view class="row" style="gap:10rpx">
@@ -48,4 +49,10 @@
   <!-- —— 名单选择（只来自班级名单 class_members，液态气泡）—— -->
   <roster-picker id="rosterPicker" show="{{picker}}" title="点名名单" selected="{{rollSel}}"
                  bind:confirm="onRosterConfirm" bind:close="closePicker"></roster-picker>
+
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
 </view>

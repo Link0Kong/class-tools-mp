@@ -8,6 +8,8 @@ const identity = require('../../utils/identity.js');
 const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const SEX = [{ v: 'm', n: '男' }, { v: 'f', n: '女' }];
 const GR = [{ v: '12', n: '大一 / 大二' }, { v: '34', n: '大三 / 大四' }];
@@ -90,7 +92,7 @@ function withVals(form) {
   });
 }
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',
     errorText: '',
@@ -423,16 +425,15 @@ Page({
     });
   },
 
-  exportImg() {
-    if (!this.hasAny(this.data.form)) { util.toast('先填写成绩'); return; }
+  _sharePosterOpt() {
+    if (!this.hasAny(this.data.form)) return null;
     const res = this.data.res || fit.ftCalc(this.saveInput());
-    this.setData({ res: res });
     const lines = res.rows.map(function (r) {
       const s = r.s == null ? '—' : String(r.s);
       const p = r.p ? ('  +' + r.p) : '';
       return r.n + '（' + r.sub + '  ' + r.wt + '%）：' + r.v + '  →  ' + s + p;
     });
-    canvas.exportAndSave(this, '#card', {
+    return {
       title: '体测成绩',
       sub: (this.data.sex === 'f' ? '女' : '男') + ' · ' + (this.data.grade === '34' ? '大三大四' : '大一大二'),
       config: [
@@ -445,20 +446,41 @@ Page({
       blocks: [{ label: '各项得分', lines: lines }],
       foot: '生成时间 ' + util.timeStr(),
       rec: util.recId('FIT')
-    });
+    };
   },
+  exportImg() {
+    if (!this.hasAny(this.data.form)) { util.toast('先填写成绩'); return; }
+    const res = this.data.res || fit.ftCalc(this.saveInput());
+    this.setData({ res: res });
+    canvas.exportAndSave(this, '#card', this._sharePosterOpt());
+  },
+  _shareOpenOpts() {
+    if (!this.hasAny(this.data.form)) { util.toast('先填写成绩'); return null; }
+    const res = this.data.res || fit.ftCalc(this.saveInput());
+    this.setData({ res: res });
+    return {
+      title: '体测成绩 · ' + res.totalText + ' 分 · ' + res.grade,
+      view: sharecard.buildFitView({
+        res: res, sex: this.data.sex, grade: this.data.grade, time: util.timeStr()
+      }),
+      posterOpt: this._sharePosterOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onShareAppMessage() {
     return share.message({
-      title: '大学体测算分器｜国标七项实时出分',
+      title: '大学体测算分器 · ' + (this.data.res ? (this.data.res.totalText + ' 分 · ' + this.data.res.grade) : '国标七项实时出分'),
       path: '/pages/ft/ft',
-      imageUrl: '/images/share/ft.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.fit
     });
   },
   onShareTimeline() {
     return share.timeline({
-      title: '大学体测算分器｜国标七项实时出分',
-      imageUrl: '/images/share/ft.png'
+      title: '大学体测算分器 · ' + (this.data.res ? (this.data.res.totalText + ' 分 · ' + this.data.res.grade) : '国标七项实时出分'),
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.fit
     });
   }
-});
+}));

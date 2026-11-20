@@ -805,8 +805,10 @@ cloudfunctions/notify           订阅消息发送（与班级身份无关）
 
 ## 微信原生分享（1.4.0，2026-11-04）
 
-- **分享入口**：早期直接用微信右上角「···」菜单的 转发 / 分享到朋友圈；2026-11-19 起抽签/分组/投票/通知在页面内也提供可见分享按钮，右上角菜单仍保留。每个页面 `onShow` 调 `share.enable()` 打开菜单（`wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage','shareTimeline'] })`）。
-- **通知卡片分享（2026-11-20）**：通知卡片底栏「分享」→ bottom-sheet 预览 5:4 分享图，可选「图片分享」（`wx.showShareImageMenu`，旧基础库保存相册）或「微信卡片分享」（原生 `open-type=share`，深链 `?gid=`，封面=预览图）。投票分享卡只画标题/状态/选项，不画百分比/票数，结果需点开小程序查看。
+- **分享入口**：早期直接用微信右上角「···」菜单的 转发 / 分享到朋友圈；2026-11-19 起抽签/分组/投票/通知在页面内也提供可见分享按钮，2026-11-20 起名单/国标表/点名也新增可见入口，右上角菜单仍保留。每个页面 `onShow` 调 `share.enable()` 打开菜单（`wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage','shareTimeline'] })`）。
+- **统一分享弹层（2026-11-20）**：`components/share-sheet` + `utils/shareflow.js` —— 预览区可切换「微信卡片封面（5:4）/ 分享长图」，操作区为「图片分享」（`wx.showShareImageMenu`，旧基础库保存相册）与「微信卡片分享」（原生 `open-type=share`，页面 `onShareAppMessage` 读当前卡片封面）。canvas 导出串行排队，避免同页并行导出互相覆盖。
+- **导出图片改分享**：抽签、分组、结果单、作业、体测、课表 6 处「导出图片」全部改为「分享」；图片分享复用原完整导出长图，微信卡片使用 5:4 信息卡。原 `exportImg()` 保留为隐藏兼容方法。
+- **分享信息增强**：通知卡增加发布者/时间地点/附件数与完整长图（摘要/要点/关键信息/原文摘录）；投票卡增加发起人/时限/说明/规则/4 个选项与完整长图，仍**不画百分比/票数/总票数**，结果需点开小程序查看；分组/作业/体测/课表/名单等使用通用信息卡（统计块 + 明细行）。
 - **每页的分享内容**：`onShareAppMessage` 返回 `{ title, path, imageUrl }`；`onShareTimeline` 返回 `{ title, query, imageUrl }`（朋友圈打开当前页，不需要 path）。
   - 工作台：`班级工具｜今日课程 · 作业 · 通知` → `/pages/index/index`
   - 课表：`班级课表｜第 N 周` → `/pages/tt/tt?wk=N`（课表页 `onLoad` 支持 `wk`，打开即定位该周）
@@ -840,7 +842,7 @@ cloudfunctions/notify           订阅消息发送（与班级身份无关）
 | 使用说明 | `pages/ug/ug.js` | 16 条：身份/工作台/抽签/名单/分组/作业通知/班委/工具排序与首页编辑/体测/反馈/点名/**宿舍电费（关注/低电阈值/点击拖动查看趋势/慢更新）**/**通知附件（微信文件/压缩包识别/跨源合并）**/**工作台电费卡**/**水量抄表**/分享；与网页口径一致、简洁 |
 | 多端同步（拉取/推送/待补发） | `utils/cloud.js` + `app.js` | 完全对齐；按身份 token |
 | 订阅消息（作业/通知） | `cloudfunctions/notify` + `utils/notify.js` | 保留，未改动 |
-| **微信原生分享（转发 / 朋友圈）** | 各页 `onShareAppMessage` + `onShareTimeline` + `utils/share.js` | 新增（1.4.0）：每页有标题/封面/打开路径，课表带周次、通知带最新标题；2026-11-20 通知卡片支持「图片 / 微信卡片」分享弹层，投票卡不展示结果 |
+| **微信原生分享（转发 / 朋友圈）** | 各页 `onShareAppMessage` + `onShareTimeline` + `utils/share.js` + `components/share-sheet` + `utils/shareflow.js` | 新增（1.4.0）：每页有标题/封面/打开路径，课表带周次、通知带最新标题；2026-11-20 全工具统一分享弹层（5:4 卡片 + 完整长图），导出图片改分享，投票卡不展示结果 |
 
 ### 导出卡 v2（1.5.1，2026-11-05）
 

@@ -52,10 +52,10 @@
       </view>
     </view>
 
-    <!-- 分享入口（2026-11-19）：标题=投票标题、path=本详情 ?id=；分享图只带标题/选项，不展示投票结果 -->
+    <!-- 分享入口（2026-11-19）：标题=投票标题、path=本详情 ?id=；卡片/长图都不展示投票结果 -->
     <view class="vd-sharebar">
-      <button class="share-btn" open-type="share">分享投票</button>
-      <text class="vd-share-hint">分享卡片不显示结果，点开卡片进入投票</text>
+      <view class="share-btn" bindtap="openShare" hover-class="share-btn--tap">分享投票</view>
+      <text class="vd-share-hint">分享卡片和长图均不显示结果，点开小程序查看</text>
     </view>
 
     <!-- 结果隐藏提示 -->
@@ -116,8 +116,13 @@
     </view>
   </block>
 
-  <!-- 5:4 分享卡画布（离屏；详情渲染后异步生成，失败回退 images/share/default.png） -->
+  <!-- 5:4 分享卡画布 + 图片分享长图画布（离屏；详情渲染后异步生成，失败回退 images/share/default.png） -->
+  <canvas type="2d" id="card" class="exp-canvas"></canvas>
   <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
 
   <!-- ============ 延长 / 重开弹层 ============ -->
   <block wx:if="{{extendOpen}}">

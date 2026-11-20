@@ -49,6 +49,6 @@ module.exports = guard.run(async function getResultSummary() {
   const parts = [];
   if (hasDraw) parts.push('抽签 ' + drawData.count + ' 个');
   if (hasGroup) parts.push('分组 ' + groupData.groupCount + ' 组');
-  const content = '结果单已生成：' + parts.join(' / ') + '。可直接把 text 读给用户或让用户复制，也可以打开结果单页复制 / 导出图片。';
+  const content = '结果单已生成：' + parts.join(' / ') + '。可直接把 text 读给用户或让用户复制，也可以打开结果单页复制 / 分享。';
   return result.ok(content, data, { handoff: handoff.handoffTo('sum', 'step=3') });
 }, '结果单');

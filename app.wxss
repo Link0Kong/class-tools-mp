@@ -487,6 +487,9 @@ page {
   font-weight: 500;
 }
 
+/* 5:4 分享卡离屏画布（分享弹层通用；页面级同名规则可覆盖） */
+.share-canvas { position: fixed; left: -10000rpx; top: 0; width: 500px; height: 400px; pointer-events: none; }
+
 /* ===================== v2.0.0 需求 13：全局动效统一 =====================
  * 统一节奏：进入/展开/弹层/切页 200–320ms；缓动 cubic-bezier(.2,.8,.3,1)（下方 --md-ease-emphasized 已是同类曲线）。
  * 动效只做装饰：不改变布局高度语义、不阻塞点击/滚动；列表滚动与卡片内容更新不触发整页动画。

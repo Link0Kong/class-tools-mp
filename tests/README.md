@@ -1,18 +1,20 @@
 # 班级工具站小程序 · 测试与修复工程
 
-## 通知卡片分享 + 投票卡片不预览结果（2026-11-20，未发版；待用户上传发布）
+## 全工具分享 + 导出图片改分享 + 分享信息增强（2026-11-20，未发版；待用户上传发布）
 
-- **通知卡片分享**（`pages/nt`）：每张卡片底栏「分享」→ bottom-sheet 展示 5:4 预览图 +「图片分享」/「微信卡片分享」。
-  图片分享走 `wx.showShareImageMenu`（旧基础库降级 `wx.saveImageToPhotosAlbum`）；微信卡片用原生 `button open-type=share`，
-  title=`班级通知｜<标题>`、path=`/pages/nt/nt?gid=<id>`、imageUrl=预览图。预览图失败回退 `images/share/nt.png`，
-  `sharecard.render()` 2.5s 超时兜底，弹层不会停在「生成中」。
-- **通知分享图**（`utils/sharecard.js`）：新增 `buildNoticeView` / `drawNotice`（标题/分类/状态/摘要/≤2 要点/来源/时间；
-  不含附件、图片、学号、收件人）；按卡片 signature 缓存。
-- **投票分享卡**：`buildVoteView` 不输出 pct/count/total，`drawVote` 不画结果条/百分比/票数，固定提示
-  「结果请打开投票页查看」；`votedetail` 页面提示同步改为「分享卡片不显示结果，点开卡片进入投票」。
-- **复跑**：`node unit.js`（share_legal_unit B2/B4/B5/D6/D7，**617 passed / 7 failed**，7 项为既有失败）；
-  `node nt_share_check.js`（automator，真实测试身份 3260799999，**17/17**，截图 `_shots/nt_share/`）；
-  `python staticcheck.py` / `node code_quality_check.js` 通过。**未上传发布，VERSION 仍 2.0.0。**
+- **统一分享弹层**（`components/share-sheet` + `utils/shareflow.js`）：预览区支持「微信卡片封面 / 分享长图」切换；
+  操作区固定「图片分享」（`wx.showShareImageMenu`，旧基础库降级保存相册）与「微信卡片分享」（原生 `open-type=share`，
+  页面 `onShareAppMessage` 读取卡片封面）。canvas 导出串行排队，避免同一页面并行导出互相覆盖；长图 8s、卡片 3s 兜底。
+- **导出图片 → 分享**：抽签、分组、结果单、作业、体测、课表 6 处「导出图片」按钮全部改为「分享」；图片分享复用原完整导出长图，
+  微信卡片使用新增 5:4 信息卡。原 `exportImg()` 方法保留（兼容测试/旧入口），页面不再暴露。
+- **新增可见分享**：通知每张卡片、投票列表/详情、名单、国标评分表、点名统计；抽签/分组保留结果页分享入口并升级为弹层。
+  点名分享卡只含统计（已到/请假/未点），不含姓名与学号。
+- **分享信息增强**：通知卡增加发布者、时间/地点/截止字段、附件图片数量与完整长图（摘要/要点/关键信息/原文摘录）；
+  投票卡增加发起人、时限、说明、规则标签、4 个选项与完整长图，仍**不画百分比/票数/总票数**，结果只能点开查看。
+  通用信息卡（分组/结果单/作业/体测/课表/名单/国标）含统计块与最多 6 行明细。
+- **复跑**：`node unit.js`（share_legal_unit B2/B4/B5/B6/D1–D10，**621 passed / 7 failed**，7 项为既有失败）；
+  `node nt_share_check.js`（automator，真实测试身份 3260799999，**17/17**；验证 5:4 卡片 + 完整长图 + 微信卡片 title/path/imageUrl）；
+  `python staticcheck.py` handlers/分享 handler 0 缺失；`node code_quality_check.js` 通过。**未上传发布，VERSION 仍 2.0.0。**
 
 ## 统计排序「访问次数优先」口径（2026-11-18，未发版）
 

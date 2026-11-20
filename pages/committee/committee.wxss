@@ -25,6 +25,8 @@
 .rd-note { flex: 1; font-size: 24rpx; color: var(--md-on-surface-variant); line-height: 1.5; }
 .rd-manage { flex: none; font-size: 26rpx; font-weight: 600; color: var(--md-primary);
   padding: 10rpx 18rpx; border-radius: 999rpx; background: var(--md-primary-container); }
+.rd-share { flex: none; font-size: 26rpx; font-weight: 600; color: var(--md-on-surface-variant);
+  padding: 10rpx 18rpx; border-radius: 999rpx; background: var(--md-surface-container-high); }
 .rd-sync { margin-top: 10rpx; }
 .rd-row--edit { border: 2rpx solid var(--md-primary); }
 .rd-edit-hint { font-size: 22rpx; font-weight: 600; color: var(--md-primary); padding: 2rpx 12rpx;

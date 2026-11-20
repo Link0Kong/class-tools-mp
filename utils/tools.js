@@ -13,7 +13,7 @@ const TOOLS = [
   { key: 'hw',   name: '作业板', ico: '📝', icoImg: '/images/tool-hw.png', meta: '截止提醒 · 完成勾选', desc: '作业清单与截止倒计时；查看与勾选完成，验证身份后可发布', url: '/pages/hw/hw', tab: false, tone: 'tertiary' },
   { key: 'nt',   name: '班级通知', ico: '📢', icoImg: '/images/tool-nt.png', meta: '简报 · 筛选 · 附件', desc: '云端班级通知；AI 拆分、附件预览、原始消息', url: '/pages/nt/nt', tab: false, tone: 'primary' },
   { key: 'ft',   name: '体测',   ico: '📏', icoImg: '/images/tool-ft.png', meta: '大学国标 · 加分', desc: '大学体测七项算分、附加分与等级，实时出分', url: '/pages/ft/ft', tab: false, tone: '' },
-  { key: 'draw', name: '抽签分组', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 分组 · 结果单', desc: '抽号 → 分组 → 结果单；可剔除重抽、可导出图片', url: '/pages/draw/draw', tab: false, tone: '' },
+  { key: 'draw', name: '抽签分组', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 分组 · 结果单', desc: '抽号 → 分组 → 结果单；可剔除重抽、可分享卡片或长图', url: '/pages/draw/draw', tab: false, tone: '' },
   { key: 'roll', name: '点名',   ico: '🙋', icoImg: '/images/tool-roll.png', meta: '到 · 假 · 沉底', desc: '线下点名核对：叫到一个勾一个，可到/请假，已处理自动沉底', url: '/pages/roll/roll', tab: false, tone: 'tertiary' },
   { key: 'bz',   name: '名单',   ico: '🏅', icoImg: '/images/tool-bz.png', meta: '班委 · 团员 · 全班', desc: '班级名单三分类：班委职务 / 团员 / 全班；所有已认证同学都可查看', url: '/pages/committee/committee', tab: false, tone: 'tertiary' },
   // v2.0.0 与网站功能同步：宿舍电费（普通工具，不进首页勾选，与网站一致）；诊断（2026-11-08 起对所有已认证同学可见）

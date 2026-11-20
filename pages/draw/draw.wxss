@@ -15,6 +15,7 @@
   font-size: 24rpx; font-weight: 600;
 }
 .share-btn::after { border: 0; }
+.share-btn--tap { opacity: .72; }
 
 /* —— 存证状态行（契约 web/draw/CONTRACT.md §3.2）—— */
 .proof-line { display: flex; align-items: center; flex-wrap: wrap; margin-top: 14rpx; }

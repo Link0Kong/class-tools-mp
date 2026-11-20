@@ -25,6 +25,7 @@
     </view>
     <view class="rd-meta">
       <text class="rd-note">{{note}}</text>
+      <text wx:if="{{state === 'data'}}" class="rd-share" bindtap="openShare">分享</text>
       <text wx:if="{{canManage && tab === 'committee'}}" class="rd-manage" bindtap="toggleEdit">{{edit ? '完成' : '管理'}}</text>
     </view>
     <view class="rd-sync t-label-m muted">
@@ -72,4 +73,10 @@
 
     </view>
   </view>
+
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
 </view>

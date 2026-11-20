@@ -113,7 +113,7 @@
           <view class="t-title-m">抽签结果</view>
           <view class="row">
             <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="openRecords">抽签记录</touchable>
-            <button wx:if="{{rows.length}}" class="share-btn" open-type="share">分享</button>
+            <view wx:if="{{rows.length}}" class="share-btn" bindtap="openShare" hover-class="share-btn--tap">分享</view>
             <view class="pill {{rows.length ? 'pill--primary' : 'pill--neutral'}}">{{rows.length}} 个</view>
           </view>
         </view>
@@ -151,13 +151,17 @@
   <canvas type="2d" id="card" class="exp-canvas"></canvas>
   <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
 
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
+
   <!-- —— 底部固定操作条 —— -->
   <view class="actionbar">
     <view class="actionbar__inner" style="margin-bottom:16rpx">
       <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="reset">重置</touchable>
       <view class="grow"></view>
       <touchable cls="m3-btn m3-btn--tonal m3-btn--sm m3-btn--gap" bindtap="refill">补抽</touchable>
-      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="exportImg">导出图片</touchable>
+      <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="openShare">分享</touchable>
     </view>
     <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="doDraw">{{rows.length ? '重新抽签' : '开始抽签'}}</touchable>
     <touchable cls="m3-btn m3-btn--text m3-btn--block" bindtap="toGroup">下一步 · 分组</touchable>

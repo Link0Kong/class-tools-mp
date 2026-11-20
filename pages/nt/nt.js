@@ -14,6 +14,7 @@ const notice = require('../../utils/notice.js');
 const notify = require('../../utils/notify.js');
 const share = require('../../utils/share.js');
 const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 const store = require('../../utils/store.js');
 const scrollmem = require('../../utils/scrollmem.js');
 
@@ -542,6 +543,7 @@ Page({
     shareGid: '',
     shareTitle: '',
     shareImg: '',
+    sharePoster: '',
     shareBusy: false,
     shareHint: '',
     // 自定义提醒弹层（bottom-sheet + date/time picker，交互照搬 hw 页）
@@ -1759,10 +1761,10 @@ Page({
   copyLink(e) { this.openUrlItem(e); },
 
   // ============================================================ 卡片分享（2026-11-20）
-  // 用户需求：通知卡片支持分享；点「分享」弹层先给 5:4 预览图，再选「图片分享」或「微信卡片分享」。
-  //   * 图片分享：wx.showShareImageMenu（发送给朋友 / 保存到相册）；旧基础库降级为保存相册。
-  //   * 微信卡片分享：原生 button open-type=share；标题=通知标题，path=本页 ?gid=<id>，封面=预览图。
-  //   * 预览图 = sharecard.buildNoticeView + 离屏 canvas；失败回退 images/share/nt.png，此时只保留卡片分享。
+  // 用户需求：通知卡片支持分享；点「分享」弹层先给预览图，再选「图片分享」或「微信卡片分享」。
+  //   * 分享弹层：5:4 微信卡片封面 + 完整长图（标题/摘要/要点/时间地点/原文摘录/来源）双预览。
+  //   * 图片分享：wx.showShareImageMenu（发送给朋友 / 保存到相册）；旧基础库降级保存相册。
+  //   * 微信卡片分享：原生 button open-type=share；标题=通知标题，path=本页 ?gid=<id>，封面=5:4 预览图。
   openShare(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
     const gid = String(ds.gid || '');
@@ -1774,14 +1776,40 @@ Page({
       shareGid: gid,
       shareTitle: String(card.title || '班级通知'),
       shareImg: '',
+      sharePoster: '',
       shareBusy: true,
       shareHint: ''
-    }, () => this._makeNoticeShareCard(gid));
+    }, () => this._makeNoticeShare(gid));
   },
   closeShare() {
-    this.setData({ shareSheet: false, shareGid: '', shareImg: '', shareBusy: false, shareHint: '' });
+    this.setData({ shareSheet: false, shareGid: '', shareImg: '', sharePoster: '', shareBusy: false, shareHint: '' });
   },
-  _makeNoticeShareCard(gid) {
+  _noticePosterOpt(card) {
+    const blocks = [];
+    if (card.summary) blocks.push({ label: 'AI 摘要', lines: [card.summary] });
+    if ((card.points || []).length) blocks.push({ label: '要点', lines: card.points.slice(0, 3) });
+    const fields = (card.segs || []).slice(0, 5).map(function (sg) { return sg.type + '：' + sg.text; });
+    if (fields.length) blocks.push({ label: '关键信息', lines: fields });
+    if ((card.quotes || []).length) {
+      blocks.push({ label: '原文摘录', lines: card.quotes.slice(0, 2).map(function (q) { return q.text; }) });
+    }
+    const compose = (card.compose || []).map(function (x) { return x.n + x.label; }).join(' · ');
+    if (compose) blocks.push({ label: '内容组成', lines: [compose] });
+    return {
+      title: card.title || '班级通知',
+      sub: [card.cat, card.statusLabel].filter(Boolean).join(' · '),
+      config: [
+        ['来源', card.source || '班级通知'],
+        ['发布者', [card.senderName, card.senderRole].filter(Boolean).join(' · ') || '—'],
+        ['时间', card.timeLabel || '—'],
+        ['内容组成', compose || '无']
+      ],
+      blocks: blocks,
+      foot: '生成时间 ' + util.timeStr(),
+      rec: util.recId('NT')
+    };
+  },
+  _makeNoticeShare(gid) {
     const card = this._cardById(gid);
     if (!card) {
       this.setData({ shareBusy: false, shareHint: '通知已更新，请关闭后重试' });
@@ -1790,22 +1818,32 @@ Page({
     const view = sharecard.buildNoticeView({ card: card, time: util.timeStr() });
     const sig = sharecard.signature(view);
     const cache = (this._shareCache || {})[gid];
-    if (cache && cache.sig === sig && cache.img) { this._applyShareImg(gid, cache.img, ''); return; }
+    if (cache && cache.sig === sig && cache.img && cache.poster) {
+      this._applyShare(gid, cache.img, cache.poster, '');
+      return;
+    }
+    const posterOpt = this._noticePosterOpt(card);
     const self = this;
-    const done = function (p) {
+    Promise.all([
+      shareflow.renderCard(this, 'shareCanvas', view),
+      shareflow.renderPoster(this, 'card', posterOpt)
+    ]).then(function (res) {
       if (self._dead || self.data.shareGid !== gid || !self.data.shareSheet) return;
-      if (p) {
-        self._shareCache[gid] = { sig: sig, img: p };
-        self._applyShareImg(gid, p, '');
-      } else {
-        self._applyShareImg(gid, sharecard.FALLBACK.notice, '预览图生成失败，已使用默认封面（图片分享不可用）');
-      }
-    };
-    sharecard.render(this, 'shareCanvas', view).then(done).catch(function () { done(null); });
+      const img = res[0] || '';
+      const poster = res[1] || '';
+      if (img) self._shareCache[gid] = { sig: sig, img: img, poster: poster };
+      let hint = '';
+      if (!img && !poster) hint = '预览图生成失败，请关闭后重试';
+      else if (!img) hint = '卡片封面生成失败，微信卡片将使用默认封面';
+      else if (!poster) hint = '长图生成失败，图片分享将发送 5:4 分享图';
+      self._applyShare(gid, img || sharecard.FALLBACK.notice, poster, hint);
+    }, function () {
+      self._applyShare(gid, sharecard.FALLBACK.notice, '', '预览图生成失败，已使用默认封面');
+    });
   },
-  _applyShareImg(gid, img, hint) {
+  _applyShare(gid, img, poster, hint) {
     if (this._dead || this.data.shareGid !== gid) return;
-    this.setData({ shareImg: img || '', shareBusy: false, shareHint: hint || '' });
+    this.setData({ shareImg: img || '', sharePoster: poster || '', shareBusy: false, shareHint: hint || '' });
   },
   // 分享回调用：优先本次弹层里生成好的图；静态回退图不当作可分享图（showShareImageMenu 只接受本地临时文件）。
   _shareImgOf(gid) {
@@ -1815,42 +1853,8 @@ Page({
     return cache && isTemp(cache.img) ? cache.img : '';
   },
   shareAsImage() {
-    const path = String(this.data.shareImg || '');
-    if (!path) { util.toast('预览图生成中，请稍候'); return; }
-    if (path.indexOf('/images/') === 0) { util.toast('预览图生成失败，请关闭后重试'); return; }
-    const self = this;
-    if (typeof wx.showShareImageMenu === 'function') {
-      wx.showShareImageMenu({
-        path: path,
-        fail: function (err) {
-          const msg = String((err && err.errMsg) || '');
-          if (/cancel/i.test(msg)) return;             // 用户取消不提示
-          self._saveShareImage(path);                  // 旧微信无此能力 → 保存到相册
-        }
-      });
-      return;
-    }
-    this._saveShareImage(path);
-  },
-  _saveShareImage(path) {
-    wx.saveImageToPhotosAlbum({
-      filePath: path,
-      success: () => util.toast('已保存到相册'),
-      fail: (err) => {
-        const msg = String((err && err.errMsg) || '');
-        if (/cancel/i.test(msg)) return;
-        if (/auth|denied|deny/i.test(msg)) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '请在设置中允许「保存到相册」后再分享图片。',
-            confirmText: '去设置',
-            success: (r) => { if (r && r.confirm && wx.openSetting) wx.openSetting(); }
-          });
-          return;
-        }
-        util.toast('图片保存失败');
-      }
-    });
+    if (this.data.shareBusy) { util.toast('预览图生成中，请稍候'); return; }
+    shareflow.showImage(this.data.sharePoster || this.data.shareImg);
   },
 
   onPageScroll(e) { scrollmem.onScroll(this, e); },
@@ -1865,8 +1869,7 @@ Page({
   // 卡片分享走「分享」弹层里的 open-type=share 按钮（e.from === 'button'）：
   // 用当前弹层选中的卡片生成标题 / 深链 / 封面；右上角菜单仍按原逻辑分享本页。
   onShareAppMessage(e) {
-    const fromBtn = !!(e && e.from === 'button');
-    const gid = fromBtn ? String(this.data.shareGid || '') : '';
+    const gid = (this.data.shareSheet && this.data.shareGid) ? String(this.data.shareGid) : '';
     if (gid) {
       const card = this._cardById(gid);
       return share.message({

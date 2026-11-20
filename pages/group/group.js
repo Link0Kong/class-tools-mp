@@ -10,8 +10,10 @@ const share = require('../../utils/share.js');
 const roster = require('../../utils/roster.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',
     errorText: '',
@@ -285,8 +287,8 @@ Page({
     wx.navigateTo({ url: '/pages/sum/sum' });
   },
 
-  exportImg() {
-    if (!this.data.groups.length) { util.toast('先分组再导图'); return; }
+  _sharePosterOpt() {
+    if (!this.data.groups.length) return null;
     const cfg = this.data.cfg || {};
     // v2 导图：分组结果用 groups（两列组卡，组头/人数自动生成）
     const blocks = [{
@@ -295,7 +297,7 @@ Page({
         return g.members.map(function (m) { return { n: m.n, nm: m.nm || '' }; });
       })
     }];
-    canvas.exportAndSave(this, '#card', {
+    return {
       title: '分组结果',
       sub: cfg.groups ? (cfg.groups + ' 组 / ' + cfg.total + ' 人') : '',
       config: [
@@ -308,8 +310,23 @@ Page({
       blocks: blocks,
       foot: '生成时间 ' + util.timeStr(),
       rec: util.recId('GROUP')
-    });
+    };
   },
+  exportImg() {
+    if (!this.data.groups.length) { util.toast('先分组再分享'); return; }
+    canvas.exportAndSave(this, '#card', this._sharePosterOpt());
+  },
+  _shareOpenOpts() {
+    if (!this.data.groups.length) { util.toast('先分组再分享'); return null; }
+    return {
+      title: this._shareTitle(),
+      view: sharecard.buildGroupView({ groups: this.data.groups, cfg: this.data.cfg || {}, time: util.timeStr() }),
+      posterOpt: this._sharePosterOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   _shareTitle() {
     const n = (this.data.groups || []).length;
@@ -321,13 +338,13 @@ Page({
     return share.message({
       title: this._shareTitle(),
       path: '/pages/group/group',
-      imageUrl: '/images/share/draw.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.group
     });
   },
   onShareTimeline() {
     return share.timeline({
       title: this._shareTitle(),
-      imageUrl: '/images/share/draw.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.group
     });
   }
-});
+}));

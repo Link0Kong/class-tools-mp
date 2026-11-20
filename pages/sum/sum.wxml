@@ -4,7 +4,7 @@
 
   <view class="page-head">
     <view class="t-headline-m">结果单</view>
-    <view class="t-body-m muted">第 3 步 · 抽签 + 分组汇总，可复制 / 导图</view>
+    <view class="t-body-m muted">第 3 步 · 抽签 + 分组汇总，可复制 / 分享</view>
   </view>
 
   <segmented items="{{steps}}" value="s3" bindchange="onStep" />
@@ -63,6 +63,11 @@
   </block>
 
   <canvas type="2d" id="card" class="exp-canvas"></canvas>
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
+
+  <share-sheet show="{{shareSheet}}" preview="{{shareImg}}" preview-alt="{{sharePoster}}"
+               title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
+               bind:close="closeShare" bind:image="shareImage" />
 
   <view class="actionbar">
     <view class="actionbar__inner">
@@ -70,7 +75,7 @@
         <touchable cls="m3-btn m3-btn--outlined m3-btn--block" bindtap="copyText">复制文本</touchable>
       </view>
       <view class="grow">
-        <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="exportImg">导出图片</touchable>
+        <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="openShare">分享</touchable>
       </view>
     </view>
   </view>

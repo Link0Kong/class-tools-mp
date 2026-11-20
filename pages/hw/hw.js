@@ -8,6 +8,8 @@ const notify = require('../../utils/notify.js');
 const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const TAG = { grey: 'muted', red: 'danger', warn: 'warn', ok: 'ok' };
 const ATT_PICK_IMAGE = 5 * 1024 * 1024, ATT_PICK_FILE = 2 * 1024 * 1024, ATT_STORE = 1.9 * 1024 * 1024, ATT_N = 2;
@@ -87,7 +89,7 @@ function isDone(d, h) {
 }
 function isHidden(d, h) { return h.id ? !!(d.hwHide && d.hwHide[h.id]) : false; }
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',
     errorText: '',
@@ -608,9 +610,9 @@ Page({
     }).catch(function () { wx.hideLoading(); util.toast('同步失败'); });
   },
 
-  exportImg() {
+  _sharePosterOpt() {
     const d = store.get();
-    if (!(d.homework || []).length) { util.toast('作业板是空的'); return; }
+    if (!(d.homework || []).length) return null;
     const blocks = [];
     if (this.data.open.length) {
       blocks.push({
@@ -626,7 +628,7 @@ Page({
         lines: this.data.done.map(function (h) { return '✓ ' + (h.subject ? '【' + h.subject + '】' : '') + h.content; })
       });
     }
-    canvas.exportAndSave(this, '#card', {
+    return {
       title: '作业板',
       sub: this.data.nick ? ('@' + this.data.nick) : '',
       config: [
@@ -637,19 +639,37 @@ Page({
       blocks: blocks,
       foot: '生成时间 ' + util.timeStr(),
       rec: util.recId('HW')
-    });
+    };
   },
+  exportImg() {
+    const d = store.get();
+    if (!(d.homework || []).length) { util.toast('作业板是空的'); return; }
+    canvas.exportAndSave(this, '#card', this._sharePosterOpt());
+  },
+  _shareOpenOpts() {
+    if (!(this.data.open.length || this.data.done.length)) { util.toast('作业板是空的'); return null; }
+    return {
+      title: '班级作业板 · 未完成 ' + this.data.open.length + ' 条',
+      view: sharecard.buildHwView({
+        open: this.data.open, done: this.data.done, nick: this.data.nick, time: util.timeStr()
+      }),
+      posterOpt: this._sharePosterOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   onShareAppMessage() {
     return share.message({
-      title: '班级作业板｜截止提醒 · 完成勾选',
+      title: '班级作业板 · 未完成 ' + this.data.open.length + ' 条 · 已完成 ' + this.data.done.length + ' 条',
       path: '/pages/hw/hw',
-      imageUrl: '/images/share/hw.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.hw
     });
   },
   onShareTimeline() {
     return share.timeline({
-      title: '班级作业板｜截止提醒 · 完成勾选',
-      imageUrl: '/images/share/hw.png'
+      title: '班级作业板 · 未完成 ' + this.data.open.length + ' 条 · 已完成 ' + this.data.done.length + ' 条',
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.hw
     });
   }
-});
+}));

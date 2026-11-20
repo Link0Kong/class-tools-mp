@@ -18,11 +18,12 @@ const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 const drawproof = require('../../utils/drawproof.js');
 const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const SORT_LABEL = { draw: '按抽取顺序', num: '按序号升序', desc: '从大到小', rand: '随机打乱' };
 const PROOF_SLOW_MS = 6000;   // 存证超过约 6s 未回包 → 按「未存证」展示（请求仍在，成功后会自愈）
 
-Page({
+Page(shareflow.install({
   data: {
     state: 'loading',            // 结果区：loading | empty | error | data
     errorText: '',
@@ -618,7 +619,7 @@ Page({
     return opt;
   },
   exportImg() {
-    if (!this.data.rows.length) { util.toast('先抽签再导图'); return; }
+    if (!this.data.rows.length) { util.toast('先抽签再分享'); return; }
     const st = flow.getFlow().draw || {};
     if (!drawproof.proofReady(st.proof)) util.toast('本次未存证，图片无法核验');
     canvas.exportAndSave(this, '#card', this.buildExportOpt());
@@ -642,6 +643,25 @@ Page({
     }
     return { title: title, path: '/pages/draw/draw', query: '' };
   },
+  // 2026-11-20 分享弹层：5:4 卡片封面 + 完整导出长图（图片分享）
+  _shareOpenOpts() {
+    if (!(this.data.rows || []).length) { util.toast('先抽签再分享'); return null; }
+    const st = flow.getFlow().draw || {};
+    return {
+      title: this._shareInfo().title,
+      view: sharecard.buildDrawView({
+        rows: this.data.rows,
+        cfg: this.data.cfg,
+        proofReady: drawproof.proofReady(st.proof),
+        proofId: st.proof && st.proof.id,
+        time: util.timeStr()
+      }),
+      posterOpt: this.buildExportOpt()
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   _scheduleShareCard() {
     if (this._shareT) { clearTimeout(this._shareT); this._shareT = null; }
     if (!(this.data.rows || []).length) { this._shareImg = ''; this._shareSig = ''; return; }
@@ -675,7 +695,7 @@ Page({
       title: info.title,
       path: info.path,
       query: info.query,
-      imageUrl: this._shareImg || sharecard.FALLBACK.draw
+      imageUrl: this.data.shareImg || this._shareImg || sharecard.FALLBACK.draw
     });
   },
   onShareTimeline() {
@@ -683,7 +703,7 @@ Page({
     return share.timeline({
       title: info.title,
       query: info.query,
-      imageUrl: this._shareImg || sharecard.FALLBACK.draw
+      imageUrl: this.data.shareImg || this._shareImg || sharecard.FALLBACK.draw
     });
   }
-});
+}));

@@ -2,9 +2,12 @@
 const store = require('../../utils/store.js');
 const fit = require('../../utils/fit.js');
 const identity = require('../../utils/identity.js');
+const util = require('../../utils/util.js');
 const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const sharecard = require('../../utils/sharecard.js');
+const shareflow = require('../../utils/shareflow.js');
 
 const ITEMS = [
   { key: 'vc', n: '肺活量', u: 'mL' },
@@ -24,7 +27,7 @@ function fitOfStore() {
   return { sex: normSex(f.sex), grade: normGr(f.grade) };
 }
 
-Page({
+Page(shareflow.install({
   data: { sex: 'm', grade: '12', scores: fit.FTS, rows: [], focus: '', smLeft: 0 },
   onLoad(options) {
     scrollmem.attach(this);
@@ -122,20 +125,31 @@ Page({
     });
     this.setData({ rows: rows });
   },
+  _shareOpenOpts() {
+    return {
+      title: '国标体测评分表 · ' + (this.data.sex === 'f' ? '女' : '男') + ' · ' + (this.data.grade === '34' ? '大三/大四' : '大一/大二'),
+      view: sharecard.buildFttableView({
+        sex: this.data.sex, grade: this.data.grade, rows: this.data.rows, time: util.timeStr()
+      })
+    };
+  },
+  openShare() { shareflow.open(this, this._shareOpenOpts()); },
+  closeShare() { shareflow.close(this); },
+  shareImage() { shareflow.shareImage(this); },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onHide() { scrollmem.save(this); },
   onUnload() { scrollmem.save(this); },
   onShareAppMessage() {
     return share.message({
-      title: '大学体测国标评分表',
+      title: '大学体测国标评分表 · ' + (this.data.sex === 'f' ? '女' : '男') + ' · ' + (this.data.grade === '34' ? '大三/大四' : '大一/大二'),
       path: '/pages/fttable/fttable',
-      imageUrl: '/images/share/ft.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.fttable
     });
   },
   onShareTimeline() {
     return share.timeline({
       title: '大学体测国标评分表',
-      imageUrl: '/images/share/ft.png'
+      imageUrl: this.data.shareImg || sharecard.FALLBACK.fttable
     });
   }
-});
+}));
