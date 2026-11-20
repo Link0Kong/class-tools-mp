@@ -52,10 +52,10 @@
       </view>
     </view>
 
-    <!-- 分享入口（2026-11-19）：标题=投票标题、path=本详情 ?id=；分享图由 canvas 摘要，失败回退 default.png -->
+    <!-- 分享入口（2026-11-19）：标题=投票标题、path=本详情 ?id=；分享图只带标题/选项，不展示投票结果 -->
     <view class="vd-sharebar">
       <button class="share-btn" open-type="share">分享投票</button>
-      <text class="vd-share-hint">分享后点击卡片可直接进入本投票</text>
+      <text class="vd-share-hint">分享卡片不显示结果，点开卡片进入投票</text>
     </view>
 
     <!-- 结果隐藏提示 -->

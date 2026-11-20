@@ -1,5 +1,17 @@
 # 版本记录
 
+## 通知卡片分享（预览图 + 图片 / 微信卡片）+ 投票卡片不预览结果（2026-11-20，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
+
+> 用户原话：「微信小程序端的通知工具的卡片设为可支持分享，点击分享后弹出预览图和选项选择以图片分享还是微信卡片分享，同时投票功能的微信卡片分享不应该可以直接预览投票结果」。
+
+- **通知卡片分享**（`pages/nt`）：卡片底栏新增「分享」。点击打开 bottom-sheet，先展示 5:4 预览图，再选两种方式：
+  - 「图片分享」→ `wx.showShareImageMenu`（发送给朋友 / 保存到相册）；旧基础库或低版本微信降级 `wx.saveImageToPhotosAlbum`，拒绝相册权限时弹「去设置」。
+  - 「微信卡片分享」→ 原生 `button open-type="share"`；title=`班级通知｜<标题>`、path=`/pages/nt/nt?gid=<id>`、imageUrl=本次 canvas 预览图；右上角菜单仍按页面级分享。
+- **通知分享图**（`utils/sharecard.js`）：新增 `buildNoticeView` / `drawNotice`，只画标题 / 分类 / 状态 / AI 摘要 / 最多 2 条要点 / 来源 / 时间；不含附件、图片、学号、收件人。按卡片缓存（signature 去时间），失败回退 `images/share/nt.png` 且图片分享禁用；`render()` 加 2.5s 超时兜底，避免弹层卡在「生成中」。
+- **投票分享卡收紧**：`buildVoteView` 不再输出 pct/count/total，`drawVote` 不再画结果条 / 百分比 / 票数，固定提示「结果请打开投票页查看」；`votedetail` 分享按钮旁提示改为「分享卡片不显示结果，点开卡片进入投票」。结果只能点开小程序查看，不能通过聊天里的卡片封面直接预览。
+- **测试**：`share_legal_unit.js` B2/B4/B5/D6/D7（**18/18**）；新增 `nt_share_check.js` automator 回归 **17/17**（真实测试身份 3260799999，注入固定卡片，验证弹层/预览图临时文件约 66KB/两个选项/卡片按钮整行/分享 title+path+imageUrl/关闭复位/0 console error；截图 `_shots/nt_share/share_sheet.png`、`vote_card.png`）；`unit.js` **617 passed / 7 failed**（7 项为既有失败：合规域名/ko-link/draw×3/期次/发布，与本次无关）；`staticcheck.py` handlers / 分享 handler 0 缺失；`code_quality_check.js` 全部通过。
+- **未做**：未上传/发布；未改 VERSION（2.0.0）/ UD v6 / 云端契约。
+
 ## 页面加载性能：PPT 三页合并单分包 + utils/ppt.js 移出主包 + 去掉工具页预下载 + 外观 onShow 去重（2026-11-19，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
 > 用户原话：「微信小程序的各个页面加载速率严重变慢了，同时主包内存在未使用的 js 文件 ppt.js」。

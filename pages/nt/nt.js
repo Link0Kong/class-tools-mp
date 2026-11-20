@@ -13,6 +13,7 @@ const identity = require('../../utils/identity.js');
 const notice = require('../../utils/notice.js');
 const notify = require('../../utils/notify.js');
 const share = require('../../utils/share.js');
+const sharecard = require('../../utils/sharecard.js');
 const store = require('../../utils/store.js');
 const scrollmem = require('../../utils/scrollmem.js');
 
@@ -536,6 +537,13 @@ Page({
     rawTitle: '',
     rawMeta: '',
     rawBlocks: [],
+    // 卡片分享（2026-11-20）：预览图 + 图片分享 / 微信卡片分享两个选项
+    shareSheet: false,
+    shareGid: '',
+    shareTitle: '',
+    shareImg: '',
+    shareBusy: false,
+    shareHint: '',
     // 自定义提醒弹层（bottom-sheet + date/time picker，交互照搬 hw 页）
     remindSheet: false,
     remindForGid: '',
@@ -548,6 +556,7 @@ Page({
   },
   onLoad(options) {
     scrollmem.attach(this);
+    this._dead = false;
     this._raw = [];
     this._all = [];
     this._expanded = {};
@@ -555,6 +564,7 @@ Page({
     this._remind = remindMap();
     this._imgs = {};
     this._loadingImgs = {};
+    this._shareCache = {};
     this._first = true;
     this._lastPull = 0;
     this._remindAt = 0;
@@ -1748,16 +1758,124 @@ Page({
   },
   copyLink(e) { this.openUrlItem(e); },
 
+  // ============================================================ 卡片分享（2026-11-20）
+  // 用户需求：通知卡片支持分享；点「分享」弹层先给 5:4 预览图，再选「图片分享」或「微信卡片分享」。
+  //   * 图片分享：wx.showShareImageMenu（发送给朋友 / 保存到相册）；旧基础库降级为保存相册。
+  //   * 微信卡片分享：原生 button open-type=share；标题=通知标题，path=本页 ?gid=<id>，封面=预览图。
+  //   * 预览图 = sharecard.buildNoticeView + 离屏 canvas；失败回退 images/share/nt.png，此时只保留卡片分享。
+  openShare(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
+    const gid = String(ds.gid || '');
+    if (!gid) return;
+    const card = this._cardById(gid);
+    if (!card) { util.toast('通知已更新，请刷新后重试'); return; }
+    this.setData({
+      shareSheet: true,
+      shareGid: gid,
+      shareTitle: String(card.title || '班级通知'),
+      shareImg: '',
+      shareBusy: true,
+      shareHint: ''
+    }, () => this._makeNoticeShareCard(gid));
+  },
+  closeShare() {
+    this.setData({ shareSheet: false, shareGid: '', shareImg: '', shareBusy: false, shareHint: '' });
+  },
+  _makeNoticeShareCard(gid) {
+    const card = this._cardById(gid);
+    if (!card) {
+      this.setData({ shareBusy: false, shareHint: '通知已更新，请关闭后重试' });
+      return;
+    }
+    const view = sharecard.buildNoticeView({ card: card, time: util.timeStr() });
+    const sig = sharecard.signature(view);
+    const cache = (this._shareCache || {})[gid];
+    if (cache && cache.sig === sig && cache.img) { this._applyShareImg(gid, cache.img, ''); return; }
+    const self = this;
+    const done = function (p) {
+      if (self._dead || self.data.shareGid !== gid || !self.data.shareSheet) return;
+      if (p) {
+        self._shareCache[gid] = { sig: sig, img: p };
+        self._applyShareImg(gid, p, '');
+      } else {
+        self._applyShareImg(gid, sharecard.FALLBACK.notice, '预览图生成失败，已使用默认封面（图片分享不可用）');
+      }
+    };
+    sharecard.render(this, 'shareCanvas', view).then(done).catch(function () { done(null); });
+  },
+  _applyShareImg(gid, img, hint) {
+    if (this._dead || this.data.shareGid !== gid) return;
+    this.setData({ shareImg: img || '', shareBusy: false, shareHint: hint || '' });
+  },
+  // 分享回调用：优先本次弹层里生成好的图；静态回退图不当作可分享图（showShareImageMenu 只接受本地临时文件）。
+  _shareImgOf(gid) {
+    const isTemp = function (p) { return !!p && String(p).indexOf('/images/') !== 0; };
+    if (this.data.shareGid === gid && isTemp(this.data.shareImg)) return this.data.shareImg;
+    const cache = (this._shareCache || {})[gid];
+    return cache && isTemp(cache.img) ? cache.img : '';
+  },
+  shareAsImage() {
+    const path = String(this.data.shareImg || '');
+    if (!path) { util.toast('预览图生成中，请稍候'); return; }
+    if (path.indexOf('/images/') === 0) { util.toast('预览图生成失败，请关闭后重试'); return; }
+    const self = this;
+    if (typeof wx.showShareImageMenu === 'function') {
+      wx.showShareImageMenu({
+        path: path,
+        fail: function (err) {
+          const msg = String((err && err.errMsg) || '');
+          if (/cancel/i.test(msg)) return;             // 用户取消不提示
+          self._saveShareImage(path);                  // 旧微信无此能力 → 保存到相册
+        }
+      });
+      return;
+    }
+    this._saveShareImage(path);
+  },
+  _saveShareImage(path) {
+    wx.saveImageToPhotosAlbum({
+      filePath: path,
+      success: () => util.toast('已保存到相册'),
+      fail: (err) => {
+        const msg = String((err && err.errMsg) || '');
+        if (/cancel/i.test(msg)) return;
+        if (/auth|denied|deny/i.test(msg)) {
+          wx.showModal({
+            title: '需要相册权限',
+            content: '请在设置中允许「保存到相册」后再分享图片。',
+            confirmText: '去设置',
+            success: (r) => { if (r && r.confirm && wx.openSetting) wx.openSetting(); }
+          });
+          return;
+        }
+        util.toast('图片保存失败');
+      }
+    });
+  },
+
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   onHide() { scrollmem.save(this); this._clearFoldTimers(); },
-  onUnload() { scrollmem.save(this); this._clearFoldTimers(); },
+  onUnload() { this._dead = true; scrollmem.save(this); this._clearFoldTimers(); },
   // 需求 13：清理展开/收起动画的延时定时器（避免页面隐藏后 setData 抖动）
   _clearFoldTimers() {
     const t = this._foldTimers || {};
     Object.keys(t).forEach(function (k) { clearTimeout(t[k]); });
     this._foldTimers = {};
   },
-  onShareAppMessage() {
+  // 卡片分享走「分享」弹层里的 open-type=share 按钮（e.from === 'button'）：
+  // 用当前弹层选中的卡片生成标题 / 深链 / 封面；右上角菜单仍按原逻辑分享本页。
+  onShareAppMessage(e) {
+    const fromBtn = !!(e && e.from === 'button');
+    const gid = fromBtn ? String(this.data.shareGid || '') : '';
+    if (gid) {
+      const card = this._cardById(gid);
+      return share.message({
+        title: card ? ('班级通知｜' + card.title) : '班级通知',
+        path: '/pages/nt/nt',
+        query: 'gid=' + encodeURIComponent(gid),
+        imageUrl: this._shareImgOf(gid) || '/images/share/nt.png'
+      });
+    }
     const first = (this.data.cards || [])[0];
     return share.message({
       title: first ? ('班级通知｜' + first.title) : '班级通知｜简报 · 附件 · 原始消息',
@@ -1766,6 +1884,15 @@ Page({
     });
   },
   onShareTimeline() {
+    const gid = String(this.data.shareGid || '');
+    if (gid) {
+      const card = this._cardById(gid);
+      return share.timeline({
+        title: card ? ('班级通知｜' + card.title) : '班级通知',
+        query: gid ? ('gid=' + encodeURIComponent(gid)) : '',
+        imageUrl: this._shareImgOf(gid) || '/images/share/nt.png'
+      });
+    }
     const first = (this.data.cards || [])[0];
     return share.timeline({
       title: first ? ('班级通知｜' + first.title) : '班级通知｜简报 · 附件 · 原始消息',

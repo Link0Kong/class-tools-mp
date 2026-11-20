@@ -1,5 +1,19 @@
 # 班级工具站小程序 · 测试与修复工程
 
+## 通知卡片分享 + 投票卡片不预览结果（2026-11-20，未发版；待用户上传发布）
+
+- **通知卡片分享**（`pages/nt`）：每张卡片底栏「分享」→ bottom-sheet 展示 5:4 预览图 +「图片分享」/「微信卡片分享」。
+  图片分享走 `wx.showShareImageMenu`（旧基础库降级 `wx.saveImageToPhotosAlbum`）；微信卡片用原生 `button open-type=share`，
+  title=`班级通知｜<标题>`、path=`/pages/nt/nt?gid=<id>`、imageUrl=预览图。预览图失败回退 `images/share/nt.png`，
+  `sharecard.render()` 2.5s 超时兜底，弹层不会停在「生成中」。
+- **通知分享图**（`utils/sharecard.js`）：新增 `buildNoticeView` / `drawNotice`（标题/分类/状态/摘要/≤2 要点/来源/时间；
+  不含附件、图片、学号、收件人）；按卡片 signature 缓存。
+- **投票分享卡**：`buildVoteView` 不输出 pct/count/total，`drawVote` 不画结果条/百分比/票数，固定提示
+  「结果请打开投票页查看」；`votedetail` 页面提示同步改为「分享卡片不显示结果，点开卡片进入投票」。
+- **复跑**：`node unit.js`（share_legal_unit B2/B4/B5/D6/D7，**617 passed / 7 failed**，7 项为既有失败）；
+  `node nt_share_check.js`（automator，真实测试身份 3260799999，**17/17**，截图 `_shots/nt_share/`）；
+  `python staticcheck.py` / `node code_quality_check.js` 通过。**未上传发布，VERSION 仍 2.0.0。**
+
 ## 统计排序「访问次数优先」口径（2026-11-18，未发版）
 
 对应契约 `web/统计多端_最新登录_契约_20261118.md`：**访问次数降序 → 最近访问时间降序**；默认今天、分钟时间、登录端、忽略测试账号。

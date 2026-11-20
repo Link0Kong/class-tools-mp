@@ -6,7 +6,8 @@
 //   * 不用未公开 API；只用 canvas 2d + wx.canvasToTempFilePath；
 //   * 页面 onShareAppMessage 必须同步返回，所以这里只做「提前生成、失败回退静态图」：
 //     页面在结果渲染后异步调 render()，成功后把临时文件路径交给分享；未生成/失败时用 images/share/*.png。
-//   * 绘制的文字全部来自页面已渲染的数据（抽签结果序号 / 投票标题与选项），不读学号、宿舍号等隐私字段。
+//   * 绘制的文字全部来自页面已渲染的数据（抽签结果序号 / 投票标题与选项 / 通知标题与摘要），
+//     不读学号、宿舍号等隐私字段；投票卡固定不画结果（百分比/票数），避免微信卡片直接预览投票结果。
 //   * 画布固定 500×400（5:4），导出 1000×800；用基础 fillRect / fillText / arcTo，兼容真机与单测假 canvas。
 
 const W = 500;
@@ -28,6 +29,7 @@ const FONT = 'sans-serif';
 const FALLBACK = {
   draw: '/images/share/draw.png',
   vote: '/images/share/default.png',
+  notice: '/images/share/nt.png',
   group: '/images/share/draw.png'
 };
 
@@ -185,26 +187,43 @@ function buildDrawView(opt) {
   };
 }
 
+// 投票分享卡（2026-11-20）：只放标题 / 状态 / 选项文字，**不画百分比与票数**。
+// 微信卡片在聊天里直接可见，若把结果画进封面，未打开小程序就能看到投票结果（结果隐藏/截止后可见也会被绕过）；
+// 因此分享卡固定遮住结果（detail.resultsHidden 不再影响绘制），结果只能点开投票详情页查看。
 function buildVoteView(opt) {
   const o = opt || {};
   const d = o.detail || {};
   const row = o.row || {};
-  const hidden = !!(d.resultsHidden || row.resultsHidden);
   const options = (Array.isArray(d.options) ? d.options : []).slice(0, 4).map(function (x) {
-    return {
-      text: txt(x && x.text),
-      pct: (x && x.showBar) ? num(x.pct) : null,
-      count: (x && x.showBar) ? num(x.count) : null
-    };
+    return { text: txt(x && x.text) };
   });
   return {
     kind: 'vote',
     title: txt(d.title || row.title || '投票'),
     status: txt(d.statusText || row.statusText),
-    total: num(d.total != null ? d.total : row.total),
-    hidden: hidden,
     modeText: txt(d.modeText || row.modeText),
+    hint: '结果请打开投票页查看',
+    resultsMasked: true,
     options: options,
+    time: txt(o.time)
+  };
+}
+
+// 通知分享卡（2026-11-20）：通知工具每张卡片的分享预览图。
+// 只放卡片上已公开的展示字段（标题 / 分类 / 状态 / AI 摘要 / 要点 / 来源 / 时间），
+// 不带附件原文、图片、学号、收件人等隐私内容。
+function buildNoticeView(opt) {
+  const o = opt || {};
+  const c = o.card || {};
+  const points = (Array.isArray(c.points) ? c.points : []).slice(0, 2).map(txt);
+  return {
+    kind: 'notice',
+    title: txt(c.title || '班级通知'),
+    cat: txt(c.cat || '通知'),
+    status: txt(c.statusLabel || ''),
+    summary: txt(c.summary || ''),
+    points: points,
+    source: txt(c.source || ''),
     time: txt(o.time)
   };
 }
@@ -283,6 +302,7 @@ function drawDraw(g, v) {
   footer(g, v.proof ? ('存证 ' + v.proof) : '未存证 · 打开抽签页', v.time);
 }
 
+// 投票卡：只展示标题 / 状态 / 选项，不展示任何结果（百分比、票数、总票数都不画）。
 function drawVote(g, v) {
   base(g);
   brand(g, '投票');
@@ -296,10 +316,16 @@ function drawVote(g, v) {
   });
   if (!titleLines.length) y = 78;
 
-  const status = v.status || (v.hidden ? '结果暂时隐藏' : '进行中');
-  const statusText = v.total > 0 ? (status + ' · ' + v.total + ' 人已投') : status;
-  pill(g, 28, y - 4, statusText, COLOR.teal, COLOR.tealSoft);
+  const statusParts = [];
+  if (v.status) statusParts.push(v.status);
+  if (v.modeText) statusParts.push(v.modeText);
+  pill(g, 28, y - 4, statusParts.join(' · ') || '进行中', COLOR.teal, COLOR.tealSoft);
   y += 36;
+
+  g.font = '12px ' + FONT;
+  g.fillStyle = COLOR.ink3;
+  g.fillText(clipText(g, v.hint || '结果请打开投票页查看', W - 56, '12px ' + FONT), 28, y + 4);
+  y += 28;
 
   const opts = v.options || [];
   if (!opts.length) {
@@ -307,35 +333,74 @@ function drawVote(g, v) {
     g.fillStyle = COLOR.ink2;
     g.fillText(clipText(g, v.modeText || '点击卡片查看投票详情', W - 56, '15px ' + FONT), 28, y + 12);
   } else {
-    const rowH = 44;
-    const barW = W - 56 - 64;
+    // 2×2 选项卡：只写选项文字，不出现结果条 / 百分比 / 票数
+    const cols = 2;
+    const gap = 12;
+    const cw = (W - 56 - gap) / cols;
+    const ch = 44;
     opts.forEach(function (o2, i) {
-      const ry = y + i * rowH;
-      g.font = '600 15px ' + FONT;
+      const cx = 28 + (i % cols) * (cw + gap);
+      const cy = y + Math.floor(i / cols) * (ch + 10);
+      g.fillStyle = COLOR.card;
+      roundRect(g, cx, cy, cw, ch, 10);
+      g.strokeStyle = COLOR.line;
+      if (g.strokeRect) { g.lineWidth = 1; g.strokeRect(cx, cy, cw, ch); }
+      g.font = '600 14px ' + FONT;
       g.fillStyle = COLOR.ink;
-      g.fillText(clipText(g, o2.text, W - 56 - 76, '600 15px ' + FONT), 28, ry + 8);
-      if (v.hidden || o2.pct == null) {
-        g.font = '11px ' + FONT;
-        g.fillStyle = COLOR.ink3;
-        g.fillText(v.hidden ? '结果暂时隐藏' : '—', 28, ry + 28);
-      } else {
-        g.fillStyle = COLOR.tealSoft;
-        roundRect(g, 28, ry + 18, barW, 8, 4);
-        g.fillStyle = COLOR.teal;
-        const fw = Math.max(2, Math.round(barW * Math.max(0, Math.min(100, num(o2.pct))) / 100));
-        roundRect(g, 28, ry + 18, fw, 8, 4);
-        g.font = '600 12px ' + FONT;
-        g.fillStyle = COLOR.teal;
-        const pt = Math.round(num(o2.pct)) + '%';
-        g.fillText(pt, W - 28 - widthOf(g, pt, '600 12px ' + FONT), ry + 16);
-        g.font = '10px ' + FONT;
-        g.fillStyle = COLOR.ink3;
-        const ct = num(o2.count) + ' 票';
-        g.fillText(ct, W - 28 - widthOf(g, ct, '10px ' + FONT), ry + 30);
-      }
+      g.fillText(clipText(g, o2.text, cw - 20, '600 14px ' + FONT), cx + 10, cy + 27);
     });
   }
   footer(g, '班级工具 · 投票', v.time);
+}
+
+// 通知卡：标题 / 分类 / 状态 / AI 摘要 / 要点 / 来源；不放附件原文和收件人信息。
+function drawNotice(g, v) {
+  base(g);
+  brand(g, '通知');
+  let y = 78;
+  g.fillStyle = COLOR.ink;
+  g.font = '700 28px ' + FONT;
+  const titleLines = wrapLines(g, v.title || '班级通知', W - 56, 3, '700 28px ' + FONT);
+  titleLines.forEach(function (line) {
+    g.fillText(line, 28, y);
+    y += 36;
+  });
+  y += 4;
+
+  // 分类 + 状态胶囊（状态可能带期次时间，超宽时截断）
+  let px = 28;
+  if (v.cat) px += pill(g, px, y, v.cat, COLOR.teal, COLOR.tealSoft) + 8;
+  if (v.status) {
+    const room = W - 28 - px;
+    if (room > 48) {
+      const st = clipText(g, v.status, room - 20, '600 12px ' + FONT);
+      pill(g, px, y, st, COLOR.ink2, '#EFF2F1');
+    }
+  }
+  y += 38;
+
+  if (v.summary) {
+    g.font = '15px ' + FONT;
+    g.fillStyle = COLOR.ink2;
+    const lines = wrapLines(g, v.summary, W - 56, 2, '15px ' + FONT);
+    lines.forEach(function (line) {
+      g.fillText(line, 28, y);
+      y += 23;
+    });
+    y += 4;
+  }
+
+  const points = (v.points || []).filter(Boolean).slice(0, y > 250 ? 1 : 2);
+  if (points.length) {
+    g.font = '13px ' + FONT;
+    g.fillStyle = COLOR.ink2;
+    points.forEach(function (p) {
+      g.fillText(clipText(g, '· ' + p, W - 56, '13px ' + FONT), 28, y);
+      y += 21;
+    });
+  }
+
+  footer(g, v.source ? ('来源 ' + v.source) : '班级工具 · 通知', v.time);
 }
 
 /** 绘制到 canvas（导出由 render 负责）；单测可直接调 draw 验证文字 */
@@ -343,6 +408,7 @@ function draw(g, view) {
   if (!g || !view) return false;
   if (view.kind === 'draw') drawDraw(g, view);
   else if (view.kind === 'vote') drawVote(g, view);
+  else if (view.kind === 'notice') drawNotice(g, view);
   else return false;
   return true;
 }
@@ -364,7 +430,15 @@ function devicePixelRatio() {
 function render(page, canvasId, view) {
   return new Promise(function (resolve) {
     let done = false;
-    const finish = function (p) { if (!done) { done = true; resolve(p || null); } };
+    let timer = null;
+    const finish = function (p) {
+      if (done) return;
+      done = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+      resolve(p || null);
+    };
+    // 兜底：节点查询在极端情况（页面已卸载/渲染层异常）可能不回调，不能让分享弹层一直停在「生成中」。
+    timer = setTimeout(function () { finish(null); }, 2500);
     try {
       if (!view || !canvasId || !wx || typeof wx.createSelectorQuery !== 'function') return finish(null);
       if (typeof wx.canvasToTempFilePath !== 'function') return finish(null);
@@ -409,6 +483,7 @@ module.exports = {
   wrapLines: wrapLines,
   buildDrawView: buildDrawView,
   buildVoteView: buildVoteView,
+  buildNoticeView: buildNoticeView,
   signature: signature,
   draw: draw,
   render: render

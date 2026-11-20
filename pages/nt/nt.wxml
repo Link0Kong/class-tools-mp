@@ -195,6 +195,8 @@
         <view wx:if="{{!card.hidden}}" class="nt-admin-btn nt-admin-btn--danger" data-gid="{{card.id}}" catchtap="adminDelete">删除</view>
         <view wx:else class="nt-admin-btn" data-gid="{{card.id}}" catchtap="adminRestore">恢复</view>
       </block>
+      <!-- 2026-11-20：每张卡片都可分享（预览图 + 图片 / 微信卡片两种方式） -->
+      <view class="nt-share" data-gid="{{card.id}}" catchtap="openShare">分享</view>
       <view class="nt-fold" data-gid="{{card.id}}" catchtap="toggleDetail">{{card.expanded ? '收起' : '展开'}}</view>
     </view>
   </view>
@@ -420,5 +422,39 @@
     <view class="nt-remind-hint">保存后立即对所有人生效（云端 override_json）；清空某字段会回落到原通知内容。</view>
     <touchable cls="m3-btn m3-btn--filled m3-btn--block" style="margin-top:8rpx" bindtap="saveEdit">保存</touchable>
   </bottom-sheet>
+
+  <!-- ===== 卡片分享（2026-11-20）：5:4 预览图 +「图片分享」/「微信卡片分享」 ===== -->
+  <bottom-sheet show="{{shareSheet}}" title="分享通知" bind:close="closeShare">
+    <view class="nt-share-prevwrap">
+      <image wx:if="{{shareImg}}" class="nt-share-prev" src="{{shareImg}}" mode="widthFix"></image>
+      <view wx:else class="nt-share-prev nt-share-prev--ph">
+        <text class="nt-share-ph">{{shareBusy ? '预览图生成中…' : '暂无预览图'}}</text>
+      </view>
+      <view wx:if="{{shareTitle}}" class="nt-share-for">「{{shareTitle}}」</view>
+      <view wx:if="{{shareHint}}" class="nt-share-hint">{{shareHint}}</view>
+    </view>
+
+    <view class="nt-share-opts">
+      <view class="nt-share-opt" bindtap="shareAsImage" hover-class="nt-share-opt--tap">
+        <view class="nt-share-ico">图</view>
+        <view class="nt-share-bd">
+          <view class="nt-share-t">图片分享</view>
+          <view class="nt-share-s">发送图片给好友或保存到相册</view>
+        </view>
+      </view>
+      <!-- 微信卡片分享必须是原生 open-type=share 按钮；onShareAppMessage 读当前 shareGid -->
+      <button class="nt-share-opt nt-share-opt--btn" open-type="share" data-gid="{{shareGid}}" hover-class="nt-share-opt--tap">
+        <view class="nt-share-ico nt-share-ico--card">卡</view>
+        <view class="nt-share-bd">
+          <view class="nt-share-t">微信卡片分享</view>
+          <view class="nt-share-s">好友点卡片可直接打开这条通知</view>
+        </view>
+      </button>
+    </view>
+    <view class="nt-share-tip">分享图仅含标题、分类、摘要与时间，不含附件原文和学号。</view>
+  </bottom-sheet>
+
+  <!-- 5:4 分享卡画布（离屏；点分享时按卡片生成，失败回退 images/share/nt.png） -->
+  <canvas type="2d" id="shareCanvas" class="share-canvas"></canvas>
 
 </view>
