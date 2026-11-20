@@ -3,128 +3,243 @@
 <view class="page pad-b wt-page {{themeClass}}">
 
   <!-- 关注宿舍：单行入口（与宿舍电费共用同一个选择），点击打开同款自定义 bottom-sheet -->
-  <view class="wt-pick" bindtap="openSheet" hover-class="wt-pick--hover" hover-stay-time="60">
-    <text class="wt-pick-label">{{hasSel ? '关注宿舍' : '选择宿舍'}}</text>
-    <text class="wt-pick-value">{{hasSel ? selLabel : '未选择'}}</text>
-    <text class="wt-pick-chev">›</text>
+  <view class="wt-pick" bindtap="openSheet" hover-class="wt-pick--hover" hover-stay-time="60"
+        aria-role="button" aria-label="选择关注宿舍">
+    <view class="wt-pick-ico"><text>宿</text></view>
+    <view class="wt-pick-main">
+      <text class="wt-pick-label">{{hasSel ? '关注宿舍' : '选择宿舍'}}</text>
+      <text class="wt-pick-value">{{hasSel ? selLabel : '尚未选择宿舍'}}</text>
+    </view>
+    <view class="wt-pick-side">
+      <text class="wt-pick-hint">{{hasSel ? '与电费共用' : '点此选择'}}</text>
+      <text class="wt-pick-chev">›</text>
+    </view>
   </view>
 
-  <!-- 2026-11-11 云端共享状态（契约 §3）：宿舍共享 · 已同步 / 离线 · 已存本机 -->
-  <view wx:if="{{syncText}}" class="wt-sync {{syncErr ? 'wt-sync--err' : ''}}">{{syncText}}<text wx:if="{{waterPending}}" class="wt-sync-pend">· 待补发</text></view>
+  <!-- 2026-11-11 云端共享状态（契约 §3）：宿舍共享 · 已同步 / 离线 · 已存本机；点离线行可重试 -->
+  <view wx:if="{{syncText}}" class="wt-sync {{syncErr ? 'wt-sync--err' : ''}}" bindtap="retryCloud">
+    <view class="wt-sync-dot"></view>
+    <text class="wt-sync-text">{{syncText}}</text>
+    <text wx:if="{{waterPending}}" class="wt-sync-pend">· 待补发</text>
+    <text wx:if="{{syncErr}}" class="wt-sync-retry">重试</text>
+  </view>
 
   <!-- 未选择：引导（0 请求、0 数据） -->
   <block wx:if="{{state === 'idle'}}">
     <view class="m3-card m3-card--outlined wt-guide">
-      <view class="wt-guide-t">先关注一个宿舍，再每月抄水表</view>
-      <view class="wt-guide-s">关注宿舍与「宿舍电费」共用；选择保存在账号里，换设备登录会同步。水费按校方规则估算，数据只在本机与账号里。</view>
-      <touchable cls="m3-btn m3-btn--tonal m3-btn--block" style="margin-top:20rpx" bindtap="openSheet">选择宿舍</touchable>
-      <view class="wt-guide-link" bindtap="goPower">去宿舍电费页查看电量</view>
+      <view class="wt-guide-art"><view class="wt-drop wt-drop--lg"></view></view>
+      <text class="wt-guide-t">先关注一个宿舍</text>
+      <text class="wt-guide-s">关注宿舍与「宿舍电费」共用，选择会保存在账号里。之后每月抄一次水表，自动计算用量、水费与折合扣电。</text>
+      <view class="wt-guide-steps">
+        <view class="wt-guide-step">
+          <text class="wt-guide-n">1</text>
+          <view class="wt-guide-step-body"><text class="wt-guide-step-t">选择宿舍</text><text class="wt-guide-step-s">楼栋 + 房间号</text></view>
+        </view>
+        <view class="wt-guide-step">
+          <text class="wt-guide-n">2</text>
+          <view class="wt-guide-step-body"><text class="wt-guide-step-t">填写人数</text><text class="wt-guide-step-s">得到每月定额</text></view>
+        </view>
+        <view class="wt-guide-step">
+          <text class="wt-guide-n">3</text>
+          <view class="wt-guide-step-body"><text class="wt-guide-step-t">每月抄表</text><text class="wt-guide-step-s">自动算水费</text></view>
+        </view>
+      </view>
+      <touchable cls="m3-btn m3-btn--filled m3-btn--block wt-guide-btn" bindtap="openSheet">选择宿舍</touchable>
+      <view class="wt-guide-link" bindtap="goPower">去宿舍电费页查看电量 ›</view>
     </view>
   </block>
 
   <block wx:else>
-    <!-- 本期对比（最新一条 vs 上一条） -->
-    <view class="m3-card m3-card--filled wt-hero">
-      <view class="wt-hero-hd">
-        <text class="wt-hero-title">本期对比</text>
-        <text class="wt-hero-month" wx:if="{{!cmp.empty}}">{{cmp.monthText}} · 读数 {{cmp.readingText}} 吨</text>
+    <!-- ============ 本期用水主卡：用量 / 水费 / 折合扣电 / 定额进度 ============ -->
+    <view class="wt-hero wt-hero--{{statusTone}}">
+      <view class="wt-hero-top">
+        <view class="wt-hero-title-wrap">
+          <text class="wt-hero-kicker">本期用水</text>
+          <text class="wt-hero-month" wx:if="{{!cmp.empty}}">{{cmp.monthText || monthText}}</text>
+        </view>
+        <view wx:if="{{!cmp.empty && statusText}}" class="wt-hero-chip wt-hero-chip--{{statusTone}}">{{statusText}}</view>
       </view>
+
       <block wx:if="{{cmp.empty}}">
-        <text class="wt-hero-empty">还没有抄表记录</text>
-        <text class="wt-hero-s">录入第一次水表读数后，从下个月开始自动对比用量</text>
-      </block>
-      <block wx:elif="{{cmp.first}}">
-        <text class="wt-hero-empty">首次记录（无上次对比）</text>
-        <text class="wt-hero-s">{{cmp.monthText}} 读数 {{cmp.readingText}} 吨 · 下次抄表自动算用量</text>
-      </block>
-      <block wx:else>
-        <text class="wt-hero-usage">较上次（{{cmp.prevMonthText}}）用量 <text class="wt-b">{{cmp.usageText}}</text> 吨</text>
-        <view class="wt-tiles">
-          <view class="wt-tile wt-tile--hl">
-            <view class="wt-tile-l">本期水费</view>
-            <view class="wt-tile-v">{{cmp.feeText}}<text class="wt-tile-u">元</text></view>
-          </view>
-          <view class="wt-tile">
-            <view class="wt-tile-l">折合扣电</view>
-            <view class="wt-tile-v">{{cmp.degText}}<text class="wt-tile-u">度</text></view>
+        <view class="wt-hero-empty">
+          <view class="wt-drop wt-drop--hero"></view>
+          <view class="wt-hero-empty-body">
+            <text class="wt-hero-empty-t">还没有抄表记录</text>
+            <text class="wt-hero-empty-s">从本月开始记录水表读数，用量与水费会自动计算</text>
           </view>
         </view>
-        <text class="wt-over" wx:if="{{cmp.overText}}">超出定额 {{cmp.overText}}</text>
-        <text class="wt-quota">{{cmp.quotaText}}</text>
+        <view class="wt-hero-link" bindtap="scrollToForm">去录入第一笔 ›</view>
+      </block>
+
+      <block wx:elif="{{cmp.first}}">
+        <view class="wt-hero-main">
+          <view class="wt-hero-figure">
+            <text class="wt-hero-num">{{cmp.readingText}}</text><text class="wt-hero-unit">吨</text>
+          </view>
+        </view>
+        <text class="wt-hero-sub">{{cmp.monthText}} 首次读数 · 下次抄表开始自动计算用量</text>
+        <view class="wt-hero-metrics">
+          <view class="wt-hero-metric"><text class="wt-hero-metric-l">本期水费</text><text class="wt-hero-metric-v">¥0.00</text></view>
+          <view class="wt-hero-sep"></view>
+          <view class="wt-hero-metric"><text class="wt-hero-metric-l">折合扣电</text><text class="wt-hero-metric-v">0.0<text class="wt-hero-metric-u">度</text></text></view>
+        </view>
+      </block>
+
+      <block wx:else>
+        <view class="wt-hero-main">
+          <view class="wt-hero-figure">
+            <text class="wt-hero-num">{{cmp.usageText}}</text><text class="wt-hero-unit">吨</text>
+          </view>
+          <view class="wt-hero-side">
+            <view class="wt-hero-side-row">
+              <text class="wt-hero-side-l">水费</text>
+              <text class="wt-hero-side-v">¥{{cmp.feeText}}</text>
+            </view>
+            <view class="wt-hero-side-row">
+              <text class="wt-hero-side-l">折合扣电</text>
+              <text class="wt-hero-side-v">{{cmp.degText}}<text class="wt-hero-side-u">度</text></text>
+            </view>
+          </view>
+        </view>
+        <text class="wt-hero-sub">本期用量 · 读数 {{cmp.readingText}} 吨<text wx:if="{{cmp.prevReadingText}}">，上次 {{cmp.prevReadingText}} 吨</text></text>
+
+        <view class="wt-quota">
+          <view class="wt-quota-hd">
+            <text class="wt-quota-l">月度定额 {{personQuota}} 吨</text>
+            <text class="wt-quota-r">{{quotaUsedText}}</text>
+          </view>
+          <view class="wt-quota-track">
+            <view class="wt-quota-fill wt-quota-fill--{{statusTone}}" style="width:{{quotaPct}}%"></view>
+          </view>
+          <view class="wt-quota-ft">
+            <text>{{cmp.over ? '已超出定额' : '定额使用情况'}}</text>
+            <text>{{quotaFootText}}</text>
+          </view>
+        </view>
       </block>
     </view>
 
     <!-- 宿舍人数（1–6 自选）→ 每月定额；2026-11-19 取消 23A/23B 固定四人间 -->
     <view class="m3-card m3-card--outlined wt-card">
-      <view class="wt-row">
-        <text class="wt-label">宿舍人数</text>
-        <view class="wt-persons">
-          <view wx:for="{{personsOptions}}" wx:key="p"
-                class="wt-person {{item.p === persons ? 'wt-person--on' : ''}}"
-                data-p="{{item.p}}" bindtap="pickPersons">{{item.label}}</view>
+      <view class="wt-card-hd">
+        <view class="wt-card-title-wrap">
+          <text class="wt-card-t">宿舍人数</text>
+          <text class="wt-card-sub">人数决定每月水定额</text>
+        </view>
+        <view class="wt-mini-pill">{{personQuota}} 吨/月</view>
+      </view>
+      <view class="wt-persons">
+        <view wx:for="{{personsOptions}}" wx:key="p"
+              class="wt-person {{item.p === persons ? 'wt-person--on' : ''}}"
+              data-p="{{item.p}}" bindtap="pickPersons"
+              aria-role="button" aria-label="{{item.p}} 人间">
+          <text class="wt-person-n">{{item.p}}</text><text class="wt-person-u">人</text>
         </view>
       </view>
-      <view class="wt-note">每月定额 {{personQuota}} 吨水（{{persons}} 人 × 2 吨/人/月）<text wx:if="{{personsLocked}}"> · 23 号楼 A/B 座固定四人间</text></view>
+      <view class="wt-note">每人每月 2 吨水 · {{persons}} 人 = 每月定额 {{personQuota}} 吨<text wx:if="{{personsLocked}}"> · 23 号楼 A/B 座固定四人间</text></view>
     </view>
 
-    <!-- 录入抄表 -->
-    <view class="m3-card m3-card--outlined wt-card">
+    <!-- 录入抄表（月份 / 大号读数 / 即时测算） -->
+    <view id="wtForm" class="m3-card m3-card--outlined wt-card wt-form">
       <view class="wt-card-hd">
-        <text class="wt-card-t">录入抄表</text>
+        <view class="wt-card-title-wrap">
+          <text class="wt-card-t">录入抄表</text>
+          <text class="wt-card-sub">保存后自动对比上次</text>
+        </view>
         <text class="wt-card-s">每月一次</text>
       </view>
       <picker mode="date" fields="month" value="{{month}}" bindchange="onMonthChange">
-        <view class="wt-field">
-          <text class="wt-field-l">月份</text>
-          <text class="wt-field-v">{{month}}</text>
-          <text class="wt-chev">›</text>
+        <view class="wt-field wt-field--month">
+          <text class="wt-field-l">抄表月份</text>
+          <view class="wt-field-val">
+            <text class="wt-field-v">{{monthText}}</text>
+            <text class="wt-chev">›</text>
+          </view>
         </view>
       </picker>
-      <view class="wt-field">
-        <text class="wt-field-l">水表读数</text>
-        <input class="wt-input" type="digit" value="{{reading}}" placeholder="吨，如 123.45"
-               disabled="{{!hasSel}}" bindinput="onReadingInput" />
-        <text class="wt-unit">吨</text>
+      <view class="wt-field wt-reading-field {{reading ? 'wt-reading-field--on' : ''}}">
+        <view class="wt-reading-hd">
+          <text class="wt-field-l">水表读数</text>
+          <text class="wt-reading-hint">{{prevReadHint}}</text>
+        </view>
+        <view class="wt-reading-line">
+          <input class="wt-input" type="digit" value="{{reading}}" placeholder="输入本次读数"
+                 placeholder-class="wt-input-ph" disabled="{{!hasSel}}" bindinput="onReadingInput" />
+          <text class="wt-unit">吨</text>
+        </view>
       </view>
-      <view class="wt-preview" wx:if="{{preview}}">
+      <view class="wt-preview {{preview.over ? 'wt-preview--over' : ''}}" wx:if="{{preview}}">
         <block wx:if="{{preview.valid}}">
-          <text>用量 <text class="wt-b">{{preview.usageText}}</text> 吨 · 水费 ¥<text class="wt-b">{{preview.feeText}}</text> · 折合扣电 <text class="wt-b">{{preview.degText}}</text> 度</text>
-          <text class="wt-preview-warn" wx:if="{{preview.overText}}">超出定额 {{preview.overText}}</text>
+          <view class="wt-preview-hd">
+            <text class="wt-preview-t">{{preview.first ? '首次记录' : '本次抄表测算'}}</text>
+            <text class="wt-preview-badge" wx:if="{{preview.replaced}}">覆盖本月记录</text>
+            <text class="wt-preview-badge wt-preview-badge--over" wx:elif="{{preview.over}}">超出定额</text>
+          </view>
+          <block wx:if="{{!preview.first}}">
+            <view class="wt-preview-grid">
+              <view class="wt-pv"><text class="wt-pv-l">用量</text><text class="wt-pv-v">{{preview.usageText}}<text class="wt-pv-u">吨</text></text></view>
+              <view class="wt-pv"><text class="wt-pv-l">水费</text><text class="wt-pv-v">¥{{preview.feeText}}</text></view>
+              <view class="wt-pv"><text class="wt-pv-l">折合扣电</text><text class="wt-pv-v">{{preview.degText}}<text class="wt-pv-u">度</text></text></view>
+            </view>
+            <text class="wt-preview-warn" wx:if="{{preview.overText}}">超出定额 {{preview.overText}}</text>
+          </block>
+          <text class="wt-preview-first" wx:else>首次记录只保存读数，下次抄表起自动计算用量与水费。</text>
         </block>
         <text class="wt-preview-err" wx:else>{{preview.reason}}</text>
       </view>
-      <touchable cls="m3-btn m3-btn--pri m3-btn--block wt-save" disabled="{{!hasSel}}" bindtap="saveRecord">保存记录</touchable>
+      <touchable cls="m3-btn m3-btn--filled m3-btn--block wt-save {{!hasSel ? 'm3-btn--disabled' : ''}}"
+                disabled="{{!hasSel}}" bindtap="saveRecord">保存记录</touchable>
     </view>
 
     <!-- 抄表历史（按月倒序；删除后用量/水费自动重算） -->
     <view class="m3-card m3-card--outlined wt-card">
       <view class="wt-card-hd">
-        <text class="wt-card-t">抄表历史</text>
-        <text class="wt-card-s">按月份倒序 · {{histCount}} 条</text>
+        <view class="wt-card-title-wrap">
+          <text class="wt-card-t">抄表历史</text>
+          <text class="wt-card-sub">按月倒序 · 删除后自动重算</text>
+        </view>
+        <view class="wt-mini-pill">{{histCount}} 条</view>
       </view>
-      <view class="wt-empty" wx:if="{{!history.length}}">还没有抄表记录</view>
-      <view class="wt-hrow" wx:for="{{history}}" wx:key="m">
+      <view class="wt-empty" wx:if="{{!history.length}}">
+        <view class="wt-drop wt-drop--empty"></view>
+        <text class="wt-empty-t">还没有抄表记录</text>
+        <text class="wt-empty-s">保存第一次读数后，这里会按月列出用量与水费</text>
+      </view>
+      <view class="wt-hrow {{item.over ? 'wt-hrow--over' : ''}}" wx:for="{{history}}" wx:key="m">
+        <view class="wt-hmark {{item.over ? 'wt-hmark--over' : ''}}"></view>
         <view class="wt-hmain">
-          <text class="wt-hm">{{item.m}}</text>
+          <view class="wt-hline">
+            <text class="wt-hm">{{item.m}}</text>
+            <text class="wt-tag wt-tag--{{item.tagTone}}" wx:if="{{!item.first}}">{{item.tagText}}</text>
+          </view>
           <text class="wt-hr">读数 {{item.rText}} 吨</text>
         </view>
-        <view class="wt-hvals">
-          <text>用量 {{item.usageText}}</text>
-          <text>水费 ¥{{item.feeText}}</text>
-          <text>折合 {{item.degText}} 度</text>
+        <view class="wt-hvals" wx:if="{{!item.first}}">
+          <text class="wt-husage"><text class="wt-husage-n">{{item.usageText}}</text><text class="wt-hunit"> 吨</text></text>
+          <text class="wt-hfee">¥{{item.feeText}}</text>
+          <text class="wt-hdeg">{{item.degText}} 度</text>
         </view>
-        <view class="wt-del" data-m="{{item.m}}" catchtap="delRecord" aria-role="button" aria-label="删除 {{item.m}} 记录">删除</view>
+        <view class="wt-hvals wt-hvals--first" wx:else>
+          <text class="wt-hfirst">首次记录</text>
+          <text class="wt-hfirst-s">下次抄表起算用量</text>
+        </view>
+        <view class="wt-del" data-m="{{item.m}}" catchtap="delRecord" hover-class="wt-del--press" aria-role="button" aria-label="删除 {{item.m}} 记录">删除</view>
       </view>
     </view>
 
     <!-- 水费规则卡（2026-11-06 用户反馈：电费规则移入「电量统计」，水量页只留水费规则） -->
     <view class="m3-card m3-card--outlined wt-rule">
       <view class="wt-card-hd">
-        <text class="wt-card-t">水费规则</text>
+        <view class="wt-card-title-wrap">
+          <text class="wt-card-t">水费规则</text>
+          <text class="wt-card-sub">按校方标准估算</text>
+        </view>
         <text class="wt-card-s">以学校最新通知为准</text>
       </view>
-      <view class="wt-rule-row"><text class="wt-rule-k">水费</text><text class="wt-rule-v">{{rules.waterPrice}} 元/吨</text></view>
-      <view class="wt-rule-row"><text class="wt-rule-k">定额</text><text class="wt-rule-v">{{rules.freeText}}</text></view>
+      <view class="wt-rule-grid">
+        <view class="wt-rule-cell"><text class="wt-rule-k">水价</text><text class="wt-rule-v">{{rules.waterPrice}} 元/吨</text></view>
+        <view class="wt-rule-cell"><text class="wt-rule-k">定额</text><text class="wt-rule-v">{{rules.freeText}}</text></view>
+      </view>
       <view class="wt-rule-row"><text class="wt-rule-k">水费算法</text><text class="wt-rule-v">{{rules.formula}}</text></view>
       <view class="wt-rule-row"><text class="wt-rule-k">折合扣电</text><text class="wt-rule-v">{{rules.degFormula}}</text></view>
       <view class="wt-rule-row"><text class="wt-rule-k">计费说明</text><text class="wt-rule-v">{{rules.cycle}}</text></view>
@@ -137,6 +252,7 @@
   <!-- ============ 自定义宿舍选择 bottom-sheet（与电费页同款） ============ -->
   <view class="wt-mask" wx:if="{{sheetOpen}}" bindtap="closeSheet" catchtouchmove="noop">
     <view class="wt-sheet" catchtap="noop" catchtouchmove="noop">
+      <view class="wt-sheet-grabber"></view>
       <view class="wt-sheet-hd">
         <text class="wt-sheet-title">关注宿舍</text>
         <view class="wt-sheet-x" bindtap="closeSheet" aria-role="button" aria-label="关闭">×</view>

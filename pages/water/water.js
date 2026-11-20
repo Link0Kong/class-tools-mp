@@ -1,5 +1,13 @@
 // pages/water/water.js —— 宿舍「水量统计」（v2.0.0 网站功能同步，2026-11-06；2026-11-11 接云端共享）
 //
+// 2026-11-20 视觉重做（水量界面优化）：
+//   * 顶部「本期用水」主卡：用量大数字 + 水费/折合扣电 + 定额进度条，超定额状态一眼可见；
+//   * 宿舍人数改为 1–6 等宽分段的「人数选择器」，定额说明只出现一次；
+//   * 录入抄表拆成「月份 / 大号读数输入 / 即时测算」三层，保存按钮修复为 M3 filled；
+//   * 抄表历史改为「月份 + 读数 + 用量/水费/折合」三列，减少小字堆叠；
+//   * 水费规则卡压缩为 2×2 信息格 + 公式行；空态/首次记录/离线态都有独立文案。
+//   只改展示与少量交互（滚动到表单、离线重试），计费/云端共享/存储口径全部沿用下方原逻辑。
+//
 // 与网站 WATER 模块同口径（契约 web/tools/tests/_water_contract.md + 2026-11-11 共享契约
 // _water_shared_contract.md）：
 //   * 关注宿舍沿用「宿舍电费」的 power.sel（可在此切换；未选择时页面只引导、0 请求、0 数据）；
@@ -49,6 +57,12 @@ function hhmm(ts) {
   if (isNaN(d.getTime())) return '';
   return util.pad(d.getHours()) + ':' + util.pad(d.getMinutes());
 }
+// '2026-11' → '2026 年 11 月'（只用于展示；picker / 存储仍用 YYYY-MM）
+function monthLabel(m) {
+  const s = water.normMonth(m);
+  if (!s) return '';
+  return s.slice(0, 4) + ' 年 ' + Number(s.slice(5, 7)) + ' 月';
+}
 
 Page({
   data: {
@@ -61,9 +75,16 @@ Page({
     personsOptions: water.ruleView(4).personsOptions,   // 「1 人间」…「6 人间」（2026-11-19 自选）
     personQuota: water.quotaOf(4),
     month: '',
+    monthText: '',
     reading: '',
     preview: null,            // { valid, usageText, feeText, degText, overText, reason }
     cmp: emptyCmp(),          // 本期对比（最新一条 vs 上一条）
+    quotaPct: 0,              // 定额进度（0–100，超出按 100 展示）
+    quotaUsedText: '',        // 「已用 238%」/ 首次占位
+    quotaFootText: '',        // 「超出 11.00 吨」/「剩余 3.00 吨」
+    statusText: '',           // 主卡状态胶囊：超定额 / 定额内 / 首次记录
+    statusTone: 'empty',      // over | ok | first | empty
+    prevReadHint: '',         // 录入表单上方「上次读数 …」
     tiles: [],                // 本期用量 / 水费 / 折合扣电
     history: [],
     histCount: 0,
@@ -90,6 +111,7 @@ Page({
       activeBuilding: power.BLDS[0],
       buildingRooms: power.roomsOfBuilding(power.BLDS[0]),
       month: water.monthOf(),
+      monthText: monthLabel(water.monthOf()),
       rules: water.ruleView(4)
     });
     this._syncSel(true);
@@ -281,6 +303,19 @@ Page({
     this._cloudSync(true);       // 切宿舍 = 新的共享房间：强制核对云端（契约 §3.1）
   },
   goPower() { wx.navigateTo({ url: '/pages/power/power' }); },
+  // 空态 CTA：滚到录入抄表卡（selector 不支持时回退固定偏移）
+  scrollToForm() {
+    if (!wx.pageScrollTo) return;
+    wx.pageScrollTo({
+      selector: '#wtForm', duration: 300,
+      fail: function () { wx.pageScrollTo({ scrollTop: 520, duration: 300 }); }
+    });
+  },
+  // 离线状态可点重试：复用同一云端核对链路（不新增请求通道）
+  retryCloud() {
+    if (!this.data.syncErr) return;
+    this._cloudSync(true);
+  },
 
   /* ---------------- 录入 / 人数 / 删除 ---------------- */
   pickPersons(e) {
@@ -302,7 +337,7 @@ Page({
   },
   onMonthChange(e) {
     const m = water.normMonth(e && e.detail && e.detail.value) || water.monthOf();
-    this.setData({ month: m });
+    this.setData({ month: m, monthText: monthLabel(m) });
     this._render();
   },
   onReadingInput(e) {
@@ -371,7 +406,10 @@ Page({
         usageText: water.fmtReading(pv.usage),
         feeText: water.fmtMoney(pv.fee),
         degText: water.fmtDeg(pv.deg),
-        overText: pv.over > 0 ? (water.fmtReading(pv.over) + ' 吨') : ''
+        overText: pv.over > 0 ? (water.fmtReading(pv.over) + ' 吨') : '',
+        over: pv.over > 0,
+        replaced: !!pv.replaced,
+        first: pv.usage == null
       }
     });
   },
@@ -380,10 +418,13 @@ Page({
     const fixed = water.isFixed4(rv);
     const persons = fixed ? 4 : this.data.persons;
     const rules = water.ruleView(persons);
+    const monthText = monthLabel(this.data.month);
     if (!rv) {
       this.setData({
         state: 'idle', persons: 4, personsLocked: false, preview: null, cmp: emptyCmp(), tiles: [], history: [], histCount: 0,
         rules: rules, personsOptions: rules.personsOptions, personQuota: water.quotaOf(4),
+        monthText: monthText, prevReadHint: '', quotaPct: 0, quotaUsedText: '', quotaFootText: '',
+        statusText: '', statusTone: 'empty',
         syncText: '', syncErr: false, waterPending: false,
         footer: '关注宿舍与「宿舍电费」共用；选择保存在账号里，换设备登录会同步'
       });
@@ -397,13 +438,17 @@ Page({
     const rulesP = water.ruleView(p);
     const quota = water.quotaOf(p);
     const histRows = hist.map(function (row) {
+      const rowOver = row.over > 0;
       return {
         m: row.m,
         rText: water.fmtReading(row.r),
         usageText: row.usage == null ? '—' : water.fmtReading(row.usage),
         feeText: row.usage == null ? '—' : water.fmtMoney(row.fee),
         degText: row.usage == null ? '—' : water.fmtDeg(row.deg),
-        first: !!row.first
+        first: !!row.first,
+        over: rowOver,
+        tagText: row.first ? '首次' : (rowOver ? ('超 ' + water.fmtReading(row.over) + ' 吨') : '定额内'),
+        tagTone: row.first ? 'neutral' : (rowOver ? 'error' : 'ok')
       };
     });
     const latest = hist.length ? hist[0] : null;
@@ -423,6 +468,36 @@ Page({
         unit: '度', sub: '水费 ÷ ' + water.RULES.elec.toFixed(2)
       }
     ];
+    // 主卡：0–100 的定额进度（超出仍显示满格，状态胶囊/脚注给出具体超额）
+    let statusText = '待录入', statusTone = 'empty', quotaPct = 0, quotaUsedText = '', quotaFootText = '录入第一次读数后开始统计';
+    if (!cmp.empty && !cmp.first) {
+      const used = Number(cmp.usage) || 0;
+      const pct = quota > 0 ? Math.round(used / quota * 100) : 0;
+      quotaPct = Math.max(0, Math.min(100, pct));
+      quotaUsedText = '已用 ' + pct + '%';
+      if (cmp.over > 0) {
+        statusText = '超定额';
+        statusTone = 'over';
+        quotaFootText = '超出 ' + water.fmtReading(cmp.over) + ' 吨';
+      } else {
+        statusText = '定额内';
+        statusTone = 'ok';
+        quotaFootText = '剩余 ' + water.fmtReading(Math.max(0, quota - used)) + ' 吨';
+      }
+    } else if (!cmp.empty) {
+      statusText = '首次记录';
+      statusTone = 'first';
+      quotaUsedText = '';
+      quotaFootText = '下次抄表自动计算用量';
+    }
+    // 录入提示：本月已有记录优先提示覆盖；否则给上一条读数，避免输错
+    const editMonth = this.data.month;
+    const same = recs.filter(function (x) { return x.m === editMonth; })[0];
+    const before = recs.filter(function (x) { return x.m < editMonth; });
+    const prev = before.length ? before[before.length - 1] : null;
+    let prevReadHint = '首次抄表 · 暂无上次读数';
+    if (same) prevReadHint = '本月已有记录 ' + water.fmtReading(same.r) + ' 吨 · 保存将覆盖';
+    else if (prev) prevReadHint = '上次读数 ' + water.fmtReading(prev.r) + ' 吨 · ' + prev.m;
     this.setData({
       state: 'ready',
       persons: p,
@@ -430,6 +505,13 @@ Page({
       rules: rulesP,
       personsOptions: rulesP.personsOptions,
       personQuota: quota,
+      monthText: monthText,
+      prevReadHint: prevReadHint,
+      quotaPct: quotaPct,
+      quotaUsedText: quotaUsedText,
+      quotaFootText: quotaFootText,
+      statusText: statusText,
+      statusTone: statusTone,
       histCount: histRows.length,
       history: histRows,
       waterPending: water.normOps(store.get().waterPend).length > 0,
@@ -440,9 +522,11 @@ Page({
         monthText: cmp.rec ? cmp.rec.m : '',
         readingText: cmp.rec ? water.fmtReading(cmp.rec.r) : '—',
         prevMonthText: cmp.prev ? cmp.prev.m : '',
+        prevReadingText: cmp.prev ? water.fmtReading(cmp.prev.r) : '',
         usageText: cmp.usage == null ? '—' : water.fmtReading(cmp.usage),
         feeText: water.fmtMoney(cmp.fee),
         degText: water.fmtDeg(cmp.deg),
+        over: cmp.over > 0,
         overText: cmp.over > 0 ? ('超出定额 ' + water.fmtReading(cmp.over) + ' 吨') : '',
         quotaText: '每月定额 ' + quota + ' 吨水（' + p + ' 人 × 2 吨）'
       },
