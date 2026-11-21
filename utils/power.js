@@ -10,7 +10,8 @@
 //     低电阈值档位 LOW_OPTIONS=[10,20,30,40,50,60,80,100]（无 70/90），随 UD.power.low 同步；
 //   * 估算可用（v5）：24h/7d 分段统计（跳过充值跳变段）→ rate 0.65*r24+0.35*r7（仅一档有效用该档），
 //     rate 下限 0.05，days=q/rate；tile1/环/低电条全用 estimate（非旧 derive days）；
-//   * 4 个指标 tile：估算可用（≈rate 度/天）/ 区间用电 / 低电阈值（可点改）/ 上次充值；
+//   * 4 个指标 tile：估算可用（≈rate 度/天）/ 区间用电 / 低电阈值（可点改）/
+//     上次充值（30d 全量历史最后一次上调，值为充值量 +X.XX 度，切 24h/7d/30d 不变）；
 //   * 电量环 = 估算可用天数 / 30（有效估算时至少 0.02、最大 1；无有效估算 0.04 小段），不是当前电量比例；
 //   * 趋势图例：起点 X 度 · 当前 Y 度 · 近 24h 下降 Z 度；低电条：剩 X 度 · 约 Y 天；
 //   * 未选择宿舍 → 页面 0 请求；选择存 userdata v6 的 power section（真源），本机兜底键只用于离线恢复。
@@ -337,6 +338,21 @@ function deriveRange(pts, row) {
   if (d.valid && d.days > 999) d.days = 999;
   return d;
 }
+// 跨区间「上次充值」（2026-11-21，与安卓 PowerStats.lastRecharge / 网页同口径）：
+//   清洗并按 t 升序，扫描相邻上升 Δq > minDelta（默认 0.05），取**最后一次**；
+//   返回 {t, reset(充值后余额), delta: round2(Δq)=本次充值量}，无上升 → null。
+//   与 deriveRange 的 lastUp 不同：不受所选区间限制。页面传 30d 全量历史（云端只保留 30 天），
+//   因此切 24h/7d/30d 档「上次充值」不变；30d 缺失时调用方传 null，tilesOf 回退旧口径。
+function lastRecharge(points, minDelta) {
+  const list = cleanPts(points);
+  const md = (minDelta == null) ? 0.05 : Number(minDelta);
+  let out = null;
+  for (let i = 1; i < list.length; i++) {
+    const diff = list[i].q - list[i - 1].q;
+    if (isFinite(diff) && diff > md) out = { t: list[i].t, reset: list[i].q, delta: round2(diff) };
+  }
+  return out;
+}
 // 曲线查看：按 x 比例（0–1，真实时间比例）找最近的真实采样点
 function nearestPoint(points, frac) {
   const pts = Array.isArray(points) ? points : [];
@@ -527,7 +543,7 @@ function eventsOf(pts) {
   return ev;
 }
 // §1.2 slowStats(hist30, row)：按相邻变化点分段统计 → {valid,rate,days,ref,nSeg,events,changes,lastChange,lastRecharge}
-//   dq>0.05 且 dtH>=MIN_SEG_H → 候选用电段；dq<-0.05 → 充值/修正跳过；
+//   dq>0.05 且 dtH>=MIN_SEG_H → 候选用电段；dq<-0.05 → 充值/修正跳过（lastRecharge={t,reset,delta=本次充值量}）；
 //   异常扣减剔除：base=候选段 drop 中位数，thr=max(5,4*base)，drop>thr 剔除（与 deductOf 同思路；mp 无水量匹配，允许差异）；
 //   1 段：dtH<EXPECT_H*1.5 → drop/EXPECT_H*24（单个预期更新周期，ref=true）；否则按观测间隔（ref=true）；
 //   ≥2 段：Σdrop/ΣdtH*24（ref=false）；0 段 → valid=false（「数据积累中」）。
@@ -545,7 +561,7 @@ function slowStats(hist30, row) {
     const dq = ev[i - 1].q - ev[i].q;
     const dtH = (ev[i].t - ev[i - 1].t) / 3600000;
     if (ev[i - 1].q - ev[i].q < -0.05) {                     // 电量上升：充值/修正
-      out.lastRecharge = { t: ev[i].t, reset: ev[i].q };
+      out.lastRecharge = { t: ev[i].t, reset: ev[i].q, delta: round2(ev[i].q - ev[i - 1].q) };
       continue;
     }
     if (dq > 0.05 && dtH >= MIN_SEG_H) cand.push({ drop: dq, hours: dtH });
@@ -618,8 +634,9 @@ function changeDots(points) {
 
 // 4 个指标 tile（网站 v5）：①估算可用（daysMain + ≈rate 度/天） ②区间用电 ③低电阈值（可点改） ④上次充值
 // v13（规格 §3）：慢频房（est.slow）①「参考」只按 est.ref（且 valid）显示；②该区间无下降 → sub「该区间无更新」；
-//   ④用 30d lastRecharge（与切档无关）；实时房保持原有规则（①参考=24h 慢更新标记；④区间 lastUp）。
-function tilesOf(row, est, dRange, meta, low, slow, cmp) {
+//   ④优先用调用方传入的 30d 跨区间 lastRecharge；未传入时慢频房回退 est.lastRecharge、实时房回退区间 lastUp。
+// 2026-11-21：④值显示本次**充值量** `+delta`（度），不再显示充值后余额 reset；delta 非法/≤0 视为无记录。
+function tilesOf(row, est, dRange, meta, low, slow, cmp, lastRecharge) {
   const m = meta || RANGES[0];
   const dR = dRange || null;
   const has = !!row;
@@ -639,8 +656,11 @@ function tilesOf(row, est, dRange, meta, low, slow, cmp) {
     cmpText = (cmp.label || '较同期') + ' ' + (cmp.pct >= 0 ? '+' : '') + Math.round(cmp.pct) + '%';
     cmpUp = cmp.pct >= 0;
   }
-  // 上次充值：慢频房优先 30d 真实充值点（切档不变，web 同规则）；缺失时回退区间 lastUp
-  const rec = (isSlow && est && est.lastRecharge) ? est.lastRecharge : (has && dR ? dR.lastUp : null);
+  // 上次充值（跨区间）：优先用调用方传入的 30d 全量结果（切 24h/7d/30d 不变）；
+  // 未传入（30d 缺失/旧预览调用）→ 慢频房 est.lastRecharge，实时房所选区间 dR.lastUp（向后兼容）。
+  const rec = lastRecharge || ((isSlow && est && est.lastRecharge) ? est.lastRecharge : (has && dR ? dR.lastUp : null));
+  const recAmount = (rec && rec.delta != null && isFinite(rec.delta) && Number(rec.delta) > 0) ? Number(rec.delta) : null;
+  const recAt = recAmount != null ? rec.t : null;
   return [
     // 「参考」：慢频房只按 est.ref（且有效）；实时房沿用原规则（24h 慢更新标记且估算有效，web 同规则）
     { key: 'days', label: '估算可用', value: days, unit: '天', sub: sub, hi: true, ref: isSlow ? !!(est && est.valid && est.ref) : !!(slow && days !== '—') },
@@ -648,8 +668,8 @@ function tilesOf(row, est, dRange, meta, low, slow, cmp) {
     { key: 'threshold', label: '低电阈值', value: String(l), unit: '度', hi: false, btn: true },
     {
       key: 'recharge', label: '上次充值',
-      value: rec ? fmtQ(rec.reset) : '—', unit: rec ? '度' : '',
-      sub: rec ? updText(new Date(rec.t).toISOString()) : '暂无记录', hi: false
+      value: recAmount != null ? ('+' + fmtQ(recAmount)) : '—', unit: recAmount != null ? '度' : '',
+      sub: recAt != null ? updText(new Date(recAt).toISOString()) : '暂无记录', hi: false
     }
   ];
 }
@@ -833,6 +853,7 @@ module.exports = {
   normalizeRow: normalizeRow, normalizeHistory: normalizeHistory,
   stateOf: stateOf, stateText: stateText, fmtQ: fmtQ, fmtMain: fmtMain, fmtDrop: fmtDrop,
   updText: updText, ringArc: ringArc, derive: derive, deriveRange: deriveRange,
+  lastRecharge: lastRecharge,
   medianOf: medianOf, deductOf: deductOf, billOf: billOf,
   rateFrom: rateFrom, estimate: estimate, daysMain: daysMain, daysText: daysText, slowUpdate: slowUpdate,
   // v13（规格 power_cadence_spec.md）：13/16 号楼慢频（日更）口径纯函数/常量

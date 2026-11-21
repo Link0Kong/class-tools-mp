@@ -7,7 +7,7 @@
 //   * 大号剩余电量（fmtMain）+ 环形（24h 估算可用天数/30）+ 状态（≥60 充足 / 30–60 偏低 / <30 低电，低电标红）+ 最近更新；
 //   * 近 24h/7天/30天趋势：canvas 2d 折线（面积渐变 + 折线 + 2 条网格 + 末点；DPR 清晰；y 轴 hi/中/lo 刻度；
 //     x 轴 3/4/5 个刻度：24h HH:MM、7d/30d MM-DD）；「期间有充值」徽标；
-//   * 4 个指标 tile：估算可用（24h）/ 区间用电 / 低电阈值 30 度 / 上次充值（值+时间）；
+//   * 4 个指标 tile：估算可用（24h）/ 区间用电 / 低电阈值 30 度 / 上次充值（30d 最后一次充值量 + 时间，切档不变）；
 //   * 刷新 + 下拉刷新；当前电量 2 分钟 TTL；history 每区间 5 分钟缓存；估算可用/低电条始终用 24h。
 //   * 进入页面且已有关注宿舍、当前电量行成功但 24h 历史 <2 点（首轮网络抖动/空结果）→ 自动静默重试一次
 //     （force=true 绕过 5 分钟缓存，延迟约 650ms；每个「宿舍 + 区间」最多 1 次，不循环）；成功后自动重绘趋势；
@@ -140,7 +140,8 @@ Page({
     this._hist24 = [];
     this._hist7 = [];
     this._histRange = [];
-    // v13（规格 power_cadence_spec.md §2/§4）：13/16 号楼慢频房额外 30d 历史（估算按真实变化点）
+    // 30d 全量历史（所有房间，云端只保留 30 天）：慢频房估算按真实变化点；
+    // 实时房「上次充值」跨区间取 30d 最后上调（2026-11-21）。
     this._hist30 = [];
     this._hist30rv = '';      // _hist30 属于哪个房间（换房丢弃，避免串房）
     // 增量 43：比较取数窗口（14d/70d）缓存 + 当前比较窗口键 + 慢楼栋自动档位恢复
@@ -234,23 +235,24 @@ Page({
     });
     if (!this.data.hasSel) return;
     // 切换区间只在缓存过期时拉：区间缓存 + 24h 缓存都新鲜 → 直接用缓存重绘，0 请求
-    // v13（规格 §2）：慢频房还需 30d 缓存（估算按真实变化点；30d 已随 pull 预取则不重复请求）
+    // 2026-11-21：所有房间都需要 30d 缓存（「上次充值」取 30d 全量最后一次上调，切档不变），缺则走 load 补拉
     const rv = this.data.sel;
     const slowBld = power.isSlowBuilding(power.buildingOf(rv));
     this._rangeBeforeSlow = '';          // 用户手选档位 → 不再自动恢复
     const cached = cloud.powerHistCached(rv, k);
     const cached24 = k === '24h' ? cached : cloud.powerHistCached(rv, '24h');
-    const cached30 = slowBld ? (k === '30d' ? cached : cloud.powerHistCached(rv, '30d')) : null;
+    const cached30 = k === '30d' ? cached : cloud.powerHistCached(rv, '30d');
     // 增量 43：比较取数窗口缓存（7d→14d/30d；30d→70d；24h 用 7d）——缺失则走 load 补拉
     const cmpKey = power.cmpSourceKey(k, slowBld);
     const cachedCmp = !cmpKey || cmpKey === '7d' || cmpKey === '30d'
       ? true
       : (cmpKey === k ? !!cached : !!cloud.powerHistCached(rv, cmpKey));
-    if (cached && (k === '24h' || cached24) && (!slowBld || cached30) && cachedCmp && this._row) {
+    if (cached && (k === '24h' || cached24) && cached30 && cachedCmp && this._row) {
       this._histRange = power.normalizeHistory(cached);
       if (k === '24h') this._hist24 = this._histRange;
       else this._hist24 = power.normalizeHistory(cached24);
-      if (slowBld) { this._hist30 = power.normalizeHistory(cached30); this._hist30rv = rv; }
+      this._hist30 = power.normalizeHistory(cached30);
+      this._hist30rv = rv;
       if (cmpKey && cmpKey !== '7d' && cmpKey !== '30d') {
         this._histCmp = power.normalizeHistory(cmpKey === k ? cached : cloud.powerHistCached(rv, cmpKey));
         this._cmpKey = rv + '|' + cmpKey;
@@ -389,8 +391,9 @@ Page({
   },
 
   // 拉取当前电量 + 所选区间采样 + 24h 采样（2 分钟电量 TTL；history 每区间 5 分钟缓存；force 跳过）
-  // v13（规格 §2）：13/16 号楼（慢频房）额外拉 30d history 供 slowStats/estimateSlow（与选中区间去重）；
-  //   实时房维持 24h+7d（选中 30d 时 3 个）。30d 失败/为空不阻塞其它窗口（估算显示「数据积累中」）。
+  // 2026-11-21：**所有房间**都拉 30d history（云端只保留 30 天）——慢频房供 slowStats/estimateSlow，
+  //   实时房供「上次充值」跨区间（30d 最后一次上调）；选中 30d 时复用 powerPull 的 hist，不重复请求。
+  //   30d 失败/为空不阻塞其它窗口（慢频估算「数据积累中」；上次充值回退所选区间 lastUp）。
   // silent=true：自动静默重试（不弹「刷新失败」toast、不改错误态），失败时保留上次展示
   load(force, silent) {
     const rv = this.data.sel;
@@ -402,8 +405,8 @@ Page({
     if (!this.data.room) this.setData({ state: 'loading', errorText: '' });
     const slowBld = power.isSlowBuilding(power.buildingOf(rv));
     if (this._hist30rv !== rv) { this._hist30 = []; this._hist30rv = rv; }   // 换宿舍：丢弃上一间 30d
-    // 选中 30d 时 powerPull 的 hist 即 30d（避免重复请求）；否则慢频房额外并行拉 30d
-    const p30 = (slowBld && rng !== '30d') ? cloud.powerHistory(rv, '30d', !!force) : null;
+    // 选中 30d 时 powerPull 的 hist 即 30d（避免重复请求）；否则所有房间并行拉 30d
+    const p30 = (rng !== '30d') ? cloud.powerHistory(rv, '30d', !!force) : null;
     // 增量 43：比较取数窗口（24h→7d 已随 pull 拉取；7d→14d/30d；30d→70d）已缓存则不重复请求
     const cmpKey = power.cmpSourceKey(rng, slowBld);
     const cmpTag = rv + '|' + cmpKey;
@@ -428,12 +431,10 @@ Page({
       this._hist24 = power.normalizeHistory(r.hist24);
       this._hist7 = power.normalizeHistory(r.hist7);
       this._histRange = power.normalizeHistory(r.hist);
-      if (slowBld) {
-        const h30 = power.normalizeHistory(rng === '30d' ? r.hist : arr[1]);
-        if (h30.length || !this._hist30.length) this._hist30 = h30;   // 失败保留上次；首次失败为空（估算→数据积累中）
-      } else {
-        this._hist30 = [];
-      }
+      // 30d 全量历史（所有房间）：慢频房用于 estimateSlow；实时房用于跨区间「上次充值」。
+      // 失败保留上次；首次失败为空（慢频估算→「数据积累中」、上次充值→回退所选区间 lastUp）。
+      const h30 = power.normalizeHistory(rng === '30d' ? r.hist : arr[1]);
+      if (h30.length || !this._hist30.length) this._hist30 = h30;
       // 增量 43：比较取数窗口（14d/70d；7d/30d 走已拉窗口）——失败保留上次，不阻塞主渲染
       if (cmpKey && cmpKey !== '7d' && cmpKey !== '30d') {
         const hc = power.normalizeHistory(arr[2]);
@@ -496,6 +497,10 @@ Page({
     const est = slowRoom
       ? power.estimateSlow(hist30, row)                     // 30d 缓存；未加载完 → valid=false（数据积累中）
       : power.estimate(hist24, hist7, row);                 // 实时房：保留现有双窗口 + §1.4 守卫
+    // 2026-11-21：上次充值跨区间（与安卓 PowerStats.lastRecharge/tilesOf 同口径）——
+    // 慢频房用 30d 慢频统计的最后上升 est.lastRecharge，实时房用 30d 全量历史最后一次上调；
+    // 30d 缺失时 null → tilesOf 回退所选区间 lastUp（旧预览/测试向后兼容）。
+    const crossRecharge = slowRoom ? (est.lastRecharge || null) : power.lastRecharge(hist30);
     const slow = power.slowUpdate(hist24);                 // 实时房原有「数据更新较慢」徽标数据（慢频房改「日更」）
     const slowOn = !!(slow.slow && hist24.length >= 2 && !slowRoom);
     const st = power.stateOf(row, low);
@@ -562,7 +567,7 @@ Page({
       gaugeStyle: ringStyle(arcs, st),
       updText: updText,
       trend: trend,
-      tiles: power.tilesOf(row, est, dRange, meta, low, slowOn, cmp),
+      tiles: power.tilesOf(row, est, dRange, meta, low, slowOn, cmp, crossRecharge),
       bill: power.billOf(dRange, waterUtil.roomOf(store.get().water, this.data.sel).p),
       lowOn: power.lowOn(row, low),
       lowText: power.lowText(row, est),

@@ -16,7 +16,7 @@ const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ROOT_N = ROOT.replace(/\\/g, '/');
 
 const ID = { token: 'tok-v3-admin', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
-const ID2 = { token: 'tok-v3-user', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };
+const ID2 = { token: 'tok-v3-user', sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false, ts: 2 };
 
 function createCtx() {
   const mem = Object.create(null);
@@ -637,17 +637,18 @@ function run(test) {
       const r3 = row(83.00);
       const e3 = pw.estimateSlow(h3, r3);
       assert.strictEqual(pw.tilesOf(r3, e3, pw.deriveRange(h3, r3), m30, 30, false)[0].ref, false);
-      // S4 无效但 lastRecharge → tile4 用 30d lastRecharge（值=reset 120.00 + 时间），与区间无关
+      // S4 无效但 lastRecharge → tile4 用 30d lastRecharge.delta（值 = +充值量，不是充值后余额），与区间无关
       const h4 = mk([[48, 90], [24, 90], [6, 120], [0.2, 120]]);
       const r4 = row(120.00);
       const e4 = pw.estimateSlow(h4, r4);
       const t4 = pw.tilesOf(r4, e4, pw.deriveRange(h4, r4), m24, 30, false);
       assert.strictEqual(t4[0].value, '—');
       assert.strictEqual(t4[0].ref, false, '无效估算 → 不标参考');
-      assert.strictEqual(t4[3].value, '120.00', 'tile4 = 30d lastRecharge.reset');
+      assert.strictEqual(t4[3].value, '+30.00', 'tile4 = 30d lastRecharge.delta（充值量）');
+      assert.strictEqual(t4[3].unit, '度');
       assert.strictEqual(t4[3].sub, pw.updText(new Date(e4.lastRecharge.t).toISOString()));
       const t4b = pw.tilesOf(r4, e4, pw.deriveRange(h4, r4), m30, 30, false);
-      assert.strictEqual(t4b[3].value, '120.00', '切 30d 档 tile4 不变');
+      assert.strictEqual(t4b[3].value, '+30.00', '切 30d 档 tile4 不变');
       // 实时房：保持原有规则 —— tile1 参考=24h 慢更新标记 slowOn；tile2 不加 sub；tile4 用区间 lastUp
       const hLive = pw.normalizeHistory(pwHist('4-23A---321'));
       const rLive = pw.normalizeRow(PW_ROWS['4-23A---321']);
@@ -658,7 +659,7 @@ function run(test) {
       assert.strictEqual(tLive[3].value, '—');
       const tLive2 = pw.tilesOf(rLive, pw.estimate(hLive, hLive, rLive), pw.deriveRange(hLive, rLive), m24, 30, false);
       assert.strictEqual(tLive2[0].ref, false, '实时房无 slowOn → 不标参考');
-      // 实时房有充值：tile4 用区间 lastUp（不是 30d；est 非 slow）
+      // 实时房有充值：tile4 用区间 lastUp.delta（不是 30d；est 非 slow）
       const t0 = now;
       const recHist = pw.normalizeHistory([
         { quantity: 100, ts: new Date(t0 - 9 * 3600e3).toISOString() },
@@ -668,7 +669,7 @@ function run(test) {
       ]);
       const dRec = pw.deriveRange(recHist, rLive);
       const tRec = pw.tilesOf(rLive, eLive, dRec, m24, 30, false);
-      assert.strictEqual(tRec[3].value, '95.00');
+      assert.strictEqual(tRec[3].value, '+5.00', '值 = +充值量（不是充值后余额 95）');
       assert.strictEqual(tRec[3].sub, pw.updText(new Date(dRec.lastUp.t).toISOString()));
     });
 
@@ -1114,7 +1115,7 @@ function run(test) {
       assert.strictEqual(dr.lastUp.delta, 5);
       assert.strictEqual(dr.lastUp.t, rechargeHist[2].t);
       const tilesR = pw.tilesOf(row, est, dr, pw.rangeMeta('24h'), 30);
-      assert.strictEqual(tilesR[3].value, '95.00', '上次充值保留 2 位');
+      assert.strictEqual(tilesR[3].value, '+5.00', '上次充值显示充值量 delta（+2 位小数）');
       assert.strictEqual(tilesR[3].sub, pw.updText(new Date(dr.lastUp.t).toISOString()));
       // 默认 tiles（未选择）
       const emptyTiles = pw.tilesOf(null, null, null, pw.rangeMeta('24h'), 30);
@@ -1122,6 +1123,58 @@ function run(test) {
       assert.strictEqual(emptyTiles[0].value, '—');
       assert.strictEqual(emptyTiles[2].value, '30');
       assert.strictEqual(emptyTiles[3].sub, '暂无记录');
+    });
+
+    await test('power v14：lastRecharge 取最后一次上调（delta=充值量）+ tilesOf 跨区间值（切档不变 / 30d 缺失回退区间）', function () {
+      purge();
+      const pw = R('utils/power.js');
+      const now = Date.now();
+      const H = 3600e3, D = 24 * H;
+      // 乱序输入 → normalizeHistory 按 t 升序；扫描相邻上升 Δq>0.05，取最后一次（+0.03 噪声不算）
+      const hist = pw.normalizeHistory([
+        { quantity: 60, ts: new Date(now - 20 * D).toISOString() },
+        { quantity: 100, ts: new Date(now - 10 * D).toISOString() },   // +40（较早的充值）
+        { quantity: 95, ts: new Date(now - 9 * D).toISOString() },
+        { quantity: 95.03, ts: new Date(now - 8 * D).toISOString() },  // +0.03 ≤ 0.05 → 不算
+        { quantity: 140, ts: new Date(now - 2 * D).toISOString() },    // +44.97 → 最后一次上调
+        { quantity: 138, ts: new Date(now - 1 * D).toISOString() },
+        { quantity: 137.5, ts: new Date(now - 0.5 * D).toISOString() }
+      ]);
+      const lr = pw.lastRecharge(hist);
+      assert.ok(lr, 'lastRecharge 应返回最后一次上升');
+      assert.strictEqual(lr.t, hist[4].t, 't = 最后一次上升的后一个采样');
+      assert.strictEqual(lr.reset, 140, 'reset = 充值后余额（仅用于内部，不在 tile 值展示）');
+      assert.strictEqual(lr.delta, 44.97, 'delta = round2(本次充值量)');
+      // 空/无上升/仅 1 点 → null
+      assert.strictEqual(pw.lastRecharge([]), null);
+      assert.strictEqual(pw.lastRecharge(null), null);
+      assert.strictEqual(pw.lastRecharge([{ q: 100, t: now }]), null);
+      assert.strictEqual(pw.lastRecharge([{ q: 100, t: now - H }, { q: 99, t: now }]), null, '只降不升 → null');
+      assert.strictEqual(pw.lastRecharge([{ q: 100, t: now - H }, { q: 100.04, t: now }]), null, 'Δq≤0.05（噪声）不算充值');
+      assert.strictEqual(pw.lastRecharge([{ q: 101, t: now }, { q: 100, t: now - H }]).delta, 1, '乱序也按 t 排序');
+      // tilesOf：优先用传入的跨区间 lastRecharge（值 = +delta，sub = 时间），切档不变
+      const row = pw.normalizeRow({ id: '4-23A---321', quantity: 137.5, unit: '度', updated_at: new Date(now).toISOString() });
+      const est = { valid: true, rate: 10, days: 13.75, ref: false, slow: false };
+      const dR = { drop: 10, recharge: true, lastUp: { t: now - H, reset: 139, delta: 1.5 } };
+      const t24 = pw.tilesOf(row, est, dR, pw.rangeMeta('24h'), 30, false, null, lr);
+      assert.strictEqual(t24[3].value, '+44.97', '值 = +充值量（不是充值后余额 140）');
+      assert.strictEqual(t24[3].unit, '度');
+      assert.strictEqual(t24[3].sub, pw.updText(new Date(lr.t).toISOString()));
+      assert.strictEqual(pw.tilesOf(row, est, dR, pw.rangeMeta('7d'), 30, false, null, lr)[3].value, '+44.97', '切 7d 不变');
+      assert.strictEqual(pw.tilesOf(row, est, dR, pw.rangeMeta('30d'), 30, false, null, lr)[3].value, '+44.97', '切 30d 不变');
+      // 缺失 30d（lastRecharge=null）→ 回退所选区间 lastUp.delta（向后兼容旧预览/测试）
+      const fb = pw.tilesOf(row, est, dR, pw.rangeMeta('24h'), 30, false, null, null);
+      assert.strictEqual(fb[3].value, '+1.50', '30d 缺失 → 回退区间 lastUp.delta');
+      assert.strictEqual(fb[3].sub, pw.updText(new Date(dR.lastUp.t).toISOString()));
+      // 传入项非法 delta（旧 slowUpdate 形状 {t,reset}）→ 无记录，绝不回显 reset/NaN
+      const bad = pw.tilesOf(row, est, dR, pw.rangeMeta('24h'), 30, false, null, { t: now, reset: 200 });
+      assert.strictEqual(bad[3].value, '—');
+      assert.strictEqual(bad[3].sub, '暂无记录');
+      assert.strictEqual(bad[3].unit, '');
+      // 慢频房未传跨区间参数 → 回退 est.lastRecharge（delta 同样生效）
+      const estSlow = { valid: false, rate: null, days: null, ref: false, slow: true, lastRecharge: { t: now - 2 * H, reset: 120, delta: 30 } };
+      const tSlow = pw.tilesOf(row, estSlow, pw.deriveRange([], row), pw.rangeMeta('24h'), 30, false, null, null);
+      assert.strictEqual(tSlow[3].value, '+30.00', '慢频房回退 est.lastRecharge.delta');
     });
 
     await test('power：trendLine 时间比例点位/≤240 降采样 + 区间点数上限 + xTicks 3/4/5 刻度（24h HH:MM、7d/30d MM-DD）', function () {
@@ -1353,7 +1406,7 @@ function run(test) {
       assert.strictEqual(ctx.data.selLabel, '23号楼A座321');
       assert.strictEqual(C.urlsOf('/power?').length, 1);
       assert.ok(String(C.urlsOf('/power?')[0].url).indexOf('id=eq.4-23A---321') >= 0);
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2, 'v5：选择后同时拉 24h+7d 历史');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3, 'v14：选择后拉 24h+7d+30d history（30d 供上次充值跨区间）');
       // 5) 选中态高亮：再次打开时当前楼栋/房间选中
       def.openSheet.call(ctx);
       assert.strictEqual(ctx.data.sheetOpen, true);
@@ -1366,7 +1419,7 @@ function run(test) {
       assert.strictEqual(ctx.data.sheetOpen, false);
       assert.strictEqual(C.urlsOf('/power?').length, 1);
       assert.ok(String(C.urlsOf('/power?')[0].url).indexOf('id=eq.4-23B---425') >= 0, '只请求新房间');
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2, '新房间 24h+7d 历史');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3, '新房间 24h+7d+30d 历史');
     });
 
     await test('power 页：趋势 canvas 2d 绘制（DPR 缩放/面积渐变/折线/2 网格/末点）与 <2 点不画', async function () {
@@ -1451,11 +1504,11 @@ function run(test) {
       await ctx.load.call(ctx, false);
       await sleep(20);
       assert.strictEqual(C.reqLog().length, 0, '2 分钟 TTL 内非 force 应 0 请求');
-      // force 刷新必须重新请求（v5：行 + 24h + 7d 历史一起刷新）
+      // force 刷新必须重新请求（v14：行 + 24h + 7d + 30d 历史一起刷新）
       await ctx.load.call(ctx, true);
       await sleep(20);
       assert.strictEqual(C.urlsOf('/power?').length, 1);
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2);
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3);
     });
 
     await test('power 页：请求失败 → 无旧数据时错误态可重试；有旧数据时保留展示 + toast', async function () {
@@ -1539,9 +1592,9 @@ function run(test) {
       assert.strictEqual(ctx.data.trend.dropLabel, '近 24h 下降');
       assert.strictEqual(ctx.data.trend.startLabel, '起点');
       assert.strictEqual(ctx.data.trend.xTicks.length, 3);
-      // v5：首次拉取必须同时有 24h + 7d 历史（estimate 用两档）→ 2 个 history 请求
+      // v14：首次拉取必须同时有 24h + 7d（estimate 两档）+ 30d（上次充值跨区间）→ 3 个 history 请求
       const initHist = C.urlsOf('/power_history?');
-      assert.strictEqual(initHist.length, 2, '首次拉取应同时请求 24h+7d history');
+      assert.strictEqual(initHist.length, 3, '首次拉取应同时请求 24h+7d+30d history');
       const initRows = C.urlsOf('/power?');
       assert.strictEqual(initRows.length, 1, '当前电量行 1 次');
       const parsed = initHist.map(function (r) {
@@ -1554,6 +1607,7 @@ function run(test) {
       });
       assert.ok(parsed.some(function (p) { return Math.abs(p.days - 1) < 0.1; }), '应含 24h 时间窗');
       assert.ok(parsed.some(function (p) { return Math.abs(p.days - 7) < 0.1; }), '应含 7d 时间窗');
+      assert.ok(parsed.some(function (p) { return Math.abs(p.days - 30) < 0.1; }), '应含 30d 时间窗');
       // 切 7 天：7d 已随首次拉取预取；增量 43 补拉 14 天比较窗口（自然周期同期）→ 1 请求
       C.reqLog().length = 0;
       def.pickRange.call(ctx, { currentTarget: { dataset: { k: '7d' } } });
@@ -1568,13 +1622,13 @@ function run(test) {
       assert.strictEqual(ctx.data.trend.startLabel, '起');
       assert.strictEqual(ctx.data.trend.xTicks.length, 4);
       ctx.data.trend.xTicks.forEach(function (t) { assert.ok(/^\d\d-\d\d$/.test(t.label), '7d x 标签 MM-DD：' + t.label); });
-      // 切 30 天：30d history 一次 + 70d 比较窗口一次（共 2）
+      // 切 30 天：30d 已随初始拉取缓存 → 仅补 70d 比较窗口（1 请求）
       C.reqLog().length = 0;
       def.pickRange.call(ctx, { currentTarget: { dataset: { k: '30d' } } });
       await sleep(80);
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2, '切 30d 拉 30d + 70d 比较窗口');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 1, '切 30d 仅补拉 70d 比较窗口（30d 已缓存）');
       const wins30 = histWindows(C.urlsOf('/power_history?')).sort(function (a, b) { return a - b; });
-      assert.ok(wins30.some(function (w) { return Math.abs(w - 30) < 0.2; }), '30d 时间窗：' + JSON.stringify(wins30));
+      assert.ok(!wins30.some(function (w) { return Math.abs(w - 30) < 0.2; }), '30d 已缓存 → 不重复请求：' + JSON.stringify(wins30));
       assert.ok(wins30.some(function (w) { return Math.abs(w - 70) < 0.2; }), '70d 比较窗口：' + JSON.stringify(wins30));
       assert.strictEqual(ctx.data.rangeTitle, '近 30 天趋势');
       assert.strictEqual(ctx.data.rangeTile, '近 30 天用电');
@@ -1711,14 +1765,14 @@ function run(test) {
       // 回到 24h 档再切实时房（区间 30d 时实时房会拉 3 个窗口，属现状 §2）
       def.pickRange.call(ctx, { currentTarget: { dataset: { k: '24h' } } });
       await sleep(30);
-      // 慢频/实时选择：切到 23B 实时房 → 只拉 24h+7d（2 个），不显示日更、无阶梯口径
+      // 慢频/实时选择：切到 23B 实时房 → 也拉 24h+7d+30d（3 个；30d 供上次充值跨区间），不显示日更、无阶梯口径
       C.reqLog().length = 0;
       await def.pick.call(ctx, '4-23B---424');
       await sleep(30);
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2, '实时房选择后 2 个 history 请求（24h+7d）');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3, '实时房选择后 3 个 history 请求（24h+7d+30d）');
       assert.strictEqual(ctx.data.trend.daily, false, '实时房无日更徽标');
       assert.strictEqual(ctx._slowCadence, false, '实时房折线口径');
-      assert.strictEqual(ctx._hist30.length, 0, '实时房不保留 30d');
+      assert.strictEqual(ctx._hist30.length, 2, '实时房也保留 30d（上次充值跨区间依据）');
       cleanupPage(ctx);
     });
 
@@ -2477,7 +2531,7 @@ function run(test) {
       // drop = 前 20 + 后 12 = 32（充值上升不计入）
       assert.strictEqual(ctx.data.trend.dropText, '32.00');
       assert.strictEqual(ctx.data.tiles[3].label, '上次充值');
-      assert.strictEqual(ctx.data.tiles[3].value, '180.00', 'lastUp.reset 保留 2 位');
+      assert.strictEqual(ctx.data.tiles[3].value, '+100.00', '值 = +充值量 delta（不是充值后余额 180）');
       assert.ok(/^\d\d-\d\d \d\d:\d\d$/.test(ctx.data.tiles[3].sub), '上次充值时间 MM-DD HH:MM：' + ctx.data.tiles[3].sub);
       assert.strictEqual(ctx.data.tiles[3].unit, '度');
       // 切 7 天（mock 仍返回同一组点）→ 标题/图例变化，recharge 仍显示，上次充值仍在
@@ -2489,8 +2543,93 @@ function run(test) {
       assert.strictEqual(ctx.data.trend.dropLabel, '区间下降');
       assert.strictEqual(ctx.data.trend.recharge, true);
       assert.strictEqual(ctx.data.tiles[3].label, '上次充值');
-      assert.strictEqual(ctx.data.tiles[3].value, '180.00');
+      assert.strictEqual(ctx.data.tiles[3].value, '+100.00');
       assert.ok(!/暂无记录/.test(ctx.data.tiles[3].sub));
+    });
+
+    await test('power 页 v14：实时房也拉 30d；上次充值 = 30d 最后一次上调的充值量，切 24h/7d/30d 不变；30d 缺失回退区间 lastUp', async function () {
+      purge();
+      C.clearMem();
+      C.setIdentity(ID);
+      R('utils/store.js'); const cloud = R('utils/cloud.js'); enableCloud(cloud);
+      const nowR = Date.now();
+      const D = 86400e3;
+      // 30d 全量：2 天前充值 +50（40→90）；近 24h 只有正常下降（无充值）
+      const full = [
+        { q: 100, t: nowR - 20 * D },
+        { q: 95, t: nowR - 10 * D },
+        { q: 40, t: nowR - 3 * D },
+        { q: 90, t: nowR - 2 * D },     // +50 最后一次充值（在 24h 之外）
+        { q: 88, t: nowR - 1 * D },
+        { q: 86, t: nowR - 0.5 * D }
+      ];
+      function rowsFor(days) {
+        const cut = nowR - days * D;
+        return full.filter(function (p) { return p.t >= cut; }).map(function (p) {
+          return { roomverify: '4-23A---321', quantity: p.q, ts: new Date(p.t).toISOString() };
+        });
+      }
+      let empty30 = false;
+      const mock = function (o) {
+        const u = String(o.url || '');
+        if (u.indexOf('/power_history?') >= 0) {
+          const m = u.match(/ts=gte\.([^&]+)/);
+          const days = m ? (nowR - Date.parse(decodeURIComponent(m[1]))) / D : 1;
+          if (empty30 && days >= 25) return o.success({ statusCode: 200, data: [] });   // 模拟云端无 30d 行
+          return o.success({ statusCode: 200, data: rowsFor(days) });
+        }
+        if (u.indexOf('/power?') >= 0) return o.success({ statusCode: 200, data: [PW_ROWS['4-23A---321']] });
+        return o.success({ statusCode: 200, data: [] });
+      };
+      C.setReq(mock);
+      const def = loadPage('power/power');
+      const ctx = ctxOf(def, { _first: true, _loading: false });
+      def.onLoad.call(ctx, {});
+      C.reqLog().length = 0;
+      await def.pick.call(ctx, '4-23A---321');
+      await sleep(30);
+      // 实时房也固定 3 个 history 窗口（24h/7d/30d）
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3, '实时房也拉 30d：' + C.urlsOf('/power_history?').length);
+      assert.strictEqual(ctx._hist30.length, 6, '30d 全量缓存（所有房间）');
+      assert.strictEqual(ctx.data.range, '24h');
+      assert.strictEqual(ctx.data.tiles[3].value, '+50.00', '24h 档显示 30d 最后一次充值量（不是 24h 区间 lastUp）');
+      assert.strictEqual(ctx.data.tiles[3].unit, '度');
+      const sub24 = ctx.data.tiles[3].sub;
+      assert.ok(/^\d\d-\d\d \d\d:\d\d$/.test(sub24), '时间 MM-DD HH:MM：' + sub24);
+      // 切 7d / 30d：值/时间不变（跨区间语义）
+      ctx._cwMeasured = true; ctx._measuring = false; ctx._pendingRender = false;
+      def.pickRange.call(ctx, { currentTarget: { dataset: { k: '7d' } } });
+      await sleep(80);
+      assert.strictEqual(ctx.data.tiles[3].value, '+50.00', '切 7d 不变');
+      assert.strictEqual(ctx.data.tiles[3].sub, sub24);
+      def.pickRange.call(ctx, { currentTarget: { dataset: { k: '30d' } } });
+      await sleep(80);
+      assert.strictEqual(ctx.data.tiles[3].value, '+50.00', '切 30d 不变');
+      assert.strictEqual(ctx.data.tiles[3].sub, sub24);
+      cleanupPage(ctx);
+      // 30d 缺失（空结果）→ 回退所选区间 lastUp（向后兼容；7d 内有 2 天前的充值）
+      purge();
+      C.clearMem();
+      C.setIdentity(ID);
+      R('utils/store.js'); const cloud2 = R('utils/cloud.js'); enableCloud(cloud2);
+      empty30 = true;
+      C.setReq(mock);                                   // clearMem 会重置 mock，重新挂载
+      const def2 = loadPage('power/power');
+      const ctx2 = ctxOf(def2, { _first: true, _loading: false });
+      def2.onLoad.call(ctx2, {});
+      C.reqLog().length = 0;
+      await def2.pick.call(ctx2, '4-23A---321');
+      await sleep(30);
+      assert.strictEqual(ctx2._hist30.length, 0, '30d 空 → 空缓存（不阻塞其它窗口）');
+      assert.strictEqual(ctx2.data.state, 'ready');
+      assert.strictEqual(ctx2.data.tiles[3].value, '—', '24h 无充值 → 暂无记录');
+      assert.strictEqual(ctx2.data.tiles[3].sub, '暂无记录');
+      ctx2._cwMeasured = true; ctx2._measuring = false; ctx2._pendingRender = false;
+      def2.pickRange.call(ctx2, { currentTarget: { dataset: { k: '7d' } } });
+      await sleep(80);
+      assert.strictEqual(ctx2.data.tiles[3].value, '+50.00', '30d 缺失 → 回退所选区间 lastUp.delta');
+      assert.ok(!/暂无记录/.test(ctx2.data.tiles[3].sub));
+      cleanupPage(ctx2);
     });
 
     /* ============================================================
@@ -2510,8 +2649,8 @@ function run(test) {
         const u = String(o.url || '');
         if (u.indexOf('/power_history?') >= 0) {
           histRaw += 1;
-          // 首轮 24h+7d 各「原始请求 + 自带重试」= 4 次全失败（确定性模拟弱网抖动），之后恢复
-          if (histRaw <= 4) return o.fail({ errMsg: 'request:fail mock' });
+          // 首轮 24h+7d+30d 各「原始请求 + 自带重试」= 6 次全失败（确定性模拟弱网抖动），之后恢复
+          if (histRaw <= 6) return o.fail({ errMsg: 'request:fail mock' });
           return o.success({ statusCode: 200, data: pwHist('4-23A---321') });
         }
         if (u.indexOf('/power?') >= 0) return o.success({ statusCode: 200, data: [PW_ROWS['4-23A---321']] });
@@ -2531,8 +2670,8 @@ function run(test) {
       assert.strictEqual(ctx._linePoints.length, 11);
       assert.strictEqual(ctx._canvasDrawn, true, '自动恢复后 canvas 应自动重绘');
       assert.ok(canvas.calls.indexOf('stroke') >= 0, 'canvas 应实际绘制折线');
-      // 请求有界：初始（24h+7d 各 2 次原始请求，cloud 自带 1 次重试）+ 1 次自动重试（各 1 次）
-      assert.strictEqual(C.urlsOf('/power_history?').length, 6, 'history 请求数有界：' + C.urlsOf('/power_history?').length);
+      // 请求有界：初始（24h+7d+30d 各 2 次原始请求，cloud 自带 1 次重试）+ 1 次自动重试（各 1 次）
+      assert.strictEqual(C.urlsOf('/power_history?').length, 9, 'history 请求数有界：' + C.urlsOf('/power_history?').length);
       assert.strictEqual(C.urlsOf('/power?').length, 2, '当前行 2 次（初始 + 1 次自动重试）');
       const histN = C.urlsOf('/power_history?').length;
       await sleep(1200);
@@ -2552,7 +2691,7 @@ function run(test) {
         const u = String(o.url || '');
         if (u.indexOf('/power_history?') >= 0) {
           histHits += 1;
-          return o.success({ statusCode: 200, data: histHits <= 2 ? [] : pwHist('4-23A---321') });   // 首轮 24h+7d 空
+          return o.success({ statusCode: 200, data: histHits <= 3 ? [] : pwHist('4-23A---321') });   // 首轮 24h+7d+30d 空
         }
         if (u.indexOf('/power?') >= 0) return o.success({ statusCode: 200, data: [PW_ROWS['4-23A---321']] });
         return o.success({ statusCode: 200, data: [] });
@@ -2566,7 +2705,7 @@ function run(test) {
       const ok = await waitFor(function () { return !ctx.data.trend.empty; }, 2500);
       assert.ok(ok, '自动重试应绕过缓存拿到真实数据并出图');
       assert.strictEqual(ctx._linePoints.length, 11);
-      assert.strictEqual(C.urlsOf('/power_history?').length, 4, '首轮 2 + 自动重试 2（无额外请求）：' + C.urlsOf('/power_history?').length);
+      assert.strictEqual(C.urlsOf('/power_history?').length, 6, '首轮 3 + 自动重试 3（无额外请求）：' + C.urlsOf('/power_history?').length);
       assert.strictEqual(C.urlsOf('/power?').length, 2);
       // 契约（空结果不缓存）：新模块里 force=false 拿到 [] 后，下一次 force=false 必须重新请求
       purge();
@@ -2615,10 +2754,10 @@ function run(test) {
       await sleep(1100);                                    // 初始 load + 自动重试（650ms）都已发生
       assert.strictEqual(ctx.data.trend.empty, true);
       assert.strictEqual(ctx.data.trend.note, '数据积累中', '真实数据不足保留「数据积累中」');
-      assert.strictEqual(C.urlsOf('/power_history?').length, 4, '初始 2 + 自动重试 2（恰好 1 次）：' + C.urlsOf('/power_history?').length);
+      assert.strictEqual(C.urlsOf('/power_history?').length, 6, '初始 3 + 自动重试 3（恰好 1 次）：' + C.urlsOf('/power_history?').length);
       assert.strictEqual(C.urlsOf('/power?').length, 2);
       await sleep(1500);                                    // 观察窗：不得再自动重试
-      assert.strictEqual(C.urlsOf('/power_history?').length, 4, '自动重试有界：不得循环');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 6, '自动重试有界：不得循环');
       assert.strictEqual(C.urlsOf('/power?').length, 2);
       assert.strictEqual(ctx._canvasDrawn, false, '<2 点不绘制');
       assert.strictEqual(ctx.data.trend.empty, true);
@@ -2640,7 +2779,7 @@ function run(test) {
       await sleep(1000);                                    // 覆盖可能的自动重试窗口（650ms）
       assert.strictEqual(ctx.data.trend.empty, false);
       assert.strictEqual(ctx.data.state, 'ready');
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2, '正常数据：仅初始 24h+7d，2 个请求');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3, '正常数据：初始 24h+7d+30d，3 个请求');
       assert.strictEqual(C.urlsOf('/power?').length, 1, '正常数据：仅 1 次当前行');
       assert.deepStrictEqual(Object.keys(ctx._autoRetryKeys), [], '未触发自动重试');
       assert.strictEqual(ctx.data.trend.title, '近 24h 趋势');
@@ -2648,7 +2787,7 @@ function run(test) {
       assert.strictEqual(ctx.data.trend.dropText, '40.00');
       assert.strictEqual(ctx.data.trend.xTicks.length, 3);
       await sleep(900);
-      assert.strictEqual(C.urlsOf('/power_history?').length, 2, '0 额外请求');
+      assert.strictEqual(C.urlsOf('/power_history?').length, 3, '0 额外请求');
       assert.strictEqual(C.urlsOf('/power?').length, 1, '0 额外当前行请求');
     });
 
@@ -3097,7 +3236,7 @@ function run(test) {
         });
         const json = JSON.stringify(post.data);
         assert.ok(json.indexOf('10.0.0.1') < 0 && json.indexOf('brand') < 0 && json.indexOf('language') < 0, '上报不得含品牌/型号/语言');
-        assert.ok(json.indexOf('谢梓萱') < 0 && json.indexOf('token') < 0, '上报不得含姓名/token');
+        assert.ok(json.indexOf('测试辛') < 0 && json.indexOf('token') < 0, '上报不得含姓名/token');
         assert.ok(/已上报/.test(ctx.data.reportText), 'reportText=' + ctx.data.reportText);
         // 限频：同 fingerprint 10 分钟内再上报 → 不再 POST
         const before = C.urlsOf('client_diag').length;
@@ -3689,6 +3828,11 @@ function run(test) {
       assert.ok(!/REF = 400/.test(pwJsSrc) && !/ringFrac/.test(pwJsSrc), '不应再保留「当前电量/400」环形语义');
       assert.ok(/ringArc/.test(pwJsSrc) && /ARC_DAYS = 30/.test(pwJsSrc), '环 = estimate 天数/30');
       assert.ok(/上次充值/.test(pwJsSrc) && /lastUp/.test(pwJsSrc), 'tile4 上次充值（值+时间）');
+      // v14：跨区间上次充值 —— 值为充值量 delta（+X.XX 度），不再显示充值后余额
+      assert.ok(/function lastRecharge\(points, minDelta\)/.test(pwJsSrc) && /lastRecharge: lastRecharge/.test(pwJsSrc),
+        '纯函数 lastRecharge 存在并导出');
+      assert.ok(/\+' \+ fmtQ\(recAmount\)/.test(pwJsSrc) && !/fmtQ\(rec\.reset\)/.test(pwJsSrc),
+        'tile4 值 = +充值量（不显示 reset 余额）');
       const pwWxml = src('pages/power/power.wxml');
       const pwWxssSrc0 = src('pages/power/power.wxss');
       const pwPageSrc = src('pages/power/power.js');
@@ -3765,7 +3909,7 @@ function run(test) {
       assert.ok(/function slowUpdate/.test(pwJsSrc) && /SLOW_DIFF = 0\.005/.test(pwJsSrc), 'slowUpdate 纯函数（|dq|>0.005）');
       assert.ok(/pw-slow/.test(pwWxmlSrc) && /trend\.slowText/.test(pwWxmlSrc) && /pw-tile-ref/.test(pwWxmlSrc), '慢更新徽标 + tile 参考标记 WXML');
       assert.ok(/pw-slow/.test(pwWxssSrc) && /flex-wrap: wrap/.test(pwWxssSrc) && /overflow-wrap: anywhere/.test(pwWxssSrc), '慢更新徽标换行不溢出');
-      assert.ok(/slowUpdate\(hist24\)/.test(pwPageSrc) && /tilesOf\(row, est, dRange, meta, low, slowOn(?:, cmp)?\)/.test(pwPageSrc), '页面用 24h history 判慢 + tile 参考标记');
+      assert.ok(/slowUpdate\(hist24\)/.test(pwPageSrc) && /tilesOf\(row, est, dRange, meta, low, slowOn(?:, cmp)?(?:, crossRecharge)?\)/.test(pwPageSrc), '页面用 24h history 判慢 + tile 参考标记');
       // v6（task-28）：取消横滑，绘图区铺满；无 scroll-view/scroll-x/横滑提示/scroll 代理
       assert.ok(!/scroll-view/.test(pwWxmlSrc), 'power 趋势不再有 scroll-view（取消横滑）');
       assert.ok(!/scroll-x|bindscroll|scroll-left/.test(pwWxmlSrc), 'power WXML 无 scroll-x/scroll 绑定');
@@ -3826,7 +3970,11 @@ function run(test) {
       assert.ok(/pw-daily/.test(pwWxmlSrc) && /trend\.daily/.test(pwWxmlSrc) && /trend\.dailyTitle/.test(pwWxmlSrc), '「日更」徽标 WXML');
       assert.ok(/\.pw-daily \{[^}]*var\(--md-primary-container\)/.test(pwWxssSrc), '「日更」徽标样式');
       assert.ok(/power\.isSlowRoom\(this\.data\.sel, hist24\)/.test(pwPageSrc) && /power\.estimateSlow\(hist30, row\)/.test(pwPageSrc), '页面按慢/实时选择估算（isSlowRoom → estimateSlow）');
-      assert.ok(/cloud\.powerHistory\(rv, '30d'/.test(pwPageSrc), '慢频房额外拉 30d history（§2）');
+      // v14：30d history 不再只给慢频房 —— 所有房间都拉（实时房「上次充值」跨区间；30d 档复用 pull 的 hist）
+      assert.ok(/cloud\.powerHistory\(rv, '30d'/.test(pwPageSrc), '所有房间拉 30d history（慢频估算 + 跨区间上次充值）');
+      assert.ok(/const p30 = \(rng !== '30d'\) \? cloud\.powerHistory\(rv, '30d'/.test(pwPageSrc), '30d 请求不按楼栋门控（仅 30d 档去重）');
+      assert.ok(/slowRoom \? \(est\.lastRecharge \|\| null\) : power\.lastRecharge\(hist30\)/.test(pwPageSrc), '跨区间充值：慢频 est.lastRecharge / 实时 lastRecharge(hist30)');
+      assert.ok(/power\.tilesOf\(row, est, dRange, meta, low, slowOn, cmp, crossRecharge\)/.test(pwPageSrc), '跨区间结果传入 tilesOf');
       assert.ok(/power\.estimateSlow\(hist30, row\)/.test(pwPageSrc) && /slowRoom/.test(pwPageSrc), '30d 未加载时估算降级为数据积累中');
       assert.ok(/stepSegments\(points\)/.test(pwPageSrc) && /changeDots\(points\)/.test(pwPageSrc) && /fillText\(this\._noUpd/.test(pwPageSrc), 'canvas 阶梯线 + 真实变化点 + 无更新提示文字');
       assert.ok(/近 30 天无变化/.test(pwPageSrc) && /_hist30/.test(pwPageSrc), 'hero 更新时间用 30d 真实变化点/无变化文案');
