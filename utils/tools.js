@@ -8,6 +8,8 @@
 //     不新增顶层键；toolOrderSetAt>0 才写云端，默认自然顺序不写；详见 utils/cloud.js）。
 //   拖动排序只改 toolOrder，并按新顺序重排 homeTools（勾选集合不变）；homeTools 顺序变了才提升
 //   homeToolsAt 并触发 UD 同步（与网页端 LWW 合并）。
+const identity = require('./identity.js');
+
 const TOOLS = [
   { key: 'tt',   name: '课表',   ico: '📅', icoImg: '/images/tool-tt.png', meta: '周次 · 下一节课', desc: '班级课表与下一节课；教务自动同步，全员查看', url: '/pages/tt/tt', tab: false, tone: 'primary' },
   { key: 'hw',   name: '作业板', ico: '📝', icoImg: '/images/tool-hw.png', meta: '截止提醒 · 完成勾选', desc: '作业清单与截止倒计时；查看与勾选完成，验证身份后可发布', url: '/pages/hw/hw', tab: false, tone: 'tertiary' },
@@ -46,15 +48,25 @@ function toolOf(key) {
 }
 function isHidden(key) { return HIDDEN.indexOf(key) >= 0; }
 function visible(t) { return !!t && !isHidden(t.key); }
+
+// 投票入口（2026-11-21 用户口径）：仅班委可见；普通同学与测试账号在目录/首页/说明里完全隐藏。
+// 只影响「入口」展示，不影响 pages/votedetail —— 收到投票或点分享卡片时仍正常进入。
+// id 省略时按本机身份判断；传入身份对象便于单测/页面显式判断。
+const VOTE_KEY = 'vote';
+function entryAllowed(t, id) {
+  if (!visible(t)) return false;
+  if (t.key === VOTE_KEY && !identity.canUseVote(id)) return false;
+  return true;
+}
 // 可作为首页勾选项：可见、非管理员工具、非 noHome（宿舍电费不参与；水量可参与）
-function homeEligible(t) { return !!t && visible(t) && !t.admin && !t.noHome; }
+function homeEligible(t, id) { return !!t && entryAllowed(t, id) && !t.admin && !t.noHome; }
 
 function same(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); }
 
 // 默认勾选 = 现有首页前 4 个（store.DEF.homeTools：hw / nt / ft / draw），老用户升级无感知
-function defaultHome() {
+function defaultHome(id) {
   const store = require('./store.js');
-  return normalizeHome(store.DEF.homeTools.slice());
+  return normalizeHome(store.DEF.homeTools.slice(), id);
 }
 
 // 工具顺序改动后把偏好推到云端（未验证身份/断网/云同步关闭时静默跳过）
@@ -164,11 +176,11 @@ function byToolOrder(order) {
 // ---------------------------------------------------------------------------
 
 // 只做去重/过滤（可见、非管理员、非 noHome），**只保留前 4 个**，不再自动补齐
-function normalizeHome(home) {
+function normalizeHome(home, id) {
   const out = [];
   (home || []).forEach(function (k) {
     const t = toolOf(k);
-    if (homeEligible(t) && out.indexOf(k) < 0 && out.length < HOME_MAX) out.push(k);
+    if (homeEligible(t, id) && out.indexOf(k) < 0 && out.length < HOME_MAX) out.push(k);
   });
   return out;
 }
@@ -176,14 +188,15 @@ function normalizeHome(home) {
 // 当前勾选的首页工具（≤4；顺序 = 本机勾选/工具顺序）。
 // 注意：云端/网页写入的顺序照单全收（不在这里按 toolOrder 重排），避免两端来回改写；
 // 本机勾选/拖动产生的顺序由 setHomeTool / setToolOrder 保证按 toolOrder 排列。
-function homeTools() {
+// 投票入口对普通同学/测试账号隐藏后，历史勾选里的 vote 也会在这里被过滤（不展示、不占首页位）。
+function homeTools(id) {
   const store = require('./store.js');
   const d = ensure();
-  let next = normalizeHome(d.homeTools);
+  let next = normalizeHome(d.homeTools, id);
   // 极旧版默认首页（未经过「调整」页）→ 迁移为默认勾选。
   // 必须限定 homeToolsAt===0（从未用户改动过）：否则用户自定义 toolOrder 后把勾选减到
   // draw/hw/nt 这类与旧默认同形的组合时，会被误判成旧数据、每次读取又被补回 4 个。
-  if (Number(d.homeToolsAt) === 0 && LEGACY_HOMES.some(function (x) { return same(d.homeTools, x); })) next = defaultHome();
+  if (Number(d.homeToolsAt) === 0 && LEGACY_HOMES.some(function (x) { return same(d.homeTools, x); })) next = defaultHome(id);
   if (!same(next, d.homeTools)) { d.homeTools = next; store.save(); }
   return d.homeTools.slice();
 }
@@ -223,23 +236,23 @@ function toggleHome(key, on) {
 
 // 兼容旧接口：勾选集合（工具对象列表）
 function homeList() {
-  return homeTools().map(toolOf).filter(homeEligible);
+  return homeTools().map(toolOf).filter(function (t) { return homeEligible(t); });
 }
 
 // 工作台 / 工具页「首页快捷」：当前勾选的工具（顺序 = 勾选顺序），cap 上限仍受 HOME_MAX=4 约束
-function quickList(n) {
+function quickList(n, id) {
   const cap = Math.max(1, Math.min(HOME_MAX, +n || HOME_MAX));
-  return homeTools().slice(0, cap).map(toolOf).filter(homeEligible);
+  return homeTools(id).slice(0, cap).map(toolOf).filter(function (t) { return homeEligible(t, id); });
 }
 
 // 工具页目录：全部可见工具（含管理员工具，由页面按身份决定是否渲染），按本机 toolOrder 排列
-function catalog() {
-  return toolOrder().map(toolOf).filter(visible);
+function catalog(id) {
+  return toolOrder().map(toolOf).filter(function (t) { return entryAllowed(t, id); });
 }
 
 module.exports = {
   TOOLS: TOOLS, HOME_MAX: HOME_MAX, HIDDEN: HIDDEN, toolOf: toolOf, isHidden: isHidden,
-  visible: visible, homeEligible: homeEligible,
+  visible: visible, entryAllowed: entryAllowed, homeEligible: homeEligible,
   defaultHome: defaultHome, normalizeHome: normalizeHome, homeTools: homeTools,
   normalizeToolOrder: normalizeToolOrder, migrateLegacy: migrateLegacy,
   toolOrder: toolOrder, setToolOrder: setToolOrder, moveTool: moveTool,

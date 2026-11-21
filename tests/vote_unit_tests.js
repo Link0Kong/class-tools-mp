@@ -1375,7 +1375,15 @@ async function run(test) {
       const idx = tools.TOOLS.map(function (x) { return x.key; });
       assert.ok(idx.indexOf('water') < idx.indexOf('vote'), 'vote 应在 water 之后');
       assert.ok(idx.indexOf('vote') < idx.indexOf('ppt'), 'vote 应在 ppt 之前');
-      assert.strictEqual(tools.homeEligible(t), true, '投票可被用户勾选进首页快捷');
+      // 2026-11-21 用户口径：仅班委可见；测试账号/普通同学完全隐藏入口
+      const committee = { token: 'tok-vote-c', sid: 'fixture-committee-vote', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
+      assert.strictEqual(tools.entryAllowed(t, committee), true, '班委应可见投票入口');
+      assert.strictEqual(tools.homeEligible(t, committee), true, '班委可把投票勾选进首页快捷');
+      assert.strictEqual(tools.entryAllowed(t, ID), false, '测试账号应隐藏投票入口');
+      assert.strictEqual(tools.homeEligible(t, ID), false, '测试账号不可勾选投票');
+      assert.strictEqual(tools.entryAllowed(t, { token: 't', sid: 'fixture-ordinary-vote', name: '普通同学', role: '', badge: '', is_admin: false, ts: 1 }), false, '普通同学应隐藏投票入口');
+      // 非投票工具不受影响
+      assert.strictEqual(tools.entryAllowed(tools.toolOf('water'), ID), true, '测试账号仍可见其它工具');
     });
 
     await test('VOTE-D3 图标 /images/tool-vote.png：PNG 96×96 且体积在代码质量限制内', function () {
@@ -1500,6 +1508,74 @@ async function run(test) {
       assert.ok(cloudSrc.indexOf('body.p_audience_seats = aud.seats') >= 0, 'poll_manage 未透传 p_audience_seats');
       // 详情页沿用 detailView 的范围标签（d.tags 渲染）
       assert.ok(src(DETAIL_PAGE + '.wxml').indexOf('wx:for="{{d.tags}}"') >= 0, '详情页需渲染范围标签（tags）');
+    });
+
+    await test('VOTE-E1 入口可见性：仅班委可见；普通同学/测试账号在目录、首页与使用说明中完全隐藏；详情分享入口不受影响', function () {
+      global.wx = C.wxMock;
+      purge();
+      const identity = R('utils/identity.js');
+      const tools = R('utils/tools.js');
+      const store = R('utils/store.js');
+      const committee = { token: 'tok-vote-c', sid: 'fixture-committee-vote', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
+      const ordinary = { token: 'tok-vote-o', sid: 'fixture-ordinary-vote', name: '普通同学夹具', role: '', badge: '', is_admin: false, ts: 1 };
+      const officialTest = { token: 'tok-vote-t', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
+      const qaTest = { token: 'tok-vote-q', sid: '9999000001', name: '测试同学', role: '班长', badge: '班委', is_admin: false, ts: 1 };
+      // 班委口径 = role 非空 或 badge 含「班委」；测试账号无论职务一律不可见
+      assert.strictEqual(identity.canUseVote(committee), true, '班委可见');
+      assert.strictEqual(identity.canUseVote({ sid: 'fixture-badge-vote', role: '', badge: '班委' }), true, 'badge=班委 也属班委');
+      assert.strictEqual(identity.canUseVote(ordinary), false, '普通同学不可见');
+      assert.strictEqual(identity.canUseVote({ sid: 'fixture-empty-vote', role: '', badge: '' }), false);
+      assert.strictEqual(identity.canUseVote(officialTest), false, '官方测试账号应隐藏');
+      assert.strictEqual(identity.canUseVote(qaTest), false, '9999 段 QA 测试账号应隐藏');
+      assert.strictEqual(identity.canUseVote({ sid: 'fixture-flag-vote', role: '班长', badge: '班委', is_test: true }), false, 'is_test 身份应隐藏');
+      assert.strictEqual(identity.canUseVote(null), false, '无身份不可见');
+      // 入口判定：只影响 vote，其它工具不变
+      const vt = tools.toolOf('vote');
+      assert.strictEqual(tools.entryAllowed(vt, committee), true);
+      assert.strictEqual(tools.entryAllowed(vt, ordinary), false);
+      assert.strictEqual(tools.entryAllowed(vt, officialTest), false);
+      assert.strictEqual(tools.entryAllowed(tools.toolOf('water'), officialTest), true, '其它工具不因测试账号隐藏');
+      // 首页：历史勾选里的 vote 对普通同学/测试账号被过滤，不占首页位；班委保留
+      C.clearMem();
+      C.setIdentity(committee);
+      store.get().homeTools = ['vote', 'hw']; store.save();
+      assert.strictEqual(identity.canUseVote(), true, '本机班委身份：入口可见');
+      assert.deepStrictEqual(tools.quickList(4).map(function (t) { return t.key; }), ['vote', 'hw'], '班委首页保留投票');
+      C.setIdentity(ordinary);
+      assert.strictEqual(identity.canUseVote(), false, '本机普通身份：入口隐藏');
+      assert.deepStrictEqual(tools.quickList(4).map(function (t) { return t.key; }), ['hw'], '普通同学首页隐藏投票');
+      C.setIdentity(officialTest);
+      assert.strictEqual(identity.canUseVote(), false, '本机测试身份：入口隐藏');
+      // 工具页目录：普通/测试账号不渲染投票卡；班委渲染
+      C.setIdentity(ordinary);
+      const allDef = loadPageDef('pages/all/all');
+      const allOrd = ctxOf(allDef);
+      allDef.render.call(allOrd);
+      assert.strictEqual(allOrd.data.all.some(function (x) { return x.key === 'vote'; }), false, '普通同学工具页无投票入口');
+      C.setIdentity(officialTest);
+      const allTest = ctxOf(allDef);
+      allDef.render.call(allTest);
+      assert.strictEqual(allTest.data.all.some(function (x) { return x.key === 'vote'; }), false, '测试账号工具页无投票入口');
+      C.setIdentity(committee);
+      const allCom = ctxOf(allDef);
+      allDef.render.call(allCom);
+      assert.strictEqual(allCom.data.all.some(function (x) { return x.key === 'vote'; }), true, '班委工具页保留投票入口');
+      // 使用说明：无入口的同学不展示投票说明卡
+      C.setIdentity(ordinary);
+      const ugDef = loadPageDef('pages/ug/ug');
+      const ugOrd = ctxOf(ugDef);
+      ugDef.onLoad.call(ugOrd, {});
+      assert.strictEqual((ugOrd.data.cards || []).some(function (c) { return c.id === 'vote'; }), false, '普通同学使用说明无投票卡');
+      C.setIdentity(committee);
+      const ugCom = ctxOf(ugDef);
+      ugDef.onLoad.call(ugCom, {});
+      assert.strictEqual((ugCom.data.cards || []).some(function (c) { return c.id === 'vote'; }), true, '班委使用说明保留投票卡');
+      // 详情页不设入口门禁：分享卡片/收到投票时普通同学仍可正常进入
+      const detailJs = src(DETAIL_PAGE + '.js');
+      assert.strictEqual(detailJs.indexOf('canUseVote'), -1, '投票详情页不得按身份拦截（分享卡片必须可进入）');
+      assert.ok(detailJs.indexOf("path: '/pages/votedetail/votedetail'") >= 0, '分享卡片仍指向详情页');
+      C.clearMem();
+      C.setIdentity(ID);
     });
 
     await test('VOTE-D8 单测自身已挂入 unit.js require 链', function () {

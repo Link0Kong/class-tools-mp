@@ -76,6 +76,37 @@ function isAdmin() { const v = get(); return !!(v && v.is_admin); }
 function role() { const v = get(); return v ? v.role : ''; }
 function badge() { const v = get(); return v ? v.badge : ''; }
 
+// 班委口径（与服务端 auth_is_committee() 一致）：role 非空 或 badge 含「班委」。
+// 入参可以是身份对象；省略时读本机身份。
+function isCommitteeOf(v) {
+  if (!v || typeof v !== 'object') return false;
+  const r = cleanString(v.role);
+  const b = cleanString(v.badge);
+  return !!r || b.indexOf('班委') >= 0;
+}
+function isCommittee() { return isCommitteeOf(get()); }
+
+// 测试账号：官方测试身份 3260799999 + 临时 QA 9999 段（10 位）。
+// 与统计忽略口径、抽签存证 is_test 口径保持一致。
+function isTestSid(sidIn) {
+  const s = cleanString(sidIn);
+  return s === '3260799999' || /^9999\d{6}$/.test(s);
+}
+function isTest() { const v = get(); return !!v && (!!v.is_test || isTestSid(v.sid)); }
+
+// 投票工具入口可见性（2026-11-21 用户口径）：
+//   * 仅班委可见（role 非空或 badge 含「班委」）；
+//   * 测试账号（官方 3260799999 / 9999 段 QA 身份）一律不可见，即使本地身份带班委职务；
+//   * 只控制「入口」，不拦 pages/votedetail：普通同学收到投票/点分享卡片仍能正常进入详情与投票。
+// 入参可以是身份对象；省略时读本机身份。
+function canUseVote(idLike) {
+  const v = (idLike === undefined) ? get() : idLike;
+  if (!v || typeof v !== 'object') return false;
+  if (v.is_test) return false;
+  if (isTestSid(v.sid)) return false;
+  return isCommitteeOf(v);
+}
+
 // v1.3.3：页面不再展示学号（此前 maskSid 打码展示已移除；sid 仅用于云端身份/数据归属，不进页面）
 
 // 身份标签：优先 role，其次 badge
@@ -148,5 +179,6 @@ module.exports = {
   KEY, IDENTITY_PAGE,
   get, has, save, clear,
   token, sid, name, role, badge, isAdmin, label,
+  isCommitteeOf, isCommittee, isTestSid, isTest, canUseVote,
   ensure, goIdentity, login, logout, onAuthExpired
 };

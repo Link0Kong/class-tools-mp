@@ -2,6 +2,7 @@
 //
 // 结构（契约 2026-11-12「使用说明卡片化重构」§1/§2/§4）：
 //   * 19 张卡片，一屏一张；swiper 横向跟手、首尾 clamp 不循环；
+//     投票卡仅班委可见（2026-11-21），普通同学/测试账号实际为 18 张；
 //   * 卡面：hero 场景图（WXSS view 形状，11 类 scene，不新增图片资源）+ 标题 + 一句话作用 + 3 条步骤 + 1 条提示；
 //   * 顶部：分类胶囊 + 页码 + 「总览」按钮；分类 chips 点按跳到该分类首卡；
 //   * 底部：上一张 / 页码 / 下一张（首尾禁用态）；
@@ -199,11 +200,18 @@ function winInfo() {
   return { w: 375, h: 667 };
 }
 
-// 总览分组：同一份 CARDS 数据渲染，禁止另维护一份文案
-function buildOvGroups() {
+// 2026-11-21：投票入口仅班委可见（普通同学/测试账号隐藏）。使用说明里的投票卡跟随同一口径：
+// 不给无入口的同学展示一个用不了的功能说明；只影响卡片，不影响其它说明。
+function cardsFor(id) {
+  return CARDS.filter(function (c) { return c.id !== 'vote' || identity.canUseVote(id); });
+}
+
+// 总览分组：同一份卡片数据渲染，禁止另维护一份文案
+function buildOvGroups(cards) {
+  const listAll = cards || CARDS;
   return CATS.map(function (cat) {
     const list = [];
-    CARDS.forEach(function (c, i) {
+    listAll.forEach(function (c, i) {
       if (c.cat !== cat.key) return;
       list.push({ idx: i, id: c.id, title: c.title, sub: c.sub, icon: c.icon, tone: c.tone });
     });
@@ -220,7 +228,7 @@ Page({
   data: {
     cards: CARDS,
     cats: CATS,
-    ovGroups: buildOvGroups(),
+    ovGroups: buildOvGroups(CARDS),
     cur: 0,
     curCat: CATS[0].key,
     catName: CATS[0].name,
@@ -237,8 +245,15 @@ Page({
     this._agent = agent.pick(this);            // AI 页面接力（wx.onAgentHandoff），只消费一次
     this._agentQ = agent.pickQuery(options);   // 备用：handoff query 随页面参数传入
     const win = winInfo();
+    // 投票卡按当前身份过滤（仅班委；测试账号不显示），索引与总览用同一份 cards
+    const cards = cardsFor();
+    this._cards = cards;
     // 首帧先给一个按屏幕高度估算的占位高度，onReady 后再用 selector query 实测替换
-    this.setData({ swiperH: Math.max(280, Math.min(640, Math.round((win.h || 667) - 330))) });
+    this.setData({
+      cards: cards,
+      ovGroups: buildOvGroups(cards),
+      swiperH: Math.max(280, Math.min(640, Math.round((win.h || 667) - 330)))
+    });
   },
 
   onReady() { this._measure(0); },
@@ -266,8 +281,9 @@ Page({
   onUnload() { scrollmem.save(this); },
 
   // ---------------------------------------------------------------- 卡片导航
+  _cardsOf() { return (this._cards && this._cards.length) ? this._cards : CARDS; },
   _applyCur(idx) {
-    const c = CARDS[idx];
+    const c = this._cardsOf()[idx];
     if (!c) return;
     const cat = catOf(c.cat);
     if (idx === this.data.cur && cat.key === this.data.curCat) return;
@@ -280,18 +296,19 @@ Page({
     this._applyCur(to);
   },
   prev() { if (this.data.cur > 0) this._applyCur(this.data.cur - 1); },
-  next() { if (this.data.cur < CARDS.length - 1) this._applyCur(this.data.cur + 1); },
+  next() { if (this.data.cur < this._cardsOf().length - 1) this._applyCur(this.data.cur + 1); },
   jumpCat(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
     const key = String(ds.cat || '');
-    for (let i = 0; i < CARDS.length; i++) {
-      if (CARDS[i].cat === key) { this._applyCur(i); return; }
+    const cards = this._cardsOf();
+    for (let i = 0; i < cards.length; i++) {
+      if (cards[i].cat === key) { this._applyCur(i); return; }
     }
   },
   jumpTo(e) {
     const ds = (e && e.currentTarget && e.currentTarget.dataset) || {};
     const idx = Number(ds.idx);
-    if (!(idx >= 0) || !CARDS[idx]) return;
+    if (!(idx >= 0) || !this._cardsOf()[idx]) return;
     this.setData({ ov: false });
     this._applyCur(idx);
   },
@@ -354,10 +371,11 @@ Page({
     const raw = String(q.section || p.section || '');
     const key = SECTION_MAP[raw] || raw;
     this._hoSection = key;
-    for (let i = 0; i < CARDS.length; i++) {
-      if (CARDS[i].id !== key) continue;
+    const cards = this._cardsOf();
+    for (let i = 0; i < cards.length; i++) {
+      if (cards[i].id !== key) continue;
       scrollmem.cancel(this);
-      const cat = catOf(CARDS[i].cat);
+      const cat = catOf(cards[i].cat);
       this.setData({ cur: i, curCat: cat.key, catName: cat.name });
       return true;
     }

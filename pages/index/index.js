@@ -208,7 +208,7 @@ Page({
 
       const hr = now.getHours();
       const wk = util.weekNum(term);
-      const quick = tools.quickList(QUICK_N);   // 用户勾选的首页工具（≤4；无勾选时为空 → 引导空态）
+      const quick = tools.quickList(QUICK_N);   // 用户勾选的首页工具（≤4；无勾选时为空 → 引导空态；投票仅班委可见）
       const state = {
         state: 'data',
         errorText: '',

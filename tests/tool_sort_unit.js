@@ -241,8 +241,10 @@ function pageCtx(def) {
     // normalizeToolOrder 纯函数
     assert.deepStrictEqual(tools.normalizeToolOrder(['diag']).slice(0, 3), ['diag', 'tt', 'hw']);
     assert.strictEqual(tools.normalizeToolOrder(['diag']).length, tools.TOOLS.length);
-    // catalog 顺序 = toolOrder
-    assert.deepStrictEqual(keysOf(tools.catalog()), tools.toolOrder());
+    // catalog 顺序 = toolOrder；测试账号看不到投票入口，班委身份下顺序完整
+    const committee = { token: 'tok-tool-committee', sid: 'fixture-committee-tools', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
+    assert.deepStrictEqual(keysOf(tools.catalog(committee)), tools.toolOrder());
+    assert.deepStrictEqual(keysOf(tools.catalog()), tools.toolOrder().filter(function (k) { return k !== 'vote'; }));
   });
 
   /* ---------- 6. moveTool / setToolOrder ---------- */
