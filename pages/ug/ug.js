@@ -10,7 +10,7 @@
 //   * swiper 高度由 selector query 实测卡片最大高度后 setData（clamp 屏幕可用高度），不写死避免截断。
 //
 // 保留：top-app-bar / share.enable / onShareAppMessage / onShareTimeline /
-//       agent handoff（SECTION_MAP → 卡片 index，不再依赖 #ug-<key> 锚点）/ scrollmem / 版本 2.0.0。
+//       agent handoff（SECTION_MAP → 卡片 index，不再依赖 #ug-<key> 锚点）/ scrollmem / 版本号（utils/version.js）。
 const identity = require('../../utils/identity.js');
 const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');

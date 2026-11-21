@@ -545,7 +545,7 @@ async function run(test) {
     assert.ok(!/https?:\/\//.test(wxml), 'wxml 不得引入外链');
   });
 
-  await test('长期通知静态：工作台待办新口径（期次计入 / 资料与长期定义不计）+ VERSION 2.0.0 + statOf/mostUrgent 同口径', function () {
+  await test('长期通知静态：工作台待办新口径（期次计入 / 资料与长期定义不计）+ VERSION 2.0.4 + statOf/mostUrgent 同口径', function () {
     const indexJs = src('pages/index/index.js');
     assert.ok(/notice\.isLongterm\(g, now\)/.test(indexJs), '工作台应排除资料/无时间（longtermSubtypeOf 口径）');
     assert.ok(/notice\.occOf\(g, now\)/.test(indexJs) && /done\[occ\.key\]/.test(indexJs), '工作台期次计入待办轮换');
@@ -557,8 +557,8 @@ async function run(test) {
     assert.ok(Object.prototype.hasOwnProperty.call(n, 'occOf') && typeof n.occOf === 'function');
     assert.ok(typeof n.mainEntryCompare === 'function' && typeof n.longtermCompare === 'function' && typeof n.orderLongterm === 'function');
     assert.ok(typeof n.fmtDatesCn === 'function' && typeof n.statOf === 'function');
-    // 红线：版本号保持 2.0.0
-    assert.ok(/VERSION\s*=\s*'2\.0\.0'/.test(src('utils/version.js')), 'VERSION 必须保持 2.0.0');
+    // 红线：版本号为当前 2.0.4
+    assert.ok(/VERSION\s*=\s*'2\.0\.4'/.test(src('utils/version.js')), 'VERSION 必须为 2.0.4');
   });
 }
 

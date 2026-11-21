@@ -400,8 +400,8 @@ async function run(test) {
     const wxml = src('pages/nt/nt.wxml');
     assert.ok(/wx:if="\{\{filter === 'all' && infoCount\}\}" class="nt-info"/.test(wxml), '资料栏应有 infoCount 条件');
     assert.ok(/资料 \/ 无时间/.test(wxml), '资料栏兜底交互保留');
-    // 兼容红线：版本号仍 2.0.0、无新增网络请求/依赖
-    assert.ok(/VERSION\s*=\s*'2\.0\.0'/.test(src('utils/version.js')), 'VERSION 必须保持 2.0.0');
+    // 兼容红线：版本号为当前 2.0.4、无新增网络请求/依赖
+    assert.ok(/VERSION\s*=\s*'2\.0\.4'/.test(src('utils/version.js')), 'VERSION 必须为 2.0.4');
     assert.ok(ntJs.indexOf('wx.request(') < 0, 'nt.js 不应新增 wx.request');
     assert.ok(indexJs.indexOf('wx.request(') < 0, 'index.js 不应新增 wx.request');
     const pkg = JSON.parse(src('project.config.json'));

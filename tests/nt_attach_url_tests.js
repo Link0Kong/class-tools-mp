@@ -565,7 +565,7 @@ function run(outerTest) {
       });
 
       /* ------------------------------------------------ 8. 静态接线 / 兼容性护栏 */
-      await T('附件URL：静态接线（wxml 入口不变、双分支都在、不写死域名、版本号仍 2.0.0）', function () {
+      await T('附件URL：静态接线（wxml 入口不变、双分支都在、不写死域名、版本号为 2.0.4）', function () {
         const wxml = src('pages/nt/nt.wxml');
         const js = src('pages/nt/nt.js');
         // 图片仍是 <image src="{{im.path}}">（URL 形态由 ensureImgs 直接给 https 地址）
@@ -589,7 +589,7 @@ function run(outerTest) {
           'nt.js 不得写死 OSS 域名');
         // 版本号未改、不重新上传发布
         const ver = R('utils/version.js');
-        assert.strictEqual(ver.VERSION, '2.0.0', '版本号仍 2.0.0');
+        assert.strictEqual(ver.VERSION, '2.0.4', '版本号为 2.0.4');
       });
     } finally {
       if (prevWx === undefined) { try { delete global.wx; } catch (e) { /* ignore */ } } else global.wx = prevWx;

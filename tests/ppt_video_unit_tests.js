@@ -620,9 +620,9 @@ async function run(test) {
       assert.ok(/bindlongpress="moreTap"/.test(listWxml), '长按更多保留');
     });
 
-    await test('PPT-V-G4 红线：VERSION 仍 2.0.0、页面配置不变、不新增 tabBar、不使用 wx.cloud', function () {
+    await test('PPT-V-G4 红线：VERSION 2.0.4、页面配置不变、不新增 tabBar、不使用 wx.cloud', function () {
       purge();
-      assert.ok(/VERSION = '2\.0\.0'/.test(src('utils/version.js')), 'VERSION 保持 2.0.0');
+      assert.ok(/VERSION = '2\.0\.4'/.test(src('utils/version.js')), 'VERSION 为 2.0.4');
       const play = JSON.parse(src('pages/ppt/pptplay/pptplay.json'));
       assert.strictEqual(play.navigationStyle, 'custom');
       assert.strictEqual(play.pageOrientation, 'auto');

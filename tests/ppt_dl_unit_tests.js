@@ -12,7 +12,7 @@
  *   D. 列表标签（「兼容版」「PDF」）+ filesOfDecks 轻查询 + 本机缓存
  *   E. 页面行为（内存 wx mock）：wx.downloadFile 进度/取消/失败、wx.openDocument 调用（pptx/pdf）、
  *      wx.shareFileMessage 转发/不可用降级复制链接、复制链接、旧 deck 预览/重新处理、onUnload abort
- *   F. 工程静态断言（app.json 注册 pptdl、列表点击=详情、旧播放器保留、VERSION 2.0.0）
+ *   F. 工程静态断言（app.json 注册 pptdl、列表点击=详情、旧播放器保留、VERSION 2.0.4）
  *
  * 说明：纯 Node + 内存 wx mock；不发真实请求、不启动模拟器。
  */
@@ -717,7 +717,7 @@ async function run(test) {
     /* ============================================================
      * F. 工程静态接线（app.json / 列表 / 旧播放器保留 / VERSION）
      * ============================================================ */
-    await test('PPT-DL-F1 app.json 注册 pptdl（共 24 页、不新增 tabBar）、页面 4 文件 + 分享 handler；VERSION 2.0.0', function () {
+    await test('PPT-DL-F1 app.json 注册 pptdl（共 24 页、不新增 tabBar）、页面 4 文件 + 分享 handler；VERSION 2.0.4', function () {
       purge();
       const app = JSON.parse(src('app.json'));
       assert.ok(allPages(app).indexOf('pages/ppt/pptdl/pptdl') >= 0, '注册下载详情页（分包）');
@@ -730,7 +730,7 @@ async function run(test) {
       ['onShareAppMessage', 'onShareTimeline', 'share.enable()', 'utils/share.js'].forEach(function (k) {
         assert.ok(js.indexOf(k) >= 0, '详情页缺少 ' + k);
       });
-      assert.ok(/VERSION = '2\.0\.0'/.test(src('utils/version.js')), 'VERSION 保持 2.0.0');
+      assert.ok(/VERSION = '2\.0\.4'/.test(src('utils/version.js')), 'VERSION 为 2.0.4');
     });
 
     await test('PPT-DL-F2 详情页静态：wx.downloadFile/openDocument(showMenu)/shareFileMessage/复制链接/兼容提示/旧 deck', function () {

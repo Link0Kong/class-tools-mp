@@ -207,13 +207,13 @@ function run(test) {
 
   return (async function () {
     /* ============================================================
-       需求 1：版本号 2.0.0（唯一来源 + 我的页 + 文档）
+       需求 1：版本号 2.0.4（唯一来源 + 我的页 + 文档）
        ============================================================ */
-    await test('需求1：utils/version.js 是唯一版本来源（2.0.0）', function () {
+    await test('需求1：utils/version.js 是唯一版本来源（2.0.4）', function () {
       purge();
       const v = R('utils/version.js');
-      assert.strictEqual(v.VERSION, '2.0.0');
-      assert.strictEqual(v.text(), '班级工具 · v2.0.0');
+      assert.strictEqual(v.VERSION, '2.0.4');
+      assert.strictEqual(v.text(), '班级工具 · v2.0.4');
       const app = src('app.js');
       assert.ok(/require\('\.\/utils\/version\.js'\)/.test(app), 'app.js 应 require utils/version.js');
       assert.ok(/version:\s*version\.VERSION/.test(app), 'app.js globalData.version 应引用 version.VERSION');
