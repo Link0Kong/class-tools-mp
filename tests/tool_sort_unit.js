@@ -161,8 +161,8 @@ function pageCtx(def) {
     const { store, tools, cloud } = fresh();
     clearMem();
     // 自定义工具顺序：draw / hw / nt / ft / tt ...（2026-11-09 追加 ppt 演示，2026-11-11 追加 vote 投票，
-    // 2026-11-12 追加 file 文件传输，均在自然顺序对应位置）
-    const order = ['draw', 'hw', 'nt', 'ft', 'tt', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'stats', 'diag', 'ppt'];
+    // 2026-11-12 追加 file 文件传输，2026-11-14 追加 map 地图，均在自然顺序对应位置）
+    const order = ['draw', 'hw', 'nt', 'ft', 'tt', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt'];
     tools.setToolOrder(order);
     assert.deepStrictEqual(tools.toolOrder(), order);
     // 现有勾选按新工具顺序重排（勾选集合不变）
@@ -211,7 +211,7 @@ function pageCtx(def) {
     assert.deepStrictEqual(keysOf(tools.quickList(4)), ['roll', 'tt', 'draw', 'hw'], '勾选 = 旧顺序前 4 个');
     const order = tools.toolOrder();
     assert.deepStrictEqual(order.slice(0, 7), legacy, 'toolOrder 应沿用旧的全量顺序');
-    assert.deepStrictEqual(order.slice(7), ['power', 'water', 'vote', 'file', 'stats', 'diag', 'ppt'], '其余工具按 TOOLS 顺序补在末尾');
+    assert.deepStrictEqual(order.slice(7), ['power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt'], '其余工具按 TOOLS 顺序补在末尾');
     assert.deepStrictEqual(store.get().homeTools, ['roll', 'tt', 'draw', 'hw']);
     assert.strictEqual(store.get().homeToolsAt, 1700000000000, '迁移不改 homeToolsAt（交给 LWW 裁决）');
     // 迁移幂等：再读不变
@@ -236,7 +236,7 @@ function pageCtx(def) {
     const { store, tools } = fresh();
     clearMem();
     store.get().toolOrder = ['hw', 'tt', 'futureTool', 'hw', 'diag'];
-    assert.deepStrictEqual(tools.toolOrder(), ['hw', 'tt', 'diag', 'nt', 'ft', 'draw', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'stats', 'ppt'],
+    assert.deepStrictEqual(tools.toolOrder(), ['hw', 'tt', 'diag', 'nt', 'ft', 'draw', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'ppt'],
       '已知 key 保留顺序，未知 key 丢弃，缺失 key 按 TOOLS 顺序补末尾');
     // normalizeToolOrder 纯函数
     assert.deepStrictEqual(tools.normalizeToolOrder(['diag']).slice(0, 3), ['diag', 'tt', 'hw']);

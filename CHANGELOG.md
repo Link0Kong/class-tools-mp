@@ -8,7 +8,7 @@
 - **`utils/tools.js`**：`entryAllowed` 对 `vote` 应用 `canUseVote`，并贯穿 `homeEligible` / `normalizeHome` / `homeTools` / `quickList` / `catalog`。工具页「全部工具」、工作台首页快捷、首页勾选（历史已勾选的 vote 会被过滤，不占 4 个名额）均不再出现投票入口；其它工具与顺序不变。
 - **`pages/ug/ug.js`**：使用说明的「投票」卡跟随同一口径隐藏（普通同学/测试账号不展示无法使用的功能说明），卡片索引/总览/上下张/AI 接力均按过滤后的列表工作。
 - **未改 `pages/votedetail`**：详情页不加入口门禁，收到投票或点击投票分享卡片仍按原路径正常进入、查看与投票；`pages/vote` 的编辑深链也未改，避免影响历史投票管理。
-- **测试**：`vote_unit_tests.js` **40/0**（新增 VOTE-E1：班委/普通/官方测试/9999 QA/is_test 口径、目录/首页/使用说明隐藏、详情分享不受影响）；`unit.js` **632 passed / 2 failed**（2 项为既有时间依赖失败：期次§1.3、发布§5，与本次无关）。未改 VERSION / UD v6 / 云端契约，未上传发布。
+- **测试**：`vote_unit_tests.js` **40/0**（新增 VOTE-E1：班委/普通/官方测试/9999 QA/is_test 口径、目录/首页/使用说明隐藏、详情分享不受影响）；`tool_sort_unit.js` **21/0**（同步补上既有 `map` 工具的顺序夹具）；`unit.js` **632 passed / 2 failed**（2 项为既有时间依赖失败：期次§1.3、发布§5，与本次无关）。未改 VERSION / UD v6 / 云端契约，未上传发布。
 
 ## 电费「上次充值」跨区间并显示充值量（2026-11-21，源码就绪；待用户上传发布；VERSION 仍 2.0.0）
 
