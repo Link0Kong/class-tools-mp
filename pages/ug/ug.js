@@ -224,11 +224,14 @@ function catOf(key) {
   return CATS[0];
 }
 
+// 首帧也按当前身份过滤（onLoad 会再算一次，兼容同一页面模块缓存后身份变化）
+const INITIAL_CARDS = cardsFor();
+
 Page({
   data: {
-    cards: CARDS,
+    cards: INITIAL_CARDS,
     cats: CATS,
-    ovGroups: buildOvGroups(CARDS),
+    ovGroups: buildOvGroups(INITIAL_CARDS),
     cur: 0,
     curCat: CATS[0].key,
     catName: CATS[0].name,
