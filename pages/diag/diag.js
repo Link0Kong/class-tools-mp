@@ -1,6 +1,6 @@
 // pages/diag/diag.js —— 诊断 v2.1（2026-11-09；所有有效班级身份可见）
 //
-// 契约：C:\Users\Ko_Li\.openclaw\workspace\_diag_task\CONTRACT_V2_1.md §A/§B（冲突以 v2.1 为准）
+// 契约：诊断接口字段与错误码以云端 RPC 契约为准（v2.1）
 //   * 服务健康 public.service_health（RLS auth_ok）：18 行 / 5 组；保留原分组、状态中文、
 //     cloudbase 实时延迟覆盖、采集主机心跳离线降级、site_static/jwxt 快照兜底与 60s 刷新；
 //   * AI 结论（diag_analysis）**下挂到对应异常项**：related.health_ids → 服务健康行；

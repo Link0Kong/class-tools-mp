@@ -26,7 +26,7 @@ const versionInfo = require('./version.js');
 const CONFIG = {
   enabled: false,
   restBase: '',
-  // 2026-11-18 自建后端切流：当前档位（cloudbase|staging|selfhosted）+ 三档地址表（来自 cloud-config.js）
+  // 2026-11-18 自建后端切流：当前档位（cloudbase|selfhosted）+ 档位地址表（来自 cloud-config.js）
   restProfile: 'cloudbase',
   restProfiles: null,
   publishableKey: '',
@@ -298,7 +298,7 @@ function rawRequest(method, url, data, header, opts) {
         },
         fail: function (err) { noteNetFail(); reject(err || new Error('network')); }
       };
-      // HTTP/2：仅 https（微信基础库 2.10.4+ 支持；旧基础库/自建 http staging 忽略此选项）
+      // HTTP/2：仅 https（微信基础库 2.10.4+ 支持；旧基础库/明文 http 忽略此选项）
       if (netOpt().enableHttp2 && /^https:\/\//i.test(url)) o.enableHttp2 = true;
       wx.request(o);
     });

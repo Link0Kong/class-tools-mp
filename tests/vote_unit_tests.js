@@ -1274,7 +1274,7 @@ async function run(test) {
       // 预置班级名单（classMembers 里含 sid；页面 data 必须剥离，不得出现学号）
       const store = R('utils/store.js');
       store.get().classMembers = [
-        { seat: 1, sid: 'SID-PRIVATE-001', name: '李学盈', role: '', badge: '', is_admin: false },
+        { seat: 1, sid: 'SID-PRIVATE-001', name: '测试甲', role: '', badge: '', is_admin: false },
         { seat: 24, sid: 'SID-PRIVATE-024', name: '测试账号', role: '副团支书', badge: '班委', is_admin: false },
         { seat: 5, sid: 'SID-PRIVATE-005', name: '张三', role: '', badge: '', is_admin: false }
       ];
@@ -1294,7 +1294,7 @@ async function run(test) {
         // 默认全班；成员数据已就绪（按座号升序）
         assert.strictEqual(ctx.data.form.aud, 'all');
         assert.strictEqual(ctx.data.members.length, 3);
-        assert.deepStrictEqual(ctx.data.members.map(function (m) { return m.name; }), ['李学盈', '张三', '测试账号']);
+        assert.deepStrictEqual(ctx.data.members.map(function (m) { return m.name; }), ['测试甲', '张三', '测试账号']);
         assert.deepStrictEqual(ctx.data.members.map(function (m) { return m.seat; }), [1, 5, 24]);
         assert.strictEqual(JSON.stringify(ctx.data.members).indexOf('SID-PRIVATE'), -1, '页面 data 不得包含学号');
         // 切到指定成员

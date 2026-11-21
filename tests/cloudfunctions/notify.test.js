@@ -5,13 +5,14 @@
  */
 'use strict';
 const fs = require('fs');
+const path = require('path');
 const assert = require('assert');
 const Module = require('module');
 
-const ROOT = 'C:/Users/Ko_Li/.openclaw/workspace';
-const FN_DIR = ROOT + '/mp-class-tools/cloudfunctions/notify';
-const INDEX = FN_DIR + '/index.js';
-const MOCK = ROOT + '/mp-class-tools/tests/cloudfunctions/_mock/wx-server-sdk.js';
+const ROOT = path.resolve(__dirname, '..', '..');
+const FN_DIR = path.join(ROOT, 'cloudfunctions', 'notify');
+const INDEX = path.join(FN_DIR, 'index.js');
+const MOCK = path.join(__dirname, '_mock', 'wx-server-sdk.js');
 
 /* ---------- 固定时间：2026-11-05 13:15 上海时间 ---------- */
 const REAL_NOW = Date.now;

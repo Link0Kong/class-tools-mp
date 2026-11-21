@@ -44,7 +44,7 @@ function emptyDraw(wx) {
     H.eq(sc.count, 8);
     H.eq(sc.seats.length, 8);
     H.eq(sc.seats[0].seat, 1);
-    H.eq(sc.seats[0].name, '李学盈');
+    H.eq(sc.seats[0].name, '测试甲');
     H.eq(sc.source, 'draw', 'rollSel 与抽签参与名单一致');
     H.eq(sc.counts.total, 8);
     H.eq(sc.counts.present, 2);
@@ -72,7 +72,7 @@ function emptyDraw(wx) {
     const r = await call(e, 'getRollRoster');
     H.isOk(r);
     H.eq(r.structuredContent.count, 8);
-    H.eq(r.structuredContent.seats[0].name, '李学盈');
+    H.eq(r.structuredContent.seats[0].name, '测试甲');
   });
 
   await H.test('getRollRoster：未认证 → identity-required', async () => {
@@ -89,13 +89,13 @@ function emptyDraw(wx) {
     H.eq(sc.ok, true);
     H.eq(sc.count, 3);
     H.eq(sc.seats.map(function (x) { return x.seat; }).join(','), '1,2,24', '座号升序');
-    H.eq(sc.preserved, 2, '李学盈(到)+王梓萱(假) 按姓名保留');
+    H.eq(sc.preserved, 2, '测试甲(到)+测试乙(假) 按姓名保留');
     H.eq(sc.counts.present, 1);
     H.eq(sc.counts.absent, 1);
     H.eq(sc.counts.unmarked, 1);
     const st = storeOf(e.wx);
     H.eq(st.rollSel.join(','), '1,2,24');
-    H.eq(st.rollNames, '1 李学盈\n2 王梓萱\n24 测试账号');
+    H.eq(st.rollNames, '1 测试甲\n2 测试乙\n24 测试账号');
     H.eq(st.rollSt['0'], 'in', '写入口径与 pages/roll 一致：in');
     H.eq(st.rollSt['1'], 'ab');
     H.includes(r.content[0].text, '同步');
@@ -103,7 +103,7 @@ function emptyDraw(wx) {
 
   await H.test('setRollRoster：source=draw 沿用抽签名单', async () => {
     const e = env();
-    patchStore(e.wx, function (s) { s.rollSel = [1]; s.rollNames = '1 李学盈'; s.rollSt = {}; });
+    patchStore(e.wx, function (s) { s.rollSel = [1]; s.rollNames = '1 测试甲'; s.rollSt = {}; });
     const r = await call(e, 'setRollRoster', { source: 'draw' });
     H.isOk(r);
     H.eq(r.structuredContent.count, 8);
@@ -113,7 +113,7 @@ function emptyDraw(wx) {
 
   await H.test('setRollRoster：source=class 使用全班名单', async () => {
     const e = env();
-    patchStore(e.wx, function (s) { s.rollSel = [1]; s.rollNames = '1 李学盈'; s.rollSt = {}; });
+    patchStore(e.wx, function (s) { s.rollSel = [1]; s.rollNames = '1 测试甲'; s.rollSt = {}; });
     const r = await call(e, 'setRollRoster', { source: 'class' });
     H.isOk(r);
     H.eq(r.structuredContent.count, e.fx.MEMBERS.length);
@@ -368,7 +368,7 @@ function emptyDraw(wx) {
   /* ============================================================ useDrawRoster */
   await H.test('useDrawRoster：沿用到点名（保留同姓名状态）', async () => {
     const e = env();
-    patchStore(e.wx, function (s) { s.rollSel = [1]; s.rollNames = '1 李学盈'; s.rollSt = {}; });
+    patchStore(e.wx, function (s) { s.rollSel = [1]; s.rollNames = '1 测试甲'; s.rollSt = {}; });
     const r = await call(e, 'useDrawRoster');
     H.isOk(r);
     const sc = r.structuredContent;

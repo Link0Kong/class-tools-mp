@@ -153,7 +153,7 @@ async function run(outerTest) {
         title: '图书馆闭馆通知', cat: '教务', statusLabel: '截止 11月21日 18:00',
         summary: '周日全馆检修，暂停开放。', points: ['带校园卡', '不要占座', '第三点也不应丢弃', '第四点才截断'],
         segs: [{ type: '时间', text: '11月21日 08:00' }, { type: '地点', text: '图书馆' }, { type: '截止', text: '11月21日 18:00' }],
-        compose: [{ n: 2, label: '个附件' }], senderName: '陈玉霞', senderRole: '班长',
+        compose: [{ n: 2, label: '个附件' }], senderName: '测试庚', senderRole: '班长',
         source: 'QQ 群「班级群」', timeLabel: '11-20 10:00'
       },
       time: '2026-11-20 10:00'
@@ -167,7 +167,7 @@ async function run(outerTest) {
     assert.strictEqual(v.fields.length, 2, '关键字段最多 2 条（时间/地点优先）');
     assert.strictEqual(v.fields[0].k, '时间');
     assert.strictEqual(v.compose, '2个附件');
-    assert.strictEqual(v.sender, '陈玉霞 · 班长');
+    assert.strictEqual(v.sender, '测试庚 · 班长');
     assert.strictEqual(v.source, 'QQ 群「班级群」');
     assert.strictEqual(v.time, '2026-11-20 10:00');
   });
@@ -284,13 +284,13 @@ async function run(outerTest) {
 
   /* ---------------- C. 法律正文 ---------------- */
   const legal = require(path.join(MP, 'utils/legal-data.js'));
-  await T('法律 C1：两份正文元信息（V1.0 / 生效 2026-11-17 / 运营者 陈子麒）', async function () {
+  await T('法律 C1：两份正文元信息（V1.0 / 生效 2026-11-17 / 运营者信息）', async function () {
     ['privacy', 'terms'].forEach(function (k) {
       const d = legal[k];
       assert.ok(d && d.blocks.length > 30 && d.toc.length >= 15, k + ' 正文过少');
       assert.strictEqual(d.version, 'V1.0');
       assert.strictEqual(d.effective, '2026年11月17日');
-      assert.ok(d.operator.indexOf('陈子麒') >= 0, k + ' 缺少运营者');
+      assert.ok(String(d.operator || '').trim().length >= 2, k + ' 缺少运营者');
       assert.ok(d.title === '隐私政策' || d.title === '用户协议');
     });
   });

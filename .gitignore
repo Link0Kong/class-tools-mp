@@ -9,6 +9,24 @@ debug.log
 *.jks
 *.p12
 *.pfx
+*.pem
+*.key
+*.env
+*.cer
+*.crt
+
+# 编辑器本机配置
+.idea/
+
+# 内部运维脚本 / 提示词（仅本地保留，公开仓库不收录）
+AGENTS.md
+sync_repos.py
+sync-repos.cmd
+
+# 发布包 / 大体积媒体（用 Releases 分发，不入库）
+*.zip
+*.apk
+*.mp4
 
 # 依赖与构建缓存
 node_modules/
@@ -22,6 +40,9 @@ cloudfunctions/_backup/
 tests/_net_before/
 tests/_shots*/
 tests/_backup_*/
+tests/_reports/
+tests/_verify/
+tests/_qa_v2/_reports/
 tests/*-result.json
 tests/*_result.json
 tests/**/__pycache__/

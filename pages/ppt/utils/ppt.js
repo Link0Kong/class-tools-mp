@@ -1148,7 +1148,7 @@ function statusView(deck, opts) {
   }
   return { key: key, pill: pill, cls: cls, sub: sub, playable: playable, deletable: deletable, retryable: retryable, show: show, mine: mine };
 }
-// 列表卡片视图（wxml 直接绑定；DESIGN §4.1：封面 128×72 + 标题单行 + 元信息「38 页 · 陈子麒」）
+// 列表卡片视图（wxml 直接绑定；DESIGN §4.1：封面 128×72 + 标题单行 + 元信息「38 页 · 管理员」）
 function deckView(deck, opts) {
   const d = deck || {};
   const o = opts || {};

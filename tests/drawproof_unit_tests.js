@@ -135,7 +135,7 @@ function enableCloud(cloud) {
   cloud.configure({
     enabled: true, restBase: 'https://rest.test/v1/rdb/rest/', publishableKey: 'pk-test',
     ttUrl: '', timeout: 1000,
-    webBase: 'https://ko-link.cn'
+    webBase: 'https://tool.furina.fun'
   });
 }
 function emptyRes(o) { o.success({ statusCode: 200, data: [] }); }
@@ -189,14 +189,14 @@ async function run(test) {
     assert.notStrictEqual(dp.newRecordId(), dp.newRecordId(), '随机后缀应不同');
   });
 
-  await test('DRAW-B2 verifyUrl = webBase + "/#verify=<id>"（cloud-config.webBase 临时 ko-link.cn）', function () {
+  await test('DRAW-B2 verifyUrl = webBase + "/#verify=<id>"（cloud-config.webBase）', function () {
     const dp = R('utils/drawproof.js');
     const cfg = R('utils/cloud-config.js');
-    assert.strictEqual(cfg.webBase, 'https://ko-link.cn', 'cloud-config.webBase 必须临时为 https://ko-link.cn');
-    assert.strictEqual(dp.webBaseOf(), 'https://ko-link.cn', 'webBaseOf 去尾斜杠');
-    assert.strictEqual(dp.verifyUrl('dabc123456'), 'https://ko-link.cn/#verify=dabc123456');
+    assert.strictEqual(cfg.webBase, 'https://tool.furina.fun', 'cloud-config.webBase 必须为 https://tool.furina.fun');
+    assert.strictEqual(dp.webBaseOf(), 'https://tool.furina.fun', 'webBaseOf 去尾斜杠');
+    assert.strictEqual(dp.verifyUrl('dabc123456'), 'https://tool.furina.fun/#verify=dabc123456');
     assert.strictEqual(dp.verifyUrl('dabc123456', 'https://tool.furina.fun/'), 'https://tool.furina.fun/#verify=dabc123456', '显式 base 去尾斜杠');
-    assert.ok(src('utils/cloud-config.js').indexOf('恢复 tool.furina.fun 后改回') >= 0, 'webBase 注释必须说明恢复后改回 tool.furina.fun');
+    assert.ok(src('utils/cloud-config.js').indexOf('固定用 `https://tool.furina.fun`') >= 0, 'webBase 注释必须说明固定使用 tool.furina.fun');
   });
 
   /* ---------------------------------------------------------------- C. 名称映射（契约 §3.1） */
@@ -427,7 +427,7 @@ async function run(test) {
     assert.strictEqual(v.hashShort, 'h'.repeat(16));
     assert.strictEqual(v.seed, SEED);
     assert.strictEqual(v.algo, 'draw-v1');
-    assert.strictEqual(v.verifyUrl, 'https://ko-link.cn/#verify=dabc12345678');
+    assert.strictEqual(v.verifyUrl, 'https://tool.furina.fun/#verify=dabc12345678');
     assert.strictEqual(v.timeline.length, 2);
     assert.strictEqual(v.timeline[0].text, '补抽 6');
     assert.strictEqual(v.timeline[1].text, '剔除 5 → 补抽 6');
@@ -716,7 +716,7 @@ async function run(test) {
     assert.ok(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(map['存证时间']));
     assert.strictEqual(map['今日抽签'], '第 3 次（今日共 7 次）');
     assert.strictEqual(map['记录哈希'], 'h'.repeat(16));
-    assert.strictEqual(opt.qr, 'https://ko-link.cn/#verify=' + rid, 'QR = verifyUrl(记录 id)');
+    assert.strictEqual(opt.qr, 'https://tool.furina.fun/#verify=' + rid, 'QR = verifyUrl(记录 id)');
     assert.strictEqual(opt.qrTitle, '抽签存证核验');
     assert.ok(opt.qrCap.indexOf('需登录班级身份') > 0);
     assert.strictEqual(opt.qrNote.length, 3);
@@ -851,7 +851,7 @@ async function run(test) {
     assert.deepStrictEqual(d.rows.map(function (r) { return [r.n, r.nm]; }), [[9, '张三'], [10, '王五'], [4, '四号组']], '结果名称本地解析（映射 > 名单）');
     assert.strictEqual(d.timeline.length, 2);
     assert.strictEqual(d.hash, 'h'.repeat(64));
-    assert.strictEqual(d.verifyUrl, 'https://ko-link.cn/#verify=dabc12345678');
+    assert.strictEqual(d.verifyUrl, 'https://tool.furina.fun/#verify=dabc12345678');
     assert.ok(JSON.stringify(d).indexOf(ID.sid) < 0, '页面数据不含学号');
     // 二维码绘制：paintQr 灌入 fillRect（白底 + 模块）
     await new Promise(function (r) { setTimeout(r, 10); });
@@ -859,7 +859,7 @@ async function run(test) {
     assert.ok(rects.length > 20, 'canvas 应绘制二维码模块（实际 fillRect ' + rects.length + '）');
     assert.strictEqual(ctx.data.qrFail, false);
     ctx.copyVerify();
-    assert.strictEqual(C.clipLog()[0], 'https://ko-link.cn/#verify=dabc12345678', '复制核验链接');
+    assert.strictEqual(C.clipLog()[0], 'https://tool.furina.fun/#verify=dabc12345678', '复制核验链接');
     ctx.copyId();
     assert.strictEqual(C.clipLog()[1], 'dabc12345678', '复制存证编号');
     // 分享：详情深链
@@ -940,7 +940,7 @@ async function run(test) {
       title: '抽签结果', config: [['抽签 · 范围', '1 – 10']],
       blocks: [{ label: '抽中结果（3）', chips: [{ n: 9, nm: '' }] }],
       foot: 'f', rec: 'dabc12345678',
-      qr: 'https://ko-link.cn/#verify=dabc12345678',
+      qr: 'https://tool.furina.fun/#verify=dabc12345678',
       qrTitle: '抽签存证核验',
       qrCap: '扫码核验本次抽签记录（需登录班级身份）',
       qrNote: ['存证编号 dabc', '记录哈希 hhhhhhhhhhhh', '今日第 3 次 · 共 7 次']

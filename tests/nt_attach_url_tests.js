@@ -33,7 +33,7 @@ const ID = { token: 'tok-att-1', sid: '3260799999', name: '测试账号', role: 
 const NT_PREFIX = '[[CLASS_NOTICE_V1]]';
 // 契约形态：/att/<32 位十六进制>?exp=<unix 秒>&sig=<hex64>（只测协议判断，不写死域名）
 const URL_HTTPS = 'https://tool.furina.fun/att/0123456789abcdef0123456789abcdef?exp=1790000000&sig=' + 'a'.repeat(64);
-const URL_HTTP = 'http://121.196.47.2/att/fedcba9876543210fedcba9876543210?exp=1790000000&sig=' + 'b'.repeat(64);
+const URL_HTTP = 'http://example.test/att/fedcba9876543210fedcba9876543210?exp=1790000000&sig=' + 'b'.repeat(64);
 const DATA_PDF = 'data:application/pdf;base64,' + 'JVBERi0xLjQK'.repeat(400);   // 4800 字符 ≈ 3600 B → 4 KB
 const DATA_DOCX = 'data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,' + 'QUJD'.repeat(100);
 

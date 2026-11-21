@@ -232,7 +232,7 @@
 
 > 用户决定等 `tool.furina.fun` 备案完成，三端（网页/小程序/安卓）中所有 ko-link.cn 引用全部撤销。
 
-- `utils/cloud-config.js`：`webBase` 固定 `https://tool.furina.fun`（核验二维码链接基址）；`dropBase` 改回 `''`（开发版默认直连 ECS `http://121.196.47.2/drop`；体验版/正式版待 furina DNS+HTTPS 恢复后再配微信 request/downloadFile 合法域名）。
+- `utils/cloud-config.js`：`webBase` 固定 `https://tool.furina.fun`（核验二维码链接基址）；`dropBase` 改回 `''`（未配置时云空间提示等待配置；体验版/正式版待 furina DNS+HTTPS 恢复后再配微信 request/downloadFile 合法域名）。
 - `utils/drawproof.js` 注释同步，无逻辑改动。
 - 微信后台：不需要添加 `ko-link.cn` 合法域名（也从未成功添加过）；若之前加过请删除，等 furina 恢复后再配 `https://tool.furina.fun`。
 - 版本仍 2.0.0、UD 仍 v6；**需用户重新上传体验版/正式版后生效**。
@@ -737,7 +737,7 @@ node ppt_video_preview.js    -> automator：38 passed / 0 failed（真实 deck +
 > 三端同做（本文件只记小程序）；**未改版本号（2.0.0）**、AI 保持 off、**源码完成待用户上传发布**。
 
 ### ① 新增页面
-- **`pages/ppt/ppt`（列表 + 上传，4 文件）**：标题「演示」+ 右上「上传」主按钮；卡片流（封面 128×72 webp + 标题单行 + 元信息「38 页 · 陈子麒」+ 状态胶囊；`ready` 不显示胶囊）；转换机心跳横幅（同轮拉取，离线「转换机离线 · 排队任务中」不报错）；上传 = `wx.chooseMessageFile` 从聊天记录选 `.ppt/.pptx`（≤64MiB）→ 可改标题（默认文件名去扩展名 ≤80 字）→ 建行后**占位卡片先行**、封面底部 3px 进度条 → 512KiB 分片并发 ≤4 上传 → 自动 `queued`；失败胶囊「上传中断」+ 行内「重试」（上传中断=重选文件重传全部分片，转换失败=重新排队）；`⋯`/长按 → 重命名 / 下载原件 / 删除（仅本人）；取消上传二次确认后**清分片 + 软删**（不残留云端）；空态「还没有演示文件」+「从聊天选择」+ 一行小字「先把 .pptx 发到聊天」（全站唯一允许的说明句，设计稿指定）；可见时 10s 轮询（`onShow` 强拉、`onHide`/`onUnload` 停止）、下拉刷新；加载骨架 3 张。
+- **`pages/ppt/ppt`（列表 + 上传，4 文件）**：标题「演示」+ 右上「上传」主按钮；卡片流（封面 128×72 webp + 标题单行 + 元信息「38 页 · 管理员」+ 状态胶囊；`ready` 不显示胶囊）；转换机心跳横幅（同轮拉取，离线「转换机离线 · 排队任务中」不报错）；上传 = `wx.chooseMessageFile` 从聊天记录选 `.ppt/.pptx`（≤64MiB）→ 可改标题（默认文件名去扩展名 ≤80 字）→ 建行后**占位卡片先行**、封面底部 3px 进度条 → 512KiB 分片并发 ≤4 上传 → 自动 `queued`；失败胶囊「上传中断」+ 行内「重试」（上传中断=重选文件重传全部分片，转换失败=重新排队）；`⋯`/长按 → 重命名 / 下载原件 / 删除（仅本人）；取消上传二次确认后**清分片 + 软删**（不残留云端）；空态「还没有演示文件」+「从聊天选择」+ 一行小字「先把 .pptx 发到聊天」（全站唯一允许的说明句，设计稿指定）；可见时 10s 轮询（`onShow` 强拉、`onHide`/`onUnload` 停止）、下拉刷新；加载骨架 3 张。
 - **`pages/pptplay/pptplay`（全屏播放器，4 文件）**：`navigationStyle:custom` + `pageOrientation:auto` + `disableScroll`；纯黑舞台、图片 `contain` letterbox；点击右 2/3 下一步、左 1/3 上一步、左右滑（阈值 40px 或屏宽 12% 取大）；**后退单位 = step，`step=0` 后退到上一页最后一步**；双图 A/B 交叉 + 契约 §7 页切换动效（fade/push/wipe/zoom/cover，同页切步 120ms 淡入；类名 a/b 交替保证连续切换可重触发）；底部自动隐藏控制条（`‹ 页码 + 页内步点 ›`｜缩略图/备注/黑屏/更多；步点仅当前页 step≥2 显示）；顶部 2px 进度条（按 step）+ 左上文件名 3s 淡出；缩略图抽屉（手机 62vh、点页跳转、当前页描边 + 多步页当前步短线）；备注抽屉（50vh、不透明底、空则「本页无备注」）；视频/音频热点 = 归一化坐标 × **图片实际渲染矩形**（letterbox 内），**点击才播**、媒体层独立全屏（原生 `controls`、`poster`=当前步图）、**不随 step 卸载（只在换页/退出销毁）**；黑屏（课堂单键，点任意处恢复且不显示 UI）；更多 → 下载原件（`manifest.src` → `wx.downloadFile` → `wx.openDocument`）/ 退出演示（有进度且不在末页时二次确认，系统返回手势亦拦截）；横竖屏 `onResize`+`onWindowResize` 重算 letterbox 与热点；退出释放图片/视频/音频/定时器/网络监听、关屏幕常亮。
 - **`utils/ppt.js`**：契约 §4 全部接口走 `utils/cloud.js` 统一 request 通道（Bearer publishableKey + `X-Class-Token`）：`createDeck`（§4.1 建行字段/RLS `owner_sid=self`、`client='mp'`）、`sendChunk`（§4.2 upsert `resolution=merge-duplicates,return=minimal`）、`uploadChunks`（`wx.getFileSystemManager` 按 offset/length 读 ArrayBuffer → `wx.arrayBufferToBase64`，512KiB/片、并发 ≤4、失败重试 2 次 400/1200ms 退避、进度回调、可取消）、`submitDeck`（§4.3）、`listDecks`（§4.4 轻字段，不带 manifest）、`getManifest`（§4.5）、`patchDeck/softDelete/retryDeck/markUploadFailed`（§4.6；失败/取消都清理分片）、`heartbeat`（§3.4 `site_assets id='ppt_agent'`，180s 离线判定）、`pollRound`（§4.7 列表+心跳同一轮）、`openSource/openSourceUrl`（下载原件）；纯逻辑：deckId 生成、分片计数/区间、文件校验、manifest v1 归一化（未知字段忽略、缺字段默认、URL 解析、全局媒体表合并、缩略图兜底）、step 扁平序列/页码换算/进度/控制条文案/letterbox `fitRect`/热点矩形与圆钮/预加载计划/缩略图列表/状态文案/列表排序过滤/心跳视图/错误中文化——全部可在 Node 单测。
 - **云表常量**：`utils/cloud-config.js` 与 `utils/cloud.js` 增加 `pptDecks:'ppt_decks'` / `pptChunks:'ppt_upload_chunks'` 表名 + 通用 `cbDelete`（本人在 RLS 下可删自己的分片，用于取消/失败清理）。
@@ -1963,7 +1963,7 @@ PATCH），不上传发布。**审核相关：按用户指示不实现审核模�
 ### 更新内容
 
 - **去掉头像**：工作台顶部、我的身份卡、身份页已保存身份卡不再渲染姓名首字头像；相关样式与数据字段（`avatar`）一并删除，页面改为纯文字身份信息（姓名 + 角色 / 徽章 pill）。
-- **不再显示学号**：我的身份卡、身份页已保存身份卡、班委名单、访问统计、反馈归属兜底全部去掉学号展示（原先均为打码格式 `326070****24`，现直接不展示）；统计页改为「按姓名聚合（不显示学号）」，班委名单只显示姓名 / 职务 / 徽章，反馈里查不到姓名时显示「（未知成员）」而不是学号前缀。
+- **不再显示学号**：我的身份卡、身份页已保存身份卡、班委名单、访问统计、反馈归属兜底全部去掉学号展示（原先均为打码学号，现直接不展示）；统计页改为「按姓名聚合（不显示学号）」，班委名单只显示姓名 / 职务 / 徽章，反馈里查不到姓名时显示「（未知成员）」而不是学号前缀。
 - **代码清理**：`utils/identity.js` 删除 `maskSid` / `sidMask`（页面已无打码展示需求）；学号仍作为云端身份 / 作业归属 / 访问统计的内部键，不上页面。
 - **文案**：身份页隐私说明改为「只显示姓名与角色，不显示学号」；使用说明同步；我的页版本号 v1.3.3。
 - **验证**：`node unit.js` 50/50（新增 maskSid 已移除、统计页无学号字段断言）；`staticcheck.py` 17 页 handlers missing 0；开发者工具回归（ia_preview 30 项 / identity_preview 26 项）全过，浅色截图确认工作台、我的、身份页、班委、统计均无头像与学号。
@@ -2013,7 +2013,7 @@ PATCH），不上传发布。**审核相关：按用户指示不实现审核模�
 - **统一鉴权**：所有 `wx.request` 统一从 `utils/cloud.js` 发出；数据请求自动带 `X-Class-Token`，无有效身份时不发任何数据请求。旧的账号密码注册/登录、`utils/login.js`、`utils/sha256.js`、`X-Device-Id` 鉴权、`pages/verify` 认证页、`admin` 账号名管理员判断全部下线。
 - **页面守卫**：没有有效身份时，所有页面（工作台 / 工具 / 我的 / 课表 / 抽签 / 分组 / 结果单 / 作业 / 通知 / 体测 / 国标表 / 点名 / 反馈 / 使用说明 / 班委 / 统计）在 `onShow` 立即 `wx.reLaunch` 回身份页；身份只来自 `class_verify`。
 - **我的页改为身份信息**：展示姓名、打码学号、角色 / 徽章 / 管理员文字气泡、身份状态；提供「立即同步」「退出身份」「清空数据」「反馈建议」「使用说明」与数据隐私说明，不再有密码 / 注册 / 昵称入口。
-- **班委名单（新工具）**：`utils/tools.js` 注册「班委」，工作台 / 工具页可进入；列出 `class_members` 中 role 非空成员，姓名 + role / badge 文字 pill（不依赖头像），按官方职务顺序展示，普通成员也可查看。已按《关于公布2026级班委会拟定结果的通知》导入 18 名班委（班长陈玉霞、团支书谢梓萱、副团支书陈子麒等）。
+- **班委名单（新工具）**：`utils/tools.js` 注册「班委」，工作台 / 工具页可进入；列出 `class_members` 中 role 非空成员，姓名 + role / badge 文字 pill（不依赖头像），按官方职务顺序展示，普通成员也可查看。已按《关于公布示例班级班委会拟定结果的通知》导入 18 名班委（班长测试庚、团支书测试辛、副团支书管理员等）。
 - **统计改为按账号**：`visits` 表新增 `sid` / `name`，每次身份后访问写 `{id: sid+"|"+slot, slot, sid, name, did, ts}`；统计页仅管理员（is_admin）可见，按学号 / 姓名聚合访问次数与最近时间，可按天 / 按小时查看；**只统计有学号的 visits 行，旧匿名访问（sid/name 为空）会被过滤，不再出现「未知账号」**。
 - **名单来源替换**：抽签 / 点名「导入班级名单」改用 `class_members` 结果（本机 `classMembers` / `classRoster` 缓存），不再依赖 `public.roster` / `identity_verify`；移除旧的「更新云端名单」入口。
 - **现有功能保持**：课表 UI / 只读 / 周切换 / 本节详情、抽签分组、作业通知、体测、点名、反馈、订阅消息均继续可用，只改鉴权与身份入口；课表 `tt.json` 请求也统一改走 `utils/cloud.js`（不携带班级 token）。

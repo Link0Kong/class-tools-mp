@@ -244,7 +244,7 @@ function withFeedback(fx) {
     H.eq(obj.who.name, '测试账号');
     H.notIncludes(sc.jsonText, 'tok-fixture-ai-20261105', '不得包含身份 token');
     H.notIncludes(sc.jsonText, SID, '不得包含学号');
-    H.notIncludes(sc.jsonText, '李学盈', '不得包含班级名单原文');
+    H.notIncludes(sc.jsonText, '测试甲', '不得包含班级名单原文');
     H.notIncludes(sc.jsonText, 'classMembers');
     H.eq(sc.pagePath, '/pages/data/data');
     H.eq(H.handoffOf(res).query, '');
@@ -517,9 +517,9 @@ function withFeedback(fx) {
     const yest = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
     return [
       { id: SID + '|' + today + '-13|mp', slot: today + '-13', sid: SID, name: '测试账号', ts: fx.now, client: 'mp' },
-      { id: '9000000001|' + today + '-12|web', slot: today + '-12', sid: '9000000001', name: '李学盈', ts: fx.now - 3600000, client: 'web' },
-      { id: '9000000002|' + today + '-12|mp', slot: today + '-12', sid: '9000000002', name: '王梓萱', ts: fx.now - 4000000, client: 'mp' },
-      { id: '9000000001|' + yest + '-09|android', slot: yest + '-09', sid: '9000000001', name: '李学盈', ts: fx.now - 20 * 3600000, client: 'android' },
+      { id: '9000000001|' + today + '-12|web', slot: today + '-12', sid: '9000000001', name: '测试甲', ts: fx.now - 3600000, client: 'web' },
+      { id: '9000000002|' + today + '-12|mp', slot: today + '-12', sid: '9000000002', name: '测试乙', ts: fx.now - 4000000, client: 'mp' },
+      { id: '9000000001|' + yest + '-09|android', slot: yest + '-09', sid: '9000000001', name: '测试甲', ts: fx.now - 20 * 3600000, client: 'android' },
       { id: '9000000003|' + today + '-11|win', slot: today + '-11', sid: '9000000003', name: '赵六', ts: fx.now - 2 * 3600000, client: 'win' },
       { id: 'anon|' + today + '-08', slot: today + '-08', sid: '', name: '', ts: fx.now - 30 * 3600000 }
     ];
@@ -535,10 +535,10 @@ function withFeedback(fx) {
     const sc = res.structuredContent;
     H.eq(sc.total, 4, '匿名行与测试账号不参与统计');
     H.eq(sc.accounts, 3);
-    H.eq(sc.byName[0].name, '李学盈', '按访问次数排序');
+    H.eq(sc.byName[0].name, '测试甲', '按访问次数排序');
     H.eq(sc.byName[0].visits, 2);
     H.eq(sc.byName[0].lastClient, '网页');
-    H.eq(sc.byName[1].name, '王梓萱');
+    H.eq(sc.byName[1].name, '测试乙');
     H.eq(sc.byName[1].lastClient, '小程序');
     H.eq(sc.byName[2].name, '赵六');
     H.eq(sc.byName[2].lastClient, 'Windows');

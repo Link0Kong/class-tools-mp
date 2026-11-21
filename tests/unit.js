@@ -81,11 +81,11 @@ function ok(data) { return (o) => o.success({ statusCode: 200, data: data === un
 function failReq(o) { o.fail({ errMsg: 'request:fail mock' }); }
 
 const ID = { token: 'tok-test-1', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
-const ID2 = { token: 'tok-test-2', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };
+const ID2 = { token: 'tok-test-2', sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false, ts: 2 };
 const MEMBERS = [
-  { seat: 1, sid: '9999000001', name: '李学盈', role: '', badge: '', is_admin: false },
+  { seat: 1, sid: '9999000001', name: '测试甲', role: '', badge: '', is_admin: false },
   { seat: 24, sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true },
-  { seat: 26, sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false }
+  { seat: 26, sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false }
 ];
 function setIdentity(id) { mem['zq_class_identity'] = JSON.stringify(id || ID); }
 function urlOf(o) { return String(o && o.url || ''); }
@@ -527,7 +527,7 @@ const fakeCanvas = (() => {
   await test('身份：classVerify 失败（云端 ok:false / 网络错误 / 学号格式）', async () => {
     const { cloud } = cloudFresh();
     reqImpl = (o) => o.success({ statusCode: 200, data: { ok: false, reason: '姓名或学号不在班级名单中' } });
-    let r = await cloud.classVerify('3260707099', '张三');
+    let r = await cloud.classVerify('9999000099', '张三');
     assert.strictEqual(r.ok, false);
     assert.strictEqual(r.reason, '姓名或学号不在班级名单中');
     reqImpl = failReq;
@@ -554,10 +554,10 @@ const fakeCanvas = (() => {
     assert.strictEqual(mReq.header['X-Class-Token'], 'tok-1');
     assert.deepStrictEqual(mReq.data, {});
     assert.strictEqual(store.get().classMembers.length, 3);
-    assert.strictEqual(store.get().classRoster, '1 李学盈\n24 测试账号\n26 谢梓萱');
+    assert.strictEqual(store.get().classRoster, '1 测试甲\n24 测试账号\n26 测试辛');
     assert.ok(store.get().classMembersAt > 0);
     assert.strictEqual(cloud.memberCount(), 3);
-    assert.strictEqual(cloud.memberName('9999000004'), '谢梓萱');
+    assert.strictEqual(cloud.memberName('9999000004'), '测试辛');
     const bz = cloud.committee();
     assert.strictEqual(bz.length, 1);
     assert.strictEqual(bz[0].name, '测试账号');
@@ -840,7 +840,7 @@ const fakeCanvas = (() => {
     const PREFIX = '[[CLASS_NOTICE_V1]]';
     const rosterNotice = {
       id: 'auto_roster', title: '关于运动会期间晚自习的通知', cat: '通知', source: 'QQ 群',
-      senderName: ' 陈玉霞 ', senderRole: '班长', senderBadge: '班委', ocr: true,
+      senderName: ' 测试庚 ', senderRole: '班长', senderBadge: '班委', ocr: true,
       aiSummary: '运动会期间晚自习正常', aiPoints: ['晚自习照常'],
       deadline: '2099-01-01T00:00:00+08:00',
       expireAt: '2099-01-01T00:00:00+08:00',
@@ -851,7 +851,7 @@ const fakeCanvas = (() => {
     };
     const plainNotice = {
       id: 'auto_plain', title: '图书馆闭馆通知', cat: '通知', source: 'QQ 群',
-      senderName: '李学盈', deadline: '2099-01-02T00:00:00+08:00',
+      senderName: '测试甲', deadline: '2099-01-02T00:00:00+08:00',
       items: [{ kind: 'text', text: '周日全馆检修。' }]
     };
     const badgeOnly = {
@@ -889,7 +889,7 @@ const fakeCanvas = (() => {
     assert.strictEqual(list.length, 3, '默认「待处理」应过滤掉已过期通知');
     const a = list.find((x) => x.id === 'auto_roster');
     assert.ok(a, '缺少班委发布的通知卡');
-    assert.strictEqual(a.senderName, '陈玉霞', 'senderName 应去首尾空白');
+    assert.strictEqual(a.senderName, '测试庚', 'senderName 应去首尾空白');
     assert.strictEqual(a.senderRole, '班长', 'senderRole 应透传到卡片数据');
     assert.strictEqual(a.senderBadge, '班委', 'senderBadge 原始字段应保留');
     assert.strictEqual(a.pubBadge, '班长', '气泡文字 = senderRole（职位），不是「班委」');
@@ -899,7 +899,7 @@ const fakeCanvas = (() => {
     assert.strictEqual(a.expanded, true, '未过期通知默认展开');
     const b = list.find((x) => x.id === 'auto_plain');
     assert.ok(b);
-    assert.strictEqual(b.senderName, '李学盈');
+    assert.strictEqual(b.senderName, '测试甲');
     assert.strictEqual(b.senderRole, '');
     assert.strictEqual(b.senderBadge, '', '非班委 senderBadge 为空');
     assert.strictEqual(b.pubBadge, '', '非班委不应有气泡');
@@ -962,7 +962,7 @@ const fakeCanvas = (() => {
       items: [
         { kind: 'img', src: 'data:image/png;base64,AAAA', caption: '截图' },
         { kind: 'text', fromName: '林睿琪', fromRole: '学习委员', fromBadge: '班委', text: '运动会期间晚自习正常。' },
-        { kind: 'follow', fromName: '陈玉霞', fromRole: '', fromBadge: '班委', text: '补充：地点改到 A301。' },
+        { kind: 'follow', fromName: '测试庚', fromRole: '', fromBadge: '班委', text: '补充：地点改到 A301。' },
         { kind: 'follow', fromName: '甘子怡', text: '收到。' }
       ]
     };
@@ -2346,7 +2346,7 @@ const fakeCanvas = (() => {
     assert.strictEqual(store.get().group.names, MEMBERS[0].name + '\n' + MEMBERS[1].name);
     assert.strictEqual(store.get().group.source, 'pick', '旧 paste 来源归一为 pick');
     assert.deepStrictEqual(roster.selOf('roll'), [1, 24]);
-    // 旧顺序：测试账号(in) 在前；新顺序按座号：李学盈(1) 在前 → 测试账号排到下标 1，状态仍属于本人
+    // 旧顺序：测试账号(in) 在前；新顺序按座号：测试甲(1) 在前 → 测试账号排到下标 1，状态仍属于本人
     assert.strictEqual(store.get().rollSt[0], 'ab');
     assert.strictEqual(store.get().rollSt[1], 'in');
     assert.strictEqual(store.get().selVer, 1);
@@ -2363,7 +2363,7 @@ const fakeCanvas = (() => {
     const { store, roster } = fresh();
     clearMem();
     store.get().classMembers = MEMBERS.slice();
-    // 先有 1 / 24 两人，状态：李学盈=假、测试账号=到
+    // 先有 1 / 24 两人，状态：测试甲=假、测试账号=到
     store.get().rollSel = [1, 24];
     store.get().rollNames = '1 ' + MEMBERS[0].name + '\n24 ' + MEMBERS[1].name;
     store.get().rollSt = { 0: 'ab', 1: 'in' };
@@ -2371,10 +2371,10 @@ const fakeCanvas = (() => {
     let got = roster.rollSet([24, 26]);
     assert.deepStrictEqual(got, [24, 26]);
     assert.strictEqual(store.get().rollNames, '24 ' + MEMBERS[1].name + '\n26 ' + MEMBERS[2].name);
-    assert.deepStrictEqual(store.get().rollSt, { 0: 'in' }, '测试账号(到) 保留；新加入的谢梓萱未点');
+    assert.deepStrictEqual(store.get().rollSt, { 0: 'in' }, '测试账号(到) 保留；新加入的测试辛未点');
     got = roster.rollSet([1, 24]);
     assert.deepStrictEqual(got, [1, 24]);
-    assert.deepStrictEqual(store.get().rollSt, { 1: 'in' }, '李学盈已被移除过，状态不再有；测试账号仍在 → 下标 1');
+    assert.deepStrictEqual(store.get().rollSt, { 1: 'in' }, '测试甲已被移除过，状态不再有；测试账号仍在 → 下标 1');
     got = roster.rollSet([]);
     assert.deepStrictEqual(got, []);
     assert.strictEqual(store.get().rollNames, '');

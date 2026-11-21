@@ -5,7 +5,7 @@
  *       node ai_unit_all.js --only=identity,account
  *       node ai_unit_all.js --verbose          # 失败时打印被测文件完整输出
  * 缺失的实现者测试文件 → SKIP（不崩溃，不阻断）。
- * 结果文件：_ai_task/qa/ai_unit_all_result.json
+ * 结果文件：tests/_reports/ai_unit_all_result.json
  *
  * 约定：被测文件（ai_unit_<skill>.js）需自己 exit code 表示结果；无 exit code 时按输出里的 "FAIL" 行数判断。
  */
@@ -16,7 +16,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const DIR = __dirname;
-const QA_DIR = path.resolve(DIR, '..', '_ai_task', 'qa');
+const QA_DIR = path.resolve(DIR, '_reports');
 const RESULT_FILE = path.join(QA_DIR, 'ai_unit_all_result.json');
 const ARGS = process.argv.slice(2);
 const INPROC = ARGS.indexOf('--inproc') >= 0;

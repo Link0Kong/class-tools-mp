@@ -20,7 +20,8 @@ const assert = require('assert');
 const HERE = __dirname;
 const MP = path.resolve(HERE, '..'); // tests/ 已并入小程序仓库，上一级即小程序根目录
 const PAGE = 'pages/cloudspace/cloudspace';
-const REAL_SIDS = /3260707024|3260707001|3260707002|3260707003|3260707026|陈子麒/;
+// 真实 10 位学号（2026 级）：测试身份统一用 3260799xxx 段，源码出现其他段即视为泄漏
+const REAL_SIDS = /32607(?!99)\d{5}/;
 
 function src(rel) { return fs.readFileSync(path.join(MP, rel), 'utf8'); }
 function exists(rel) { return fs.existsSync(path.join(MP, rel)); }
@@ -273,14 +274,12 @@ function run(outerTest) {
       assert.strictEqual(mockRequest.log.length, 0, '不得向已暂停域名发请求');
     });
   });
-  T('C2 仅开发版可用 http IP；体验版/正式版强制 HTTPS', function () {
+  T('C2 未配置 dropBase：各环境都返回空基址（不猜地址）', function () {
     withDefaultBase(function () {
-      global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'develop' } }; };
-      assert.strictEqual(cs.base(), 'http://121.196.47.2/drop');
-      global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'trial' } }; };
-      assert.strictEqual(cs.base(), '');
-      global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'release' } }; };
-      assert.strictEqual(cs.base(), '');
+      ['develop', 'trial', 'release'].forEach(function (env) {
+        global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: env } }; };
+        assert.strictEqual(cs.base(), '', env + ' 版未配置 dropBase 时不得猜地址');
+      });
     });
   });
   T('C3 无 getAccountInfoSync 时保守回退正式版（空基址不可用）', function () {

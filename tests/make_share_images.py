@@ -17,9 +17,10 @@ except Exception:  # pragma: no cover - 只在缺模块时走线性量化回退
     encode_palette_png = None
 
 TESTS = os.path.dirname(os.path.abspath(__file__))
-PROJ = os.path.join(os.path.dirname(TESTS), 'mp-class-tools')
+PROJ = os.path.dirname(TESTS)
 IMG = os.path.join(PROJ, 'images')
 OUT = os.path.join(IMG, 'share')
+SHOTS = os.path.join(TESTS, '_shots')
 
 BG = (244, 240, 230, 255)
 INK = (48, 58, 53, 255)
@@ -97,7 +98,7 @@ def build(file, icon, accent, title, sub):
 
     # 右侧文字
     x = 208
-    d.text((x, 118), '班级工具 · 2026级信管班', font=F_EYEBROW, fill=MUTED)
+    d.text((x, 118), '班级工具 · 示例班级', font=F_EYEBROW, fill=MUTED)
     font = F_TITLE if d.textlength(title, font=F_TITLE) <= 250 else F_TITLE_S
     d.text((x, 146), title, font=font, fill=INK)
     # 副标题：先按最大宽度自动缩字号，再按宽度折行（最多两行）
@@ -135,8 +136,8 @@ if __name__ == '__main__':
     for c in CARDS:
         build(*c)
 
-    # 交付图：8 张分享卡片排成 2×4 总览（桌面）
-    DESKTOP = r'C:\Users\Ko_Li\OneDrive\桌面'
+    # 交付图：8 张分享卡片排成 2×4 总览（写入 tests/_shots/，该目录不入库）
+    os.makedirs(SHOTS, exist_ok=True)
     sheet_w, sheet_h = 360, 288
     gap, pad = 20, 48
     title_font = ImageFont.truetype(r'C:\Windows\Fonts\msyhbd.ttc', 40)
@@ -159,6 +160,6 @@ if __name__ == '__main__':
         label = {'default': '通用 / 我的 / 反馈', 'index': '工作台', 'tt': '课表（带周次）', 'hw': '作业板',
                  'nt': '班级通知', 'draw': '抽签分组', 'ft': '体测 / 国标表', 'bz': '班委名单'}.get(c[0][:-4], c[0])
         d.text((x, yy + sheet_h + 6), label, font=cap_font, fill=MUTED[:3])
-    out = os.path.join(DESKTOP, '小程序分享卡片_20261104.png')
+    out = os.path.join(SHOTS, 'share_overview.png')
     canvas.save(out, 'PNG')
     print('saved', out, canvas.size)

@@ -41,10 +41,6 @@
       },
       {
         "type": "file",
-        "value": "1.keystore"
-      },
-      {
-        "type": "file",
         "value": "debug.log"
       }
     ],

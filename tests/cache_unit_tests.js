@@ -15,7 +15,7 @@ const assert = require('assert');
 const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 
 const ID = { token: 'tok-cache-1', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
-const ID2 = { token: 'tok-cache-2', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };
+const ID2 = { token: 'tok-cache-2', sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false, ts: 2 };
 
 function purge() {
   Object.keys(require.cache).forEach(function (k) {
@@ -479,7 +479,7 @@ function run(test) {
       const { cloud } = C.cloudFresh();
       C.setIdentity(ID);
       C.setReqImpl(function (o) {
-        if (String(o.url).indexOf('/rpc/class_members') >= 0) return o.success({ statusCode: 200, data: [{ seat: 1, sid: '9999000001', name: '李学盈' }] });
+        if (String(o.url).indexOf('/rpc/class_members') >= 0) return o.success({ statusCode: 200, data: [{ seat: 1, sid: '9999000001', name: '测试甲' }] });
         return o.success({ statusCode: 200, data: [] });
       });
       await cloud.cloudPull();

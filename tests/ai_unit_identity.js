@@ -120,7 +120,7 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
   await H.test('verifyClassIdentity：名单不匹配 → verify-failed 并给出原因', async function () {
     const s = start({ identity: false });
     const { apis } = load(s.wx);
-    const res = await H.call(s.wx, apis, 'verifyClassIdentity', { sid: '3260707099', name: '不存在' });
+    const res = await H.call(s.wx, apis, 'verifyClassIdentity', { sid: '9999000099', name: '不存在' });
     H.isErr(res, 'verify-failed');
     H.includes(textOf(res), '不在班级名单中');
     H.eq(s.wx.getStorageSync('zq_class_identity'), '', '验证失败不保存身份');
@@ -162,7 +162,7 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
     H.eq(sc.pageSize, 20);
     H.eq(sc.items.length, 8);
     H.eq(sc.items[0].seat, 1);
-    H.eq(sc.items[0].name, '李学盈');
+    H.eq(sc.items[0].name, '测试甲');
     H.eq(sc.pagePath, '/pages/committee/committee');
     sc.items.forEach(function (it) { H.eq(it.sid, undefined, 'items 不得包含学号'); });
     H.eq(H.handoffOf(res).query, '');
@@ -176,7 +176,7 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
     H.eq(res.structuredContent.total, 4);
     res.structuredContent.items.forEach(function (it) { H.ok(it.role, '班委应带 role: ' + JSON.stringify(it)); });
     H.eq(H.handoffOf(res).query, 'roleOnly=1');
-    H.eq(res.structuredContent.items[0].name, '王梓萱');
+    H.eq(res.structuredContent.items[0].name, '测试乙');
   });
 
   await H.test('listClassMembers：keyword 过滤 + page/pageSize 分页', async function () {

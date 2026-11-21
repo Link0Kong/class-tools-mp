@@ -26,7 +26,7 @@ const assert = require('assert');
 const ROOT = require('path').resolve(__dirname, '..').replace(/\\/g, '/');
 const ROOT_N = ROOT.replace(/\\/g, '/');
 const ID = { token: 'tok-ppt-mp', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: false, ts: 1 };
-const ID2 = { token: 'tok-ppt-guest', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };
+const ID2 = { token: 'tok-ppt-guest', sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false, ts: 2 };
 const SID = ID.sid;
 
 function createCtx() {
@@ -538,8 +538,8 @@ async function run(test) {
       assert.strictEqual(v.hasCover, false);
       assert.strictEqual(v.hasPill, false, 'ready 无胶囊');
       assert.strictEqual(v.playable, true);
-      const other = ppt.deckView({ id: 'dB', owner_sid: ID2.sid, owner_name: '谢梓萱', status: 'ready', slide_count: 3 }, { sid: SID });
-      assert.strictEqual(other.meta, '3 页 · 谢梓萱');
+      const other = ppt.deckView({ id: 'dB', owner_sid: ID2.sid, owner_name: '测试辛', status: 'ready', slide_count: 3 }, { sid: SID });
+      assert.strictEqual(other.meta, '3 页 · 测试辛');
       const uploading = ppt.deckView({ id: 'dC', owner_sid: SID, status: 'uploading', title: 'x', source_size: 1048576 }, { sid: SID, up: { deckId: 'dC', done: 3, total: 6 } });
       assert.strictEqual(uploading.uploading, true);
       assert.strictEqual(uploading.upPct, 50, '占位卡片封面进度条');
@@ -1200,9 +1200,9 @@ async function run(test) {
         }
         if (u.indexOf('/ppt_decks?') >= 0) {
           return o.success({ statusCode: 200, data: [
-            { id: 'dReady', title: '班会', owner_sid: ID2.sid, owner_name: '谢梓萱', status: 'ready', slide_count: 12, created_at: 200 },
+            { id: 'dReady', title: '班会', owner_sid: ID2.sid, owner_name: '测试辛', status: 'ready', slide_count: 12, created_at: 200 },
             { id: 'dMineQueue', title: '我的', owner_sid: SID, owner_name: '测试账号', status: 'queued', created_at: 100 },
-            { id: 'dOtherUp', title: '别人在传', owner_sid: ID2.sid, owner_name: '谢梓萱', status: 'uploading', created_at: 300 }
+            { id: 'dOtherUp', title: '别人在传', owner_sid: ID2.sid, owner_name: '测试辛', status: 'uploading', created_at: 300 }
           ] });
         }
         return o.success({ statusCode: 200, data: [] });

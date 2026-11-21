@@ -5,7 +5,7 @@
   "description": "微信 AI 开发模式评测用例集。tags 规则见 ai_eval_check.js：每个用例 intent 为中文用户原话；entities.source 为主意图对应的 mcp 工具名（mcp.json apis[].name）；复杂用例（多条件/多步骤）加 complex 标签并在 entities.tools/conditions 说明；unregistered 用例表示不属于已注册能力的诉求，须带 private_data 或 product_service；negative 用例覆盖业务状态（business-state）与输入质量（input-quality）。",
   "cases": [
     { "id": "identity-profile", "intent": "我是谁？看一下我的班级身份和角色", "tags": ["identity", "product_service"], "entities": { "source": "getMyProfile" } },
-    { "id": "identity-verify", "intent": "帮我验证班级身份，学号 3260707001，姓名 李学盈", "tags": ["identity"], "entities": { "source": "verifyClassIdentity" } },
+    { "id": "identity-verify", "intent": "帮我验证班级身份，学号 9999000001，姓名 测试甲", "tags": ["identity"], "entities": { "source": "verifyClassIdentity" } },
     { "id": "identity-members-complex", "intent": "班里姓李的、有职务的同学都有谁？", "tags": ["identity", "complex"], "entities": { "source": "listClassMembers", "conditions": 2 } },
     { "id": "identity-committee", "intent": "我们班有哪些班委？", "tags": ["identity"], "entities": { "source": "getCommittee" } },
     { "id": "identity-overview", "intent": "我自己的待办概览怎么样？", "tags": ["identity"], "entities": { "source": "getMyOverview" } },

@@ -111,7 +111,7 @@ function run(test) {
       });
     });
 
-    await test('PPT-ECS B1：base 规则（缺省 webBase+/pptfiles / 自定义 devtools IP / enabled:false 回滚）', function () {
+    await test('PPT-ECS B1：base 规则（缺省 webBase+/pptfiles / 自定义 HTTPS base / enabled:false 回滚）', function () {
       purge();
       const ctx = createWx();
       global.wx = ctx.wx;
@@ -122,10 +122,10 @@ function run(test) {
         assert.strictEqual(ppt.pptEcsBase(), ECS);
         assert.strictEqual(ppt.pptEcsUrl(OSS + '/ppt/a/x.webp'), ECS + '/ppt/a/x.webp');
       });
-      // 2) 自定义 base（devtools/备案前）：http IP；尾斜杠被归一
-      withConfig(function (cfg) { cfg.pptEcs = { enabled: true, base: 'http://121.196.47.2/pptfiles/' }; }, function () {
-        assert.strictEqual(ppt.pptEcsBase(), 'http://121.196.47.2/pptfiles');
-        assert.strictEqual(ppt.pptEcsUrl(OSS + '/ppt/a/x.webp'), 'http://121.196.47.2/pptfiles/ppt/a/x.webp');
+      // 2) 自定义 base（私有部署/调试）：HTTPS；尾斜杠被归一
+      withConfig(function (cfg) { cfg.pptEcs = { enabled: true, base: 'https://cdn.example.com/pptfiles/' }; }, function () {
+        assert.strictEqual(ppt.pptEcsBase(), 'https://cdn.example.com/pptfiles');
+        assert.strictEqual(ppt.pptEcsUrl(OSS + '/ppt/a/x.webp'), 'https://cdn.example.com/pptfiles/ppt/a/x.webp');
       });
       // 3) enabled:false → OSS 直链（回滚旧行为）
       withConfig(function (cfg) { cfg.pptEcs = { enabled: false, base: '' }; }, function () {

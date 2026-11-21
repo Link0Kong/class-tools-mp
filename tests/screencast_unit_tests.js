@@ -20,7 +20,8 @@ const assert = require('assert');
 
 const HERE = __dirname;
 const MP = path.resolve(HERE, '..'); // tests/ 已并入小程序仓库，上一级即小程序根目录
-const REAL_SIDS = /3260707024|3260707001|3260707002|3260707003|3260707026|陈子麒/;
+// 真实 10 位学号（2026 级）：测试身份统一用 3260799xxx 段，源码出现其他段即视为泄漏
+const REAL_SIDS = /32607(?!99)\d{5}/;
 
 function src(rel) { return fs.readFileSync(path.join(MP, rel), 'utf8'); }
 function exists(rel) { return fs.existsSync(path.join(MP, rel)); }

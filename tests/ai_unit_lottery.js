@@ -33,7 +33,7 @@ function drawSt(over) {
 }
 function groupSt(over) {
   return Object.assign({
-    result: [[{ n: 1, nm: '李学盈' }, { n: 2, nm: '王梓萱' }], [{ n: 3, nm: '赵思远' }, { n: 4, nm: '' }]],
+    result: [[{ n: 1, nm: '测试甲' }, { n: 2, nm: '测试乙' }], [{ n: 3, nm: '测试丙' }, { n: 4, nm: '' }]],
     cfg: GROUP_CFG
   }, over || {});
 }
@@ -240,10 +240,10 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     const res = await m.call('runDraw', { start: 1, end: 4, count: 2, rosterSeats: [2, 1] });
     H.isOk(res);
     H.deepEq(names(res.structuredContent.items, 'number'), [2, 1], '池按座号升序 [1,2] 洗牌（rng=0）');
-    H.deepEq(names(res.structuredContent.items, 'name'), ['王梓萱', '李学盈'], '姓名取派生名单文本');
+    H.deepEq(names(res.structuredContent.items, 'name'), ['测试乙', '测试甲'], '姓名取派生名单文本');
     const st = storeOf(m.wx);
     H.deepEq(st.rosterSel, [1, 2]);
-    H.eq(st.roster, '1 李学盈\n2 王梓萱');
+    H.eq(st.roster, '1 测试甲\n2 测试乙');
     H.eq(JSON.stringify(flowOf(m.wx).draw.pool), '[1,2]');
   });
 
@@ -417,7 +417,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.eq(sc.groupCount, 2);
     H.eq(sc.total, 4);
     H.deepEq(sc.groups.map(function (g) { return names(g.members, 'number'); }), [[12, 26], [24, 31]]);
-    H.deepEq(sc.groups[0].members[1], { number: 26, name: '谢梓萱' }, '姓名取 store.roster');
+    H.deepEq(sc.groups[0].members[1], { number: 26, name: '测试辛' }, '姓名取 store.roster');
     H.deepEq(sc.cfg, GROUP_CFG, 'cfg 文案与 pages/group doGroup 逐字节');
     H.eq(H.handoffOf(res).query, 'step=2');
     const fl = flowOf(m.wx);
@@ -455,11 +455,11 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     const m = make({ storage: { zq_flow: EMPTY_FLOW } });
     const res = await m.call('runGroup', { mode: 'groups', value: 2, source: 'roster', rosterSeats: [7, 1, 2] });
     H.isOk(res);
-    H.deepEq(res.structuredContent.groups.map(function (g) { return names(g.members, 'name'); }), [['李学盈', '赵思远'], ['王梓萱']]);
+    H.deepEq(res.structuredContent.groups.map(function (g) { return names(g.members, 'name'); }), [['测试甲', '测试丙'], ['测试乙']]);
     H.deepEq(res.structuredContent.cfg, GROUP_CFG_ROSTER);
     const st = storeOf(m.wx);
     H.deepEq(st.group.sel, [1, 2, 7], '座号排序归一');
-    H.eq(st.group.names, '李学盈\n王梓萱\n赵思远');
+    H.eq(st.group.names, '测试甲\n测试乙\n测试丙');
     H.eq(st.group.source, 'pick', '页面 source 口径 pick = 班级名单');
   });
 
@@ -489,7 +489,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.eq(sc.value, 2);
     H.eq(sc.shuffle, false);
     H.eq(sc.groups.length, 2);
-    H.deepEq(sc.groups[0].members, [{ number: 3, name: '李学盈' }, { number: 17, name: '' }]);
+    H.deepEq(sc.groups[0].members, [{ number: 3, name: '测试甲' }, { number: 17, name: '' }]);
     H.eq(H.handoffOf(res).query, 'step=2');
   });
 

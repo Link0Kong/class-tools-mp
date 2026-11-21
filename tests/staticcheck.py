@@ -1,6 +1,7 @@
 import os
-os.chdir(r'C:\Users\Ko_Li\.openclaw\workspace\mp-class-tools')
-import os, json,re,glob
+# 以本文件所在目录的上一级（仓库根）为工作目录，仓库可放在任意路径
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import json,re,glob
 app=json.load(open('app.json',encoding='utf-8'))
 
 subs=app.get('subPackages') or app.get('subpackages') or []

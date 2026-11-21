@@ -8,8 +8,8 @@
 //   * 上传来源用 wx.chooseMessageFile（从微信聊天选择文件）；大文件逐片读取（FileSystemManager.readFile
 //     的 position/length）→ ArrayBuffer 原始 POST，避免整文件读入内存；
 //   * 下载：wx.downloadFile → openDocument（文档）→ 失败则 shareFileMessage（发回聊天）→ 再失败提示；
-//   * 正式版需在微信后台配置 request + downloadFile 合法域名（默认 https://tool.furina.fun/drop），
-//     开发/体验版默认直连 ECS http://121.196.47.2/drop（需开发者工具「不校验合法域名」）。
+//   * 后端地址只从 utils/cloud-config.js 的 dropBase 读取（HTTPS，需加入微信后台
+//     request + downloadFile 合法域名）；未配置时不发请求，页面提示等待配置。
 const identity = require('../../utils/identity.js');
 const cloudspace = require('../../utils/cloudspace.js');
 const share = require('../../utils/share.js');

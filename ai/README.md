@@ -1,22 +1,22 @@
-# ai/ —— 微信 AI 开发模式（小程序 AI / 微信AI操作）适配包
+# ai/ —— 微信「小程序 AI」适配包
 
-> 本目录是**独立分包**（`app.json.subPackages: [{root:"ai", independent:true, pages:[]}]`），
-> 只在微信「小程序 AI 开发模式」运行时被加载，普通小程序页面不会引用这里任何代码。
+> 本目录是**独立分包**（`root: "ai"`，独立于主包运行），只在微信「小程序 AI 开发模式」下被加载；
+> 主包页面不引用这里任何代码。当前 `app.json` **未注册**该分包，因此默认不参与编译与发布。
 > 官方能力：把小程序功能抽象成**原子接口**（apis）+ **原子组件**（components），封装成 SKILL 供微信 AI 调用，
 > 并可通过 handoff 把对话流程接力到小程序页面。
 
 ## 结构
 
-```
+```text
 ai/
   common/                 共享层（技能内 require，不要复制改逻辑）
-    config.js             云端配置（与 utils/cloud-config.js 同步；只含公开 publishable key）
+    config.js             云端配置（require 主包 utils/cloud-config.js；只含公开 publishable key）
     auth.js               身份（读 storage 'zq_class_identity'；class_verify / class_members RPC）
     rest.js               PostgREST / RPC 唯一出口（统一头、超时、GET 重试、错误码）
     local.js              本机存储（zq_tools_v2 / zq_flow 读写；与主包同键同结构）
     marks.js              marks 表读写（hw / ntdone / nt；失败入 markPend 队列）
     result.js             统一返回结构与标准文案（ok / fail / identityFail / fromError）
-    fmt.js                日期时间 + 作业截止 + 通知状态口径（与 utils/util.js、utils/notice.js 逐字节一致）
+    fmt.js                日期时间 + 作业截止 + 通知状态口径（与 utils/util.js、utils/notice.js 一致）
     handoff.js            页面路径常量 + handoff 构造（含动态 path 覆盖）
   skills/<skill>/
     SKILL.md              业务说明（≤16000 B）
@@ -25,7 +25,6 @@ ai/
     apis/*.js             原子接口实现（只依赖 ai/common 与技能内 lib；禁止 getApp/页面 API/showToast）
     components/*/         原子组件（自定义组件四件套；Result 事件渲染 + setRelatedPage）
     lib/*.js              技能内纯逻辑（可 Node 单测）
-agent/                    主包内：AGENTS.md 全局提示词、page-meta.json 页面元数据
 utils/agent.js            主包页面侧 handoff 消费工具
 ```
 
@@ -42,9 +41,9 @@ utils/agent.js            主包页面侧 handoff 消费工具
 | ai/skills/roll | 点名名单/到·假/批量/重置/统计/沿用抽签名单 |
 | ai/skills/account | 同步状态/立即同步/数据概览/导出/清除云端/清除本机/反馈/访问统计 |
 
-## 开发约定（与 _ai_task/CONTRACT.md 一致）
+## 开发约定
 
-1. **只写自己技能目录**；共享逻辑一律放 `ai/common`（由 Lead 维护）。
+1. 共享逻辑一律放 `ai/common`，技能目录只放本技能实现。
 2. 原子接口返回 `result.ok(...)` / `result.fail(...)` / `result.identityFail()`；破坏性操作必须 `confirmed:true`。
 3. 列表/详情返回 `structuredContent.pagePath`（mcp.json outputSchema 标 `format:"page-link"` + `x-link-text-field`），
    同时返回 `handoff: handoff.handoffTo(pageKey, query, payload)`，页面由主包 `utils/agent.js` 消费。
@@ -54,26 +53,17 @@ utils/agent.js            主包页面侧 handoff 消费工具
 
 ## 测试
 
-```powershell
-cd C:\Users\Ko_Li\.openclaw\workspace\mp-class-tools-tests
-node ai_contract_test.js     # 静态契约（app.json/skills/mcp/组件/page-meta/大小/注册覆盖/禁用 API）
-node ai_unit_all.js          # 各技能原子接口单测（mock wx，不访问真实云端）
+在仓库根目录运行（Node + mock `wx.modelContext`，不访问真实云端）：
+
+```bash
+node tests/ai_unit_all.js    # 各技能原子接口单测，结果写入 tests/_reports/
+node tests/ai_eval_check.js  # 意图/实体评分，用例见 tests/ai_eval_cases.json
 ```
 
-## 上线注意
+## 启用与发布
 
-- 微信 AI 开发模式当前为**内测 beta**：需在「微信公众平台 → 基础功能 → AI 能力」申请「开发模式」；
-  官方明确「暂未开放代码提审」，**不要**把 AI 模式代码作为正式版本提交审核。
-- 正式发版前如不准备接入，用 `mp-class-tools-tests/ai_toggle.py --off` 切换到发版状态。它现在同时做两件事：
-  1. 移除 `app.json` 的 `subPackages`(/ai/) 与 `agent` 字段；
-  2. 向 `project.config.json` 的 `packOptions.ignore` 增补两条 folder 排除项（`ai`、`agent`），
-     让 `ai/` 与 `agent/` 不再进入微信开发者工具的编译包 —— 发版包体因此减小，
-     「代码质量」里把 `ai/skills/*/components/*` 列为无使用组件的 `CONTAINS_UNUSED_COMPONENTS` 也随之消失。
-  源码目录 `ai/`、`agent/` 始终保留在项目内（不删除、不移动），每次写入前脚本会自动备份到
-  `mp-class-tools-tests/_backup_ai_toggle/`。
-- `ai_toggle.py --on` 完整恢复日常 AI 开发状态：写回 `app.json` 的 AI 配置，并精确移除本脚本增补的
-  `ai`/`agent` 两条 ignore 条目（用户原有的 `packOptions.ignore` / `include` 条目不受影响）。
-- **质量扫描验证方式**：`--off` 后在微信开发者工具「代码质量 → 重新扫描」，`CONTAINS_UNUSED_COMPONENTS`
-  不应再列出 `ai/skills/*/components/*`（目标 0 个）；也可运行离线校验
-  `node mp-class-tools-tests/code_quality_check.js --project mp-class-tools`（若该脚本存在）。
+- 微信「小程序 AI 开发模式」需在微信公众平台申请开通，平台可能限制代码提审；未开通时请保持 `app.json` 不注册 `ai` 分包。
+- 启用时需要：在 `app.json.subPackages` 增加 `{ "root": "ai", "independent": true, "pages": [] }`，
+  并在 `project.config.json.packOptions.ignore` 中移除 `ai` 目录（或按平台要求配置）。
+- 关闭 / 发版时反向操作：删除该分包注册，并确保 `ai/` 不进入编译包（`packOptions.ignore` 增加 `ai`）。
 - AI 运行时与小程序共享登录身份（storage `zq_class_identity`）；未认证时原子接口统一返回 identity-required 并引导身份页。

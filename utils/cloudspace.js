@@ -9,10 +9,8 @@
 //   * 文件自上传完成起保留 72 小时；会话空闲 72 小时且无未过期文件时回收。
 //
 // 认证：请求头 X-Device-Id = 班级身份 token（与网页同口径）。
-// 域名：开发版默认直连 ECS http://121.196.47.2/drop（需开发者工具「不校验合法域名」）；
-//       体验版/正式版必须在 cloud-config.js 配置 HTTPS 的 dropBase（微信后台 request + downloadFile 合法域名）；
-//       2026-11-17 起未配置 dropBase 时正式/体验版直接返回「等待域名备案」，不向已暂停解析的
-//       tool.furina.fun 发必失败请求；DNS/备案恢复后配置 dropBase 即恢复。
+// 域名：只从 cloud-config.js 的 dropBase 读取（HTTPS，需加入微信后台 request + downloadFile 合法域名）；
+//       留空 = 未配置，页面提示「等待配置」，不猜测地址、不发必失败请求。
 //
 // 纯逻辑（分片规划/大小/剩余时间/事件合并）放本文件，页面只做交互与渲染。
 'use strict';
@@ -31,18 +29,11 @@ function envVersion() {
   } catch (e) { return 'release'; }
 }
 
-// 云空间基址（结尾无 /）；开发/体验版优先直连 ECS，正式版走备案 HTTPS 域名
-// 2026-11-17（DNS 暂停期性能优化）：正式/体验版在 dropBase 未配置时不再请求已暂停解析的
-// tool.furina.fun（否则每次进云空间/大屏互联都是必失败请求，拉高请求错误率）；改为直接返回
-// 可读的「等待域名备案」结果，域名恢复后配置 dropBase 即恢复（开发版仍可直连 ECS IP 调试）。
+// 云空间基址（结尾无 /）：只认 cloud-config.js 的 dropBase；未配置时返回空串
+// （页面据此提示「云空间暂不可用」，不猜测地址、不向未配置域名发请求）。
 function base() {
   const cfg = config();
-  let raw = cfg && cfg.dropBase ? String(cfg.dropBase).trim() : '';
-  if (!raw) {
-    /* 体验版/正式版都强制 HTTPS + 微信后台合法域名；只有开发版可以用 http IP 调试 */
-    if (envVersion() !== 'develop') return '';
-    raw = 'http://121.196.47.2/drop';
-  }
+  const raw = cfg && cfg.dropBase ? String(cfg.dropBase).trim() : '';
   return raw.replace(/\/+$/, '');
 }
 function unavailable() {

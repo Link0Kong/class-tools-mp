@@ -92,27 +92,28 @@ function run(test) {
   return (async () => {
     try {
       // ============================================================ N1 三档配置
-      await test('N1 三档 base：cloudbase 默认不变 / staging=ECS 影子路由 / selfhosted=备案后域名（切换只改档位）', () => {
+      await test('N1 两档 base：cloudbase 默认不变 / selfhosted=备案后域名（切换只改档位）', () => {
         const cfg = require(path.join(UTILS, 'cloud-config.js'));
         assert.strictEqual(cfg.restProfile, 'cloudbase', '发布前默认档位必须仍是 cloudbase（默认行为不变）');
         assert.ok(/^https:\/\/tool-d4gosudok46e0e081\.api\.tcloudbasegateway\.com\/v1\/rdb\/rest\/$/.test(cfg.restBase),
           'cloudbase 档应指向现有 CloudBase 网关：' + cfg.restBase);
-        assert.strictEqual(cfg.resolveRestBase('staging'), 'http://121.196.47.2/v1/rdb/rest-next/', 'staging 档 = ECS 影子验证路由');
         assert.strictEqual(cfg.resolveRestBase('selfhosted'), 'https://tool.furina.fun/v1/rdb/rest/', 'selfhosted 档 = 备案后正式域名');
         // 未知/空档位 → 回退当前档位（配置写错不会把站点打成「无后端」）
         assert.strictEqual(cfg.resolveRestBase(''), cfg.restBase);
         assert.strictEqual(cfg.resolveRestBase('typo'), cfg.restBase);
         assert.strictEqual(cfg.resolveRestBase(null), cfg.restBase);
-        // 路径契约：三档都以 /v1/rdb/rest... 结尾 '/'（PostgREST 根，末尾斜杠是拼接口径）
+        // 路径契约：两档都以 /v1/rdb/rest... 结尾 '/'（PostgREST 根，末尾斜杠是拼接口径）
         Object.keys(cfg.restProfiles).forEach((k) => {
           const u = cfg.restProfiles[k];
           assert.ok(/\/$/.test(u), k + ' 档必须以 / 结尾：' + u);
           assert.ok(/\/v1\/rdb\/rest/.test(u), k + ' 档路径应包含 /v1/rdb/rest：' + u);
         });
-        // 仅 staging 是 http 明文（只允许 devtools/调试版；正式版只允许 https）
-        assert.ok(/^http:\/\//.test(cfg.restProfiles.staging), 'staging 为 http（调试期）');
+        // 公开仓库不内置明文调试入口：地址表全部为 https
         assert.ok(/^https:\/\//.test(cfg.restProfiles.cloudbase));
         assert.ok(/^https:\/\//.test(cfg.restProfiles.selfhosted));
+        Object.keys(cfg.restProfiles).forEach((k) => {
+          assert.ok(!/^http:\/\//.test(cfg.restProfiles[k]), k + ' 档不得使用 http：' + cfg.restProfiles[k]);
+        });
         // 超时分级与网络层默认参数
         assert.ok(cfg.timeouts.login > cfg.timeouts.default, '登录超时应比默认宽（弱网冷启动）');
         assert.strictEqual(cfg.timeouts.default, 8000);
@@ -142,7 +143,7 @@ function run(test) {
       });
 
       // ============================================================ N3 HTTP/2
-      await test('N3 HTTP/2：https 请求带 enableHttp2=true；http staging 不带（基础库/明文链接自动回退 1.1）', async () => {
+      await test('N3 HTTP/2：https 请求带 enableHttp2=true；http 自定义地址不带（基础库/明文链接自动回退 1.1）', async () => {
         let cloud = freshCloud();
         resetLog();
         impl = ok([]);
@@ -151,12 +152,12 @@ function run(test) {
         assert.strictEqual(reqLog[0].enableHttp2, true, 'https 请求应启用 HTTP/2');
 
         cloud = freshCloud();
-        cloud.configure({ restProfile: 'staging', restBase: 'http://121.196.47.2/v1/rdb/rest-next/' });
+        cloud.configure({ restProfile: 'custom', restBase: 'http://example.test/v1/rdb/rest/' });
         resetLog();
         await cloud.cbGet('homework');
         assert.strictEqual(reqLog[0].enableHttp2, undefined, 'http 请求不应传 enableHttp2');
         assert.deepStrictEqual(cloud.restInfo(), {
-          profile: 'staging', base: 'http://121.196.47.2/v1/rdb/rest-next/', staging: true, secure: false
+          profile: 'custom', base: 'http://example.test/v1/rdb/rest/', staging: true, secure: false
         });
       });
 

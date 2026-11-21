@@ -9,7 +9,7 @@
  *   3) 覆盖率 ≥85% 原子接口（source + tools 去重，分母 = CONTRACT §5 的 60 个接口）；
  *   4) 复杂用例（多条件/多步骤）≥30%，complex 标签必须有依据（tools≥2 / conditions≥2 / multi-step）；
  *   5) entities.source / tools 必须是 mcp 工具名；unregistered 用例不得指向具体工具。
- * 结果文件：_ai_task/qa/ai_eval_check_result.json
+ * 结果文件：tests/_reports/ai_eval_check_result.json
  */
 'use strict';
 
@@ -22,7 +22,7 @@ const ROOT = (function () {
   return cands[0];
 })();
 const CASES_FILE = path.join(__dirname, 'ai_eval_cases.json');
-const RESULT_FILE = path.resolve(__dirname, '..', '..', '_ai_task', 'qa', 'ai_eval_check_result.json');
+const RESULT_FILE = path.resolve(__dirname, '_reports', 'ai_eval_check_result.json');
 const STRICT = process.argv.slice(2).indexOf('--strict') >= 0;
 
 // CONTRACT §5 全部 60 个原子接口（分母 / 开发期合法工具名）

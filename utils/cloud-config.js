@@ -16,27 +16,23 @@
 //     与 marks 同步；用户可在「我的 → 数据与隐私」关闭云同步（cloudOff，仅本机）。
 
 // ================================================================
-// REST base 三档（2026-11-18 自建后端切流；见 deploy/migration/CLIENTS.md）
+// REST base 两档（2026-11-18 自建后端切流）
 // ----------------------------------------------------------------
-// 后端从腾讯云 CloudBase 迁到 ECS 自建（PostgreSQL 18 + PostgREST 13），
+// 后端从腾讯云 CloudBase 迁到自建（PostgreSQL + PostgREST），
 // API 路径/语义与 CloudBase 完全一致，客户端切流只改「档位」一个常量；
 // 未切流前必须保持 cloudbase（发布前检查这一行）。
 //
-//   cloudbase  ：现状（腾讯云 CloudBase 网关）；正式版默认，CloudBase 到期前有效
-//   staging    ：ECS 影子验证路由 http://121.196.47.2/v1/rdb/rest-next/
-//                仅 devtools / 调试版可用（http + IP，正式版/体验版强制 HTTPS 合法域名）；
-//                devtools 需在「详情 → 本地设置」勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」
-//   selfhosted ：备案通过后的正式域名 https://tool.furina.fun/v1/rdb/rest/（正式版切流目标）
+//   cloudbase  ：现状（腾讯云 CloudBase 网关）；默认档，CloudBase 到期前有效
+//   selfhosted ：正式域名 https://tool.furina.fun/v1/rdb/rest/（备案/HTTPS 就绪后的切流目标）
 //
-// 三档使用同一份 publishableKey（自建 Caddy 会在自建路由上剥掉 Authorization 头；
+// 两档使用同一份 publishableKey（自建网关剥离 Authorization 头时，
 // RLS 仍按 X-Class-Token 校验，客户端鉴权逻辑无需改动）。
 // 切流/回滚：只改 ACTIVE_REST_PROFILE 一行 → 重新上传发布即可。
 const REST_PROFILES = {
   cloudbase: 'https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com/v1/rdb/rest/',
-  staging: 'http://121.196.47.2/v1/rdb/rest-next/',
   selfhosted: 'https://tool.furina.fun/v1/rdb/rest/'
 };
-// 当前档位：'cloudbase' | 'staging' | 'selfhosted'（发布前保持 cloudbase）
+// 当前档位：'cloudbase' | 'selfhosted'（发布前保持 cloudbase）
 const ACTIVE_REST_PROFILE = 'cloudbase';
 
 // 档位 → REST 根（未知档位回退到当前档位，避免配置写错时整个站点离线）
@@ -52,7 +48,7 @@ module.exports = {
 
   // 当前 REST 档位（只读；切流改上面的 ACTIVE_REST_PROFILE）
   restProfile: ACTIVE_REST_PROFILE,
-  // 三档地址表（只读；供诊断/测试展示，正常业务不要直接改这里）
+  // 档位地址表（只读；供诊断/测试展示，正常业务不要直接改这里）
   restProfiles: REST_PROFILES,
   // PostgREST 风格的 REST 基址，结尾必须有 '/'（= resolveRestBase(restProfile)）
   restBase: resolveRestBase(ACTIVE_REST_PROFILE),
@@ -88,21 +84,17 @@ module.exports = {
   // 该域名 DNS/备案恢复前，二维码核验链接暂不可用，等 furina 恢复后自动生效。
   webBase: 'https://tool.furina.fun',
 
-  // 文件传输（临时云空间）后端：ECS drop 服务（契约 web/drop/CONTRACT.md v2.2）。
-  // 留空 = 开发版默认直连 ECS 测试地址（仅开发者工具，勾「不校验合法域名」）；
-  // 体验版/正式版默认 https://tool.furina.fun/drop（体验版与正式版都强制 HTTPS + 合法域名，不能用 IP/http）。
-  // 发布前请把 https://tool.furina.fun 同时加入微信后台「request 合法域名」与「downloadFile 合法域名」
-  // （需 DNS 恢复 + HTTPS 启用；若临时换域名，这里填该域名的 HTTPS drop 地址）。
-  // 2026-11-14 撤销临时域名：恢复 `''`（留空 = 开发版默认直连 ECS 测试地址；
-  // 体验版/正式版等 tool.furina.fun DNS/备案恢复后再配微信合法域名，见上）。
+  // 文件传输（临时云空间）后端：drop 服务（契约见 web/drop/CONTRACT.md）。
+  // 留空 = 未配置：云空间/大屏互联返回「等待配置」，不猜测地址、不发必失败请求。
+  // 正式发布请填 https://tool.furina.fun/drop（需 HTTPS + 已加入微信后台
+  // 「request 合法域名」与「downloadFile 合法域名」）；换域名时同样填 HTTPS 地址。
   dropBase: '',
 
-  // PPT 在线媒体 ECS 缓存（2026-11-18 迁移优化；三端与网页同口径，契约 web/ppt/CONTRACT.md §11/§12）：
+  // PPT 在线媒体缓存（三端与网页同口径，契约见 web/ppt/CONTRACT.md）：
   //   OSS 香港（tool-furina-fun.oss-cn-hongkong.aliyuncs.com）的 /ppt/** 媒体（分步图 WebP、缩略图、
-  //   原样播放 MP4、media_files 单独下载音视频、下载包）→ ECS `/pptfiles/<path>` 缓存
-  //   （实测：OSS 首访 35s / ECS 命中 6-11MB/s；GET/HEAD/Range 206 均由 ECS 支持）。
+  //   原样播放 MP4、media_files 单独下载音视频、下载包）→ https://tool.furina.fun/pptfiles/<path> 缓存。
   //   * base 留空 = webBase + '/pptfiles'（正式：https://tool.furina.fun/pptfiles，需备案 + HTTPS）；
-  //   * devtools/备案前调试：临时设 'http://121.196.47.2/pptfiles'（配合「不校验合法域名」）；
+  //   * 调试需要时填自有 HTTPS 地址（不要用 IP/http），尾斜杠会被归一；
   //   * enabled:false = 回滚为 OSS 直链（旧行为，无需改其它代码）；
   //   * 只映射本 OSS 桶的 /ppt/**；data:/file:/本地临时路径/其它域名原样返回。
   pptEcs: {

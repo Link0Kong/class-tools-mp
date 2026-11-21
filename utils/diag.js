@@ -171,7 +171,7 @@ function build(ctxIn) {
 
 /* ================================================================
    诊断 v2.1（2026-11-09）—— AI 结论下挂异常项 / 简化折叠+展开 / 设备信息最小化
-   契约：C:\Users\Ko_Li\.openclaw\workspace\_diag_task\CONTRACT_V2_1.md §A/§B
+   契约：诊断接口字段与错误码（v2.1）
    * 本段全部纯函数（不读 wx / 不发请求），页面只负责采集原始值与渲染；
    * §B 设备信息最小化：上报/展示只保留 mp 白名单
      platform / osVersion / baseLib / screen{w,h,dpr} / memoryMB / storagePct / network / clockSkewMs；

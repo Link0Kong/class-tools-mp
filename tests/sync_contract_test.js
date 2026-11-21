@@ -59,11 +59,11 @@ global.wx = {
 };
 
 const ID = { token: 'tok-sync-1', sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true, ts: 1 };
-const ID2 = { token: 'tok-sync-2', sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false, ts: 2 };
+const ID2 = { token: 'tok-sync-2', sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false, ts: 2 };
 const MEMBERS = [
-  { seat: 1, sid: '9999000001', name: '李学盈', role: '', badge: '', is_admin: false },
+  { seat: 1, sid: '9999000001', name: '测试甲', role: '', badge: '', is_admin: false },
   { seat: 24, sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true },
-  { seat: 26, sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false }
+  { seat: 26, sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false }
 ];
 
 function purge() {
@@ -276,7 +276,7 @@ function loadPage(rel) {
     assert.strictEqual(d.ntSub, true);
     assert.strictEqual(d.ntSubAt, 1762290000000);
     // 派生文本按本机 classMembers 重建（不覆盖同步 section 本身）
-    assert.ok(d.roster.indexOf('李学盈') >= 0, '抽签派生名单文本应按 classMembers 重建');
+    assert.ok(d.roster.indexOf('测试甲') >= 0, '抽签派生名单文本应按 classMembers 重建');
     // 基线 = 合并结果
     assert.strictEqual(d.udCache.v, 6);
     assert.strictEqual(d.nick, undefined, 'mp store 没有 nick 字段（网页端字段）');
@@ -930,7 +930,7 @@ function loadPage(rel) {
     d.draw.count = 9;
     d.rosterSel = [1, 24];
     d.rollSel = [26];
-    d.rollNames = '26 谢梓萱';
+    d.rollNames = '26 测试辛';
     d.group.sel = [1];
     d.did = 'dev-secret-id';
     d.markPend = [];
@@ -938,7 +938,7 @@ function loadPage(rel) {
     const json = privacy.exportJson(d, ID);
     assert.ok(json.indexOf('tok-sync-1') < 0, '导出不能包含 token');
     assert.ok(json.indexOf(ID.sid) < 0, '导出不能包含学号');
-    assert.ok(json.indexOf('李学盈') < 0, '导出不能包含班级名单原文 / 他人姓名');
+    assert.ok(json.indexOf('测试甲') < 0, '导出不能包含班级名单原文 / 他人姓名');
     assert.ok(json.indexOf('dev-secret-id') < 0, '导出不能包含设备 id');
     const j = JSON.parse(json);
     assert.strictEqual(j.schema, 'class-tools-userdata');
@@ -1139,11 +1139,20 @@ function loadPage(rel) {
     assert.strictEqual(blob.fit.sex, 'f', 'push blob 的 fit section 必须包含 sex');
     assert.strictEqual(blob.fit.grade, '34', 'push blob 的 fit section 必须包含 grade');
     // 字段集合与网页 UD_FIT_KEYS 完全一致（契约 §4「两端逐字节同字段」）
-    const web2 = fs.readFileSync('C:/Users/Ko_Li/.openclaw/workspace/web/tools/index.html', 'utf8');
-    const wm = web2.match(/var UD_FIT_KEYS=\[([^\]]*)\]/);
-    assert.ok(wm, '网页端应有 UD_FIT_KEYS');
-    const webKeys = wm[1].split(',').map((s) => s.replace(/["'\s]/g, '')).filter(Boolean);
-    assert.deepStrictEqual(Object.keys(blob.fit).sort(), webKeys.slice().sort(), 'push blob fit 字段集合应与网页 UD_FIT_KEYS 一致');
+    // 网页仓库不在本仓库内：默认尝试同级 ../web，可用 WEB_REPO 环境变量指定；找不到时只校验必需键。
+    const webHtml = process.env.WEB_REPO
+      ? path.join(process.env.WEB_REPO, 'tools/index.html')
+      : path.join(ROOT, '..', 'web', 'tools', 'index.html');
+    let webKeys = ['sex', 'grade'];
+    if (fs.existsSync(webHtml)) {
+      const web2 = fs.readFileSync(webHtml, 'utf8');
+      const wm = web2.match(/var UD_FIT_KEYS=\[([^\]]*)\]/);
+      assert.ok(wm, '网页端应有 UD_FIT_KEYS');
+      webKeys = wm[1].split(',').map((s) => s.replace(/["'\s]/g, '')).filter(Boolean);
+      assert.deepStrictEqual(Object.keys(blob.fit).sort(), webKeys.slice().sort(), 'push blob fit 字段集合应与网页 UD_FIT_KEYS 一致');
+    } else {
+      console.log('SKIP  网页端 UD_FIT_KEYS 对照（未找到 ' + webHtml + '）');
+    }
     // 主 ft 页 onShow → load() 读 store，显示同一个值
     const ftDef = loadPage('pages/ft/ft.js');
     const ftCtx = Object.assign({}, ftDef);

@@ -20,7 +20,7 @@
  * 路由（wx.request）：
  *   const wx = H.createWx({ routes: [
  *     { url: 'rpc/class_verify', method: 'POST', data: { ok: true, token: 'T', sid: '3260799999', name: '测试账号' } },
- *     { url: 'rpc/class_members', method: 'POST', data: [ {seat:1,sid:'...',name:'李学盈'} ] },
+ *     { url: 'rpc/class_members', method: 'POST', data: [ {seat:1,sid:'...',name:'测试甲'} ] },
  *     { url: 'homework', method: 'GET', data: [] },
  *     { url: 'marks', method: 'POST', handler: (req) => ({ statusCode: 201, data: req.data }) },
  *     { url: /notices\?/, data: [] },
@@ -204,8 +204,7 @@ let lastReport = null;
 const PROJECT = (function () {
   const cands = [
     path.resolve(__dirname, '..'),
-    path.resolve(process.cwd(), 'mp-class-tools'),
-    'C:/Users/Ko_Li/.openclaw/workspace/mp-class-tools'
+    path.resolve(process.cwd(), 'mp-class-tools')
   ];
   for (let i = 0; i < cands.length; i++) {
     try { if (fs.statSync(cands[i]).isDirectory()) return cands[i]; } catch (e) { /* next */ }
@@ -962,14 +961,14 @@ function resetRequests(wx) { if (wx && wx.__resetRequests) wx.__resetRequests();
 /* ================================================================ 夹具 */
 
 const FIXTURE_MEMBERS = [
-  { seat: 1, sid: '9999000001', name: '李学盈', role: '', badge: '', is_admin: false },
-  { seat: 2, sid: '9999000002', name: '王梓萱', role: '学习委员', badge: '班委', is_admin: false },
-  { seat: 7, sid: '3260707007', name: '赵思远', role: '', badge: '', is_admin: false },
-  { seat: 12, sid: '3260707012', name: '周雨桐', role: '团支书', badge: '班委', is_admin: false },
+  { seat: 1, sid: '9999000001', name: '测试甲', role: '', badge: '', is_admin: false },
+  { seat: 2, sid: '9999000002', name: '测试乙', role: '学习委员', badge: '班委', is_admin: false },
+  { seat: 7, sid: '9999000007', name: '测试丙', role: '', badge: '', is_admin: false },
+  { seat: 12, sid: '9999000012', name: '测试丁', role: '团支书', badge: '班委', is_admin: false },
   { seat: 24, sid: '3260799999', name: '测试账号', role: '副团支书', badge: '班委', is_admin: true },
-  { seat: 26, sid: '9999000004', name: '谢梓萱', role: '', badge: '', is_admin: false },
-  { seat: 31, sid: '3260707031', name: '孙浩然', role: '', badge: '', is_admin: false },
-  { seat: 45, sid: '3260707045', name: '吴佳怡', role: '生活委员', badge: '班委', is_admin: false }
+  { seat: 26, sid: '9999000004', name: '测试辛', role: '', badge: '', is_admin: false },
+  { seat: 31, sid: '9999000031', name: '测试戊', role: '', badge: '', is_admin: false },
+  { seat: 45, sid: '9999000045', name: '测试己', role: '生活委员', badge: '班委', is_admin: false }
 ];
 
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -1040,26 +1039,26 @@ function mkFixture(over) {
     },
     {
       id: 'ntg_002', title: '团日活动报名截止提醒', cat: '团务', source: '微信班级群',
-      senderName: '周雨桐', senderRole: '团支书', senderBadge: '班委',
+      senderName: '测试丁', senderRole: '团支书', senderBadge: '班委',
       deadline: isoOf(inHours(2)), expireAt: isoOf(inDays(1)), eventAt: null,
       alert: false, actionable: true, ocr: false,
       aiSummary: '本周五团日活动报名今晚 24 点截止，请未报名的同学尽快在收集表填写。',
       aiPoints: ['今晚 24 点截止', '收集表在群公告'],
       aiSegments: [{ type: '截止', text: '今晚 24 点' }, { type: '报名', text: '群内收集表' }],
       items: [
-        { kind: 'text', text: '团日活动报名今晚截止，请抓紧时间。', fromName: '周雨桐', fromRole: '团支书', time: '11-05 10:30' },
+        { kind: 'text', text: '团日活动报名今晚截止，请抓紧时间。', fromName: '测试丁', fromRole: '团支书', time: '11-05 10:30' },
         { kind: 'form', name: '团日活动报名表', close: '11-05 23:59', realTitle: '团日活动报名', url: 'data:application/octet-stream;base64,AAAA' }
       ]
     },
     {
       id: 'ntg_003', title: '奖学金材料提交（已截止）', cat: '班级事务', source: 'QQ群',
-      senderName: '王梓萱', senderRole: '学习委员', senderBadge: '班委',
+      senderName: '测试乙', senderRole: '学习委员', senderBadge: '班委',
       deadline: isoOf(now - 2 * DAY), expireAt: isoOf(now - DAY), eventAt: null,
       alert: false, actionable: true, ocr: false,
       aiSummary: '奖学金申请材料提交已截止，逾期不再受理。',
       aiPoints: ['已截止'],
       aiSegments: [{ type: '截止', text: '11 月 3 日' }],
-      items: [{ kind: 'text', text: '奖学金材料提交已截止。', fromName: '王梓萱', fromRole: '学习委员', time: '11-03 18:00' }]
+      items: [{ kind: 'text', text: '奖学金材料提交已截止。', fromName: '测试乙', fromRole: '学习委员', time: '11-03 18:00' }]
     },
     {
       id: 'ntg_004', title: '班级通讯录更新说明', cat: '班级事务', source: '微信班级群',
@@ -1151,7 +1150,7 @@ function mkFixture(over) {
     },
     group: {
       result: [
-        [{ n: 3, nm: '李学盈' }, { n: 17, nm: '' }],
+        [{ n: 3, nm: '测试甲' }, { n: 17, nm: '' }],
         [{ n: 24, nm: '测试账号' }, { n: 42, nm: '' }]
       ],
       cfg: { source: '上一步抽签序号', mode: '按组数(2 组)', total: '4', groups: '2', inner: '按原顺序轮流分配' }
