@@ -43,7 +43,7 @@
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .wb-power-sub {
-  margin-top: 4rpx; font-size: 22rpx; color: var(--md-on-surface-variant);
+  margin-top: 6rpx; font-size: 24rpx; color: var(--md-on-surface-variant);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .wb-power-right { flex: none; display: flex; flex-direction: column; align-items: flex-end; margin-left: 16rpx; }
@@ -55,34 +55,34 @@
 .wb-power-u { margin-left: 6rpx; font-size: 22rpx; font-weight: 600; color: var(--md-on-surface-variant); }
 .wb-power-pill { margin-top: 8rpx; height: 44rpx; padding: 0 18rpx; font-size: 21rpx; }
 .wb-power-empty { margin-top: 10rpx; }
-.wb-power-empty-t { display: block; font-size: 26rpx; color: var(--md-on-surface); }
-.wb-power-empty-s { display: block; margin-top: 4rpx; font-size: 23rpx; color: var(--md-primary); font-weight: 600; }
+.wb-power-empty-t { display: block; font-size: 28rpx; color: var(--md-on-surface); }
+.wb-power-empty-s { display: block; margin-top: 6rpx; font-size: 25rpx; color: var(--md-primary); font-weight: 600; }
 
 /* —— 待办卡 —— */
 .wb-task {
   display: flex; flex-direction: row; align-items: center;
-  padding: 24rpx 28rpx;
+  padding: 28rpx 32rpx;
   transition: background var(--md-dur-short) var(--md-ease-standard);
 }
 .wb-task--tap { background: var(--md-surface-container-high); }
 .wb-task-ico {
-  flex: none; width: 76rpx; height: 76rpx; margin-right: 24rpx;
+  flex: none; width: 84rpx; height: 84rpx; margin-right: 26rpx;
   border-radius: 999rpx; display: flex; align-items: center; justify-content: center;
-  font-size: 34rpx; color: #FFFFFF;
+  font-size: 38rpx; color: #FFFFFF;
 }
 .wb-task-ico--tertiary { background: var(--md-tertiary); }
 .wb-task-ico--primary { background: var(--md-primary); }
-.wb-task-img { width: 40rpx; height: 40rpx; display: block; }
-.wb-task-t { font-size: 30rpx; font-weight: 600; color: var(--md-on-surface); }
-.wb-task-n { margin-left: 10rpx; font-size: 30rpx; font-weight: 700; color: var(--md-primary); }
+.wb-task-img { width: 46rpx; height: 46rpx; display: block; }
+.wb-task-t { font-size: 32rpx; font-weight: 600; color: var(--md-on-surface); }
+.wb-task-n { margin-left: 10rpx; font-size: 32rpx; font-weight: 700; color: var(--md-primary); }
 .wb-task-s {
-  margin-top: 4rpx; font-size: 26rpx; color: var(--md-on-surface-variant);
+  margin-top: 6rpx; font-size: 28rpx; color: var(--md-on-surface-variant);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 
 /* —— 常用工具（一行 4 个）—— */
 .wb-all {
-  font-size: 26rpx; font-weight: 500; color: var(--md-on-surface-variant);
+  font-size: 28rpx; font-weight: 500; color: var(--md-on-surface-variant);
   padding: 10rpx 20rpx; border-radius: 999rpx; background: var(--md-surface-container-high);
 }
 .wb-all--tap { color: var(--md-primary); }
@@ -91,12 +91,12 @@
 .wb-q + .wb-q { margin-left: 14rpx; }
 .wb-q__in {
   display: flex; flex-direction: column; align-items: center;
-  padding: 24rpx 8rpx 22rpx; border-radius: var(--md-shape-lg);
+  padding: 26rpx 10rpx 24rpx; border-radius: var(--md-shape-lg);
   background: var(--md-surface-container-low);
   transition: background var(--md-dur-short) var(--md-ease-standard);
 }
 .wb-q-ico {
-  width: 80rpx; height: 80rpx; border-radius: 999rpx;
+  width: 84rpx; height: 84rpx; border-radius: 999rpx;
   background: var(--md-secondary);
   display: flex; align-items: center; justify-content: center;
 }
@@ -104,10 +104,10 @@
 .wb-q-ico--primary   { background: var(--md-primary); }
 .wb-q-ico--secondary { background: var(--md-secondary); }
 .wb-q-ico--tertiary  { background: var(--md-tertiary); }
-.wb-q-img { width: 48rpx; height: 48rpx; display: block; }
+.wb-q-img { width: 50rpx; height: 50rpx; display: block; }
 .wb-q-name {
   margin-top: 12rpx; max-width: 100%;
-  font-size: 24rpx; color: var(--md-on-surface);
+  font-size: 26rpx; color: var(--md-on-surface);
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 /* 尚未勾选常用工具：引导去「工具」页勾选（2026-11-06 起首页工具 = 用户主动勾选） */

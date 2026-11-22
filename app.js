@@ -153,7 +153,7 @@ function currentRoute() {
 
 App({
   globalData: {
-    version: version.VERSION,  // 版本号唯一来源 utils/version.js（当前 2.0.4）
+    version: version.VERSION,  // 版本号唯一来源 utils/version.js（当前 2.1.0）
     launchedAt: Date.now(),
     remoteReady: false,   // 云端是否已配置（纯本地判断，无副作用）
     identity: null,

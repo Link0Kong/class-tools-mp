@@ -1,8 +1,8 @@
 {
   "miniVersion": "v2",
   "name": "班级工具站",
-  "version": "2.0.4",
-  "versionCode": 26,
+  "version": "2.1.0",
+  "versionCode": 27,
   "i18nFilePath": "i18n",
   "mini-ohos": {
     "sdkVersion": "0.5.1"

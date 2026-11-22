@@ -462,7 +462,7 @@ module.exports.run = async function (test) {
     // L：每个工具描述最多 2 行完整显示，卡片高度适配
     const allCss = src('pages/all/all.wxss');
     assert.ok(/-webkit-line-clamp:\s*2/.test(allCss) && /white-space:\s*normal/.test(allCss), '工具描述 2 行 clamp');
-    assert.ok(/min-height:\s*148rpx/.test(allCss), '工具卡高度适配 2 行描述');
+    assert.ok(/min-height:\s*160rpx/.test(allCss), '工具卡高度适配 2 行描述');
     // M：电费同期比较独立行 + 趋势图例充值度数
     const pwWxml = src('pages/power/power.wxml');
     assert.ok(/pw-tile-cmp/.test(pwWxml), '区间用电 tile 独立比较行');

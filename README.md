@@ -2,7 +2,7 @@
 
 面向高校班级的微信小程序：身份核验之后，把抽签、分组、课表、作业、通知、名单、点名、投票等班级事务放到一个入口里。
 
-![version](https://img.shields.io/badge/version-2.0.4-blue)
+![version](https://img.shields.io/badge/version-2.1.0-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![platform](https://img.shields.io/badge/platform-%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F-07C160)
 
