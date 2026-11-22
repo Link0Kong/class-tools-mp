@@ -71,11 +71,11 @@ const CARDS = [
     scene: 'grid', tone: 'mint'
   },
   {
-    id: 'hw', cat: 'study', icon: '📝',
-    title: '作业板', sub: '截止倒计时，勾完成并同步',
-    steps: ['未完成 / 已完成两个分段切换', '勾「完成」后按账号同步', '验证身份后可发布作业与附件'],
-    tip: '删除后全员看不到，隐藏只影响自己',
-    scene: 'list', tone: 'sand'
+    id: 'hw', cat: 'study', icon: '✓',
+    title: '任务', sub: '个人任务 + 班级作业，统一入口',
+    steps: ['「我的任务 / 班级作业」分段切换', '快速添加任务，支持分组、步骤备注与附件', '班级作业和通知可「加入任务」，完成状态按账号同步'],
+    tip: '任务与网页 taskdata 云同步；附件只存本机',
+    scene: 'list', tone: 'mint'
   },
   {
     id: 'nt', cat: 'study', icon: '📢',
@@ -169,7 +169,7 @@ const SECTION_MAP = {
   home: 'home', index: 'home', workspace: 'home', features: 'home', share: 'home',
   draw: 'draw', lottery: 'draw', group: 'draw',
   roster: 'roster', names: 'roster',
-  hw: 'hw', homework: 'hw',
+  hw: 'hw', homework: 'hw', task: 'hw',
   nt: 'nt', notice: 'nt', ntattach: 'nt',
   tt: 'tt', timetable: 'tt',
   ft: 'ft', fitness: 'ft',

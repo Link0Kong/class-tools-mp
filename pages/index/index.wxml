@@ -108,27 +108,22 @@
       </block>
     </view>
 
-    <!-- 待办：作业（需求 11：卡内最新一条每 5s 上浮淡出→下浮淡入轮换；卡片轻微常驻浮动） -->
-    <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-a enter enter-3" bindtap="goHW" hover-class="wb-task--tap">
-      <view class="wb-task-ico wb-task-ico--tertiary">📝</view>
+    <!-- 待办：任务（个人任务 + 班级作业统一入口；接管原作业卡槽位，保留轮换/浮动样式） -->
+    <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-a enter enter-3" bindtap="goTask" hover-class="wb-task--tap">
+      <view class="wb-task-ico wb-task-ico--primary"><image class="wb-task-img" src="/images/tool-task.png" mode="aspectFit"></image></view>
       <view class="grow">
-        <view class="wb-task-t">作业待交<text wx:if="{{hw.open}}" class="wb-task-n">{{hw.open}}</text></view>
+        <view class="wb-task-t">待办任务<text wx:if="{{hw.open}}" class="wb-task-n">{{hw.open}}</text></view>
         <view class="wb-task-s" wx:if="{{hw.open}}">
           <text class="wb-rot wb-rot--{{hw.anim}}">{{hw.title}}<text wx:if="{{hw.sub}}"> · {{hw.sub}}</text></text>
         </view>
-        <view class="wb-task-s muted" wx:else>作业都完成了</view>
-      </view>
-      <text class="chev"></text>
-    </view>
-
-    <!-- 个人任务（与任务页/网页 taskdata 同一份数据） -->
-    <view class="m3-card m3-card--outlined wb-task enter enter-3" bindtap="goTask" hover-class="wb-task--tap">
-      <view class="wb-task-ico wb-task-ico--primary">✅</view>
-      <view class="grow">
-        <view class="wb-task-t">任务<text wx:if="{{task.open}}" class="wb-task-n">{{task.open}}</text></view>
-        <view class="wb-task-s" wx:if="{{task.open}}">{{task.title}}<text wx:if="{{task.sub}}"> · {{task.sub}}</text></view>
-        <view class="wb-task-s muted" wx:else>没有待办任务</view>
-        <view class="wb-task-s muted" wx:if="{{task.myday || task.important}}">我的一天 {{task.myday}} · 重要 {{task.important}}</view>
+        <view class="wb-task-s muted" wx:else>任务都完成了</view>
+        <view class="wb-task-s muted" wx:if="{{task.open || task.hwOpen}}">
+          <text wx:if="{{task.open}}">个人 {{task.open}}</text>
+          <text wx:if="{{task.open && task.hwOpen}}"> · </text>
+          <text wx:if="{{task.hwOpen}}">班级作业 {{task.hwOpen}}</text>
+          <text wx:if="{{task.myday}}"> · 我的一天 {{task.myday}}</text>
+          <text wx:if="{{task.important}}"> · 重要 {{task.important}}</text>
+        </view>
       </view>
       <text class="chev"></text>
     </view>

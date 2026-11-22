@@ -380,10 +380,10 @@ const fakeCanvas = (() => {
     assert.deepStrictEqual(tools.quickList(4).map((t) => t.key), ['draw', 'hw', 'tt', 'nt']);
     assert.strictEqual(tools.quickList(99).length, 4, 'quickList 最多 4 个（勾选集合本身 ≤4）');
     // 当前身份是测试账号：投票入口隐藏（2026-11-21 用户口径），其余工具顺序不变
-    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'task', 'power', 'water', 'file', 'map', 'stats', 'diag', 'ppt']);
+    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'file', 'map', 'stats', 'diag', 'ppt']);
     // 班委（非测试身份）仍可见投票入口，且目录顺序仍 = toolOrder
     const committee = { token: 'tok-ut-c', sid: 'fixture-committee-ut', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
-    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'task', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
+    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
     assert.strictEqual(tools.toolOf('stats').admin, true, '统计仍是管理工具，不进首页勾选');
     // 2026-11-22：电费 / 诊断恢复可勾选（与网页工具栏、安卓端一致）；统计仍按身份可勾选
     assert.strictEqual(tools.toolOf('diag').admin, undefined, '诊断对全班可见，不再是仅管理员工具');

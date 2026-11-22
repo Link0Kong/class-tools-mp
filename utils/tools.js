@@ -21,7 +21,7 @@
 const identity = require('./identity.js');
 
 // 云端 key → 本机 key（读）；本机 key → 云端 key（写）
-const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', group: 'draw' };
+const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', group: 'draw', task: 'hw' };
 const SYNC_KEY_OUT = { bz: 'committee' };
 
 // 把任意端写入的 key 归一成本机 key（未知 key 原样返回，由调用方决定丢弃/保留）
@@ -50,8 +50,7 @@ function toSyncKeys(list) {
 
 const TOOLS = [
   { key: 'tt',   name: '课表',   ico: '📅', icoImg: '/images/tool-tt.png', meta: '周次 · 下一节课', desc: '班级课表与下一节课；教务自动同步，全员查看', url: '/pages/tt/tt', tab: false, tone: 'primary' },
-  { key: 'hw',   name: '作业板', ico: '📝', icoImg: '/images/tool-hw.png', meta: '截止提醒 · 完成勾选', desc: '作业清单与截止倒计时；查看与勾选完成，验证身份后可发布', url: '/pages/hw/hw', tab: false, tone: 'tertiary' },
-  { key: 'task', name: '任务',   ico: '✅', icoImg: '/images/tool-hw.png', meta: '分组 · 步骤 · 提醒 · 云同步', desc: '个人任务：分组/步骤/备注/附件/提醒/重复；可与网页任务双向同步，班级作业和通知可加入任务', url: '/pages/task/task', tab: false, tone: 'primary' },
+  { key: 'hw',   name: '任务',   ico: '✓', icoImg: '/images/tool-task.png', meta: '个人任务 · 班级作业 · 云同步', desc: '个人任务与班级作业统一入口：分组、步骤备注、附件、截止提醒、重复；班级作业/通知可加入任务', url: '/pages/task/task', tab: false, tone: 'primary' },
   { key: 'nt',   name: '班级通知', ico: '📢', icoImg: '/images/tool-nt.png', meta: '简报 · 筛选 · 附件', desc: '云端班级通知；AI 拆分、附件预览、原始消息', url: '/pages/nt/nt', tab: false, tone: 'primary' },
   { key: 'ft',   name: '体测',   ico: '📏', icoImg: '/images/tool-ft.png', meta: '大学国标 · 加分', desc: '大学体测七项算分、附加分与等级，实时出分', url: '/pages/ft/ft', tab: false, tone: '' },
   { key: 'draw', name: '抽签分组', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 分组 · 结果单', desc: '抽号 → 分组 → 结果单；可剔除重抽、可分享卡片或长图', url: '/pages/draw/draw', tab: false, tone: '' },
@@ -83,6 +82,7 @@ const LEGACY_HOMES = [['draw', 'hw', 'nt'], ['hw', 'nt', 'ft', 'draw']]; // 极�
 const HIDDEN = [];                      // 课表已正式上线，不再隐藏入口
 
 function toolOf(key) {
+  if (key === 'task') key = 'hw';                 // 2026-11-22 旧「任务」独立 key 兼容
   for (let i = 0; i < TOOLS.length; i++) if (TOOLS[i].key === key) return TOOLS[i];
   return null;
 }

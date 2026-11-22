@@ -203,8 +203,10 @@ T('页面/入口：app.json 注册任务页、工具入口与四件套齐全', f
   const files = ['task.js', 'task.wxml', 'task.wxss', 'task.json'];
   files.forEach(function (f) { assert.ok(fs.existsSync(path.join(ROOT, 'pages/task', f)), f); });
   const tools = require(path.join(ROOT, 'utils/tools.js'));
-  const one = tools.TOOLS.filter(function (t) { return t.key === 'task'; })[0];
-  assert.ok(one && one.url === '/pages/task/task' && one.name === '任务');
+  const one = tools.toolOf('hw');
+  assert.ok(one && one.url === '/pages/task/task' && one.name === '任务', '任务必须接管原作业工具槽位');
+  assert.ok(one.icoImg === '/images/tool-task.png', '任务使用统一白色工具图标');
+  assert.ok(!tools.TOOLS.some(function (t) { return t.key === 'task'; }), '不再保留独立 task 工具入口');
   const js = fs.readFileSync(path.join(ROOT, 'pages/task/task.js'), 'utf8');
   ['onShareAppMessage', 'onShareTimeline', 'openShare', 'saveEditor', 'addFromHW'].forEach(function (m) {
     assert.ok(js.indexOf(m) >= 0, '缺少 ' + m);
@@ -219,6 +221,10 @@ T('页面/入口：app.json 注册任务页、工具入口与四件套齐全', f
   assert.ok(hw.indexOf('addFromHW') >= 0 && fs.readFileSync(path.join(ROOT, 'pages/hw/hw.wxml'), 'utf8').indexOf('toTask') >= 0, '作业板未接任务');
   const idx = fs.readFileSync(path.join(ROOT, 'pages/index/index.wxml'), 'utf8');
   assert.ok(idx.indexOf('goTask') >= 0, '工作台未接任务卡');
+  assert.ok(idx.indexOf('待办任务') >= 0 && idx.indexOf('tool-task.png') >= 0, '工作台任务卡未统一标题/图标');
+  assert.ok(idx.indexOf('作业待交') < 0, '工作台不应再保留旧作业卡');
+  assert.strictEqual(tools.normalizeHome(['task']).join(','), 'hw', '旧 task key 必须迁移到原作业槽位 hw');
+  assert.strictEqual(tools.normalizeToolOrder(['task'])[0], 'hw', '旧 task 排序 key 必须迁移');
 });
 
 console.log('\n================ ' + pass + ' passed, ' + fail + ' failed ================');

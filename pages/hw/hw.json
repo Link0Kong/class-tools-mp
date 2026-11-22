@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "作业板",
+  "navigationBarTitleText": "班级作业",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "touchable": "/components/touchable/index",

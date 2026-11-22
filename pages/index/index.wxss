@@ -72,6 +72,7 @@
 }
 .wb-task-ico--tertiary { background: var(--md-tertiary); }
 .wb-task-ico--primary { background: var(--md-primary); }
+.wb-task-img { width: 40rpx; height: 40rpx; display: block; }
 .wb-task-t { font-size: 30rpx; font-weight: 600; color: var(--md-on-surface); }
 .wb-task-n { margin-left: 10rpx; font-size: 30rpx; font-weight: 700; color: var(--md-primary); }
 .wb-task-s {

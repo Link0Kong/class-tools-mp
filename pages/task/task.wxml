@@ -118,7 +118,7 @@
     <view class="m3-card m3-card--outlined tk-classhd enter enter-1">
       <view class="grow"><view class="tk-class-t">班级作业</view><view class="muted tk-class-s">自动同步 · {{classCount}} 项未完成</view></view>
       <view class="m3-btn m3-btn--tonal m3-btn--sm" bindtap="classAllToTask">全部加入</view>
-      <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="openHW">打开作业板</view>
+      <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="openHW">管理</view>
     </view>
     <view wx:if="{{!classOpen.length}}" class="m3-card m3-card--filled enter enter-2">
       <empty-state icon="✅" title="没有未完成作业" text="班级作业同步后会自动出现在这里"></empty-state>
@@ -132,7 +132,7 @@
         <text wx:if="{{item.attCount}}" class="tk-pill">附件 {{item.attCount}}</text>
       </view>
       <view class="tk-hw-acts">
-        <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="openHW">作业板</view>
+        <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="openHW">详情</view>
         <view class="m3-btn m3-btn--tonal m3-btn--sm" data-i="{{index}}" bindtap="classToTask">加入任务</view>
       </view>
     </view>

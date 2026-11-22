@@ -199,23 +199,35 @@ Page({
       const d = store.get();
       const now = new Date();
       const id = identity.get();
-      // —— 任务待办（与网页任务/小程序任务页同一份数据；这里只显示数量与最紧一条）——
+      // —— 待办任务 = 个人任务 + 班级作业（任务工具接管原作业卡槽位）——
       const tc = task.counts();
-      const taskOpen = task.viewItems('all', '', '', 'due');
-      const firstTask = taskOpen[0] || null;
+      const taskOpenAll = task.viewItems('all', '', '', 'due');
+      const open = hwOpenItems(d);
+      const merged = [];
+      open.forEach(function (h) {
+        const di = util.dueInfo(h);
+        merged.push({ title: shortTitle(h), sub: di && di.txt ? di.txt : '', due: util.hwDue(h), order: 0, kind: 'hw' });
+      });
+      taskOpenAll.forEach(function (t) {
+        merged.push({
+          title: shortTitle({ content: t.title }), sub: task.dueText(t),
+          due: task.dueMs(t), order: Number(t.order) || 0, kind: 'task'
+        });
+      });
+      merged.sort(function (a, b) {
+        if (a.due == null && b.due == null) return (a.order || 0) - (b.order || 0);
+        if (a.due == null) return 1;
+        if (b.due == null) return -1;
+        return a.due - b.due;
+      });
+      const hwItems = merged.slice(0, 5).map(function (x) { return { title: x.title, sub: x.sub }; });
+      const hwView = cardViewOf(hwItems);
 
       // —— 今日课程 / 下一次课 ——
       const cache = (d.ttCache && Array.isArray(d.ttCache.c)) ? d.ttCache : null;
       const courses = cache ? cache.c : (Array.isArray(d.course) ? d.course : []);
       const term = cache ? (cache.t || d.termStart || '') : (d.termStart || '');
       const plan = ttplan.plan(courses, term, now);
-
-      // —— 作业待交（需求 11：卡内轮换条目 = 按截止升序的前 5 条待交作业）——
-      const open = hwOpenItems(d);
-      const hwItems = open.slice(0, 5).map(function (h) {
-        return { title: shortTitle(h), sub: util.dueInfo(h).txt };
-      });
-      const hwView = cardViewOf(hwItems);
 
       const hr = now.getHours();
       const wk = util.weekNum(term);
@@ -234,12 +246,8 @@ Page({
         quick: quick,
         quickEmpty: quick.length === 0,
         today: plan,
-        hw: Object.assign({ open: open.length }, hwView),
-        task: {
-          open: tc.all, myday: tc.myday, important: tc.important,
-          title: firstTask ? shortTitle({ content: firstTask.title }) : '',
-          sub: firstTask ? task.dueText(firstTask) : ''
-        }
+        hw: Object.assign({ open: merged.length }, hwView),
+        task: { open: tc.all, hwOpen: open.length, myday: tc.myday, important: tc.important }
       };
       // 需求 9：只把变化的顶层字段 setData（避免每次 onShow 整页重渲染；首次 state 不同 → 全量下发）
       const patch = util.diffPatch(this.data, state);
@@ -428,7 +436,6 @@ Page({
     else wx.navigateTo({ url: url });
   },
   goTT() { wx.navigateTo({ url: '/pages/tt/tt' }); },
-  goHW() { wx.navigateTo({ url: '/pages/hw/hw' }); },
   goTask() { wx.navigateTo({ url: '/pages/task/task' }); },
   goNT() { wx.navigateTo({ url: '/pages/nt/nt' }); },
   goMe() { wx.switchTab({ url: '/pages/me/me' }); },
