@@ -9,34 +9,36 @@
 .tk-ico { position: relative; display: inline-flex; align-items: center; justify-content: center;
   flex: none; width: 32rpx; height: 32rpx; line-height: 0; color: currentColor; }
 .tk-ico::before, .tk-ico::after { content: ""; position: absolute; box-sizing: border-box; }
-.tk-ico--check::after { left: 7rpx; top: 4rpx; width: 12rpx; height: 20rpx;
-  border-right: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; transform: rotate(45deg); }
-.tk-ico--chevron::after { left: 50%; top: 46%; width: 11rpx; height: 11rpx;
+.tk-ico--check::after { left: 50%; top: 50%; width: 12rpx; height: 20rpx;
+  border-right: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor;
+  transform: translate(-50%, -50%) rotate(45deg); }
+.tk-ico--chevron::after { left: 50%; top: 50%; width: 11rpx; height: 11rpx;
   border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
   transform: translate(-50%, -50%) rotate(45deg); }
-.tk-ico--chevron-up::after { left: 50%; top: 54%; width: 11rpx; height: 11rpx;
+.tk-ico--chevron-up::after { left: 50%; top: 50%; width: 11rpx; height: 11rpx;
   border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
   transform: translate(-50%, -50%) rotate(225deg); }
-.tk-ico--chevron-right::after { left: 44%; top: 50%; width: 11rpx; height: 11rpx;
+.tk-ico--chevron-right::after { left: 50%; top: 50%; width: 11rpx; height: 11rpx;
   border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
   transform: translate(-50%, -50%) rotate(-45deg); }
-.tk-ico--plus::before { left: 7rpx; top: 14rpx; width: 18rpx; height: 4rpx; border-radius: 2rpx; background: currentColor; }
-.tk-ico--plus::after { left: 14rpx; top: 7rpx; width: 4rpx; height: 18rpx; border-radius: 2rpx; background: currentColor; }
-.tk-ico--close::before { left: 8rpx; top: 14rpx; width: 16rpx; height: 3rpx; border-radius: 2rpx;
-  background: currentColor; transform: rotate(45deg); }
-.tk-ico--close::after { left: 8rpx; top: 14rpx; width: 16rpx; height: 3rpx; border-radius: 2rpx;
-  background: currentColor; transform: rotate(-45deg); }
+.tk-ico--plus::before { left: 50%; top: 50%; width: 18rpx; height: 4rpx; border-radius: 2rpx; background: currentColor; transform: translate(-50%, -50%); }
+.tk-ico--plus::after { left: 50%; top: 50%; width: 4rpx; height: 18rpx; border-radius: 2rpx; background: currentColor; transform: translate(-50%, -50%); }
+.tk-ico--close::before { left: 50%; top: 50%; width: 16rpx; height: 3rpx; border-radius: 2rpx;
+  background: currentColor; transform: translate(-50%, -50%) rotate(45deg); }
+.tk-ico--close::after { left: 50%; top: 50%; width: 16rpx; height: 3rpx; border-radius: 2rpx;
+  background: currentColor; transform: translate(-50%, -50%) rotate(-45deg); }
 .tk-ico--more::after { left: 50%; top: 50%; width: 5rpx; height: 5rpx; border-radius: 50%;
   background: currentColor; transform: translate(-50%, -50%);
   box-shadow: 0 -9rpx 0 currentColor, 0 9rpx 0 currentColor; }
-.tk-ico--search::before { left: 4rpx; top: 4rpx; width: 17rpx; height: 17rpx;
+.tk-ico--search::before { left: 4rpx; top: 4rpx; width: 18rpx; height: 18rpx;
   border: 3rpx solid currentColor; border-radius: 50%; }
-.tk-ico--search::after { left: 19rpx; top: 21rpx; width: 9rpx; height: 3rpx; border-radius: 2rpx;
+.tk-ico--search::after { left: 19rpx; top: 20rpx; width: 8rpx; height: 3rpx; border-radius: 2rpx;
   background: currentColor; transform: rotate(45deg); }
-.tk-ico--clock::before { left: 4rpx; top: 4rpx; width: 24rpx; height: 24rpx;
-  border: 3rpx solid currentColor; border-radius: 50%; }
-.tk-ico--clock::after { left: 14rpx; top: 8rpx; width: 4rpx; height: 10rpx; border-radius: 2rpx;
-  background: currentColor; }
+.tk-ico--clock::before { left: 50%; top: 50%; width: 24rpx; height: 24rpx;
+  border: 3rpx solid currentColor; border-radius: 50%; transform: translate(-50%, -50%); }
+.tk-ico--clock::after { left: 50%; top: 50%; width: 8rpx; height: 8rpx;
+  border-left: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
+  transform: translate(0, -100%); }
 .tk-ico--star { font-size: 32rpx; line-height: 1; width: 32rpx; height: 32rpx; }
 
 /* 提醒横幅 */
@@ -124,7 +126,7 @@
 .tk-acts { display: flex; align-items: center; gap: 0; flex: none; }
 .tk-icon { width: 56rpx; height: 60rpx; display: flex; align-items: center; justify-content: center;
   border-radius: 14rpx; color: var(--md-outline); font-size: 31rpx; }
-.tk-icon--label { font-size: 22rpx; font-weight: 600; color: var(--md-primary); }
+.tk-icon--label { font-size: 24rpx; font-weight: 600; color: var(--md-primary); }
 .tk-icon.on { color: var(--md-tertiary); }
 
 /* 已完成 */
@@ -154,7 +156,7 @@
 .tk-dt-act { flex: none; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center;
   border-radius: 50%; color: var(--md-outline); font-size: 34rpx; }
 .tk-dt-act--text { width: auto; min-width: 68rpx; padding: 0 8rpx; border-radius: 999rpx;
-  font-size: 22rpx; font-weight: 600; color: var(--md-primary); }
+  font-size: 24rpx; font-weight: 600; color: var(--md-primary); }
 .tk-dt-act.on { color: var(--md-tertiary); background: var(--md-tertiary-container); }
 .tk-dt-meta { margin-top: 12rpx; }
 .tk-dt-sec { margin-top: 22rpx; padding-top: 18rpx; border-top: 1rpx solid var(--md-outline-variant); }
@@ -199,9 +201,9 @@
 .tk-att { display: flex; align-items: center; gap: 7rpx; max-width: 100%; min-height: 62rpx; padding: 0 12rpx;
   border-radius: 10rpx; background: var(--md-surface-container-low); font-size: 25rpx; }
 .tk-att-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tk-att-badge { flex: none; min-width: 42rpx; height: 42rpx; padding: 0 6rpx; border-radius: 8rpx;
+.tk-att-badge { flex: none; min-width: 46rpx; height: 46rpx; padding: 0 7rpx; border-radius: 8rpx;
   display: flex; align-items: center; justify-content: center; background: var(--md-surface-container-high);
-  color: var(--md-on-surface-variant); font-size: 17rpx; font-weight: 700; letter-spacing: 0; }
+  color: var(--md-on-surface-variant); font-size: 20rpx; font-weight: 700; letter-spacing: 0; }
 .tk-att-badge--img { background: var(--md-primary-container); color: var(--md-on-primary-container); }
 .tk-att-x { flex: none; width: 44rpx; height: 44rpx; display: flex; align-items: center; justify-content: center; color: var(--md-outline); }
 .tk-att--add { display: flex; align-items: center; gap: 8rpx; color: var(--md-primary); padding: 0 16rpx; }
@@ -220,7 +222,7 @@
   border-bottom: 1rpx solid var(--md-outline-variant); font-size: 29rpx; }
 .tk-move { width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
   border-radius: 12rpx; color: var(--md-primary); }
-.tk-move--text { width: auto; min-width: 64rpx; padding: 0 8rpx; font-size: 22rpx; font-weight: 600; }
+.tk-move--text { width: auto; min-width: 64rpx; padding: 0 8rpx; font-size: 24rpx; font-weight: 600; }
 .tk-move:active { background: var(--md-surface-container-high); }
 .tk-manage-add { margin-top: 18rpx; width: 100%; gap: 8rpx; }
 

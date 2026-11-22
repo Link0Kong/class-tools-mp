@@ -34,6 +34,8 @@
 - **任务页内部图标统一**：去掉视图 chips / 管理列表里不齐的字符图标；勾选、箭头、加号、关闭、更多、搜索、
   时钟改为固定 32rpx 光学盒的 `currentColor` CSS 图标；编辑改为文字标签；附件改用文件类型徽章；
   星标使用固定点按区，所有操作图标在 56–68rpx 按钮内水平垂直居中，避免 Unicode/emoji 基线漂移。
+  第二轮校正：所有几何图标改为 `left/top:50% + translate(-50%,-50%)` 定位，时钟改为双针表盘，
+  搜索放大镜手柄与圆形镜头重新配平，确保 32rpx 光学盒内几何中心一致。
 - **版本**：`VERSION` **2.0.4 → 2.1.0**，`project.miniapp.json` version 2.1.0 / versionCode 27；
   当前页面数 32；隐私政策/用户协议“当前版本”同步为 **2.1.0（v27 / 32 页）**；README 徽章更新。
 - **测试**：`tests/unit.js` **634/0**；`tests/task_unit_tests.js` **13/0**；`sync_contract_test.js` **34/0**；
