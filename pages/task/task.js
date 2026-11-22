@@ -560,7 +560,8 @@ Page(shareflow.install({
         const type = f.type && String(f.type).indexOf('/') >= 0 ? f.type : mimeOf(name);
         out.push({
           id: task.newId('a'), n: name.slice(0, 120), t: type, s: Number(f.size) || 0,
-          path: p || f.path, img: isImg(type), sizeText: fmtSize(f.size)
+          path: p || f.path, img: isImg(type), sizeText: fmtSize(f.size),
+          badge: isImg(type) ? 'IMG' : (ext ? ext.toUpperCase().slice(0, 4) : 'FILE')
         });
         next();
       };

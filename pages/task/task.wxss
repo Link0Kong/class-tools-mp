@@ -35,8 +35,8 @@
   background: currentColor; transform: rotate(45deg); }
 .tk-ico--clock::before { left: 4rpx; top: 4rpx; width: 24rpx; height: 24rpx;
   border: 3rpx solid currentColor; border-radius: 50%; }
-.tk-ico--clock::after { left: 13rpx; top: 9rpx; width: 8rpx; height: 8rpx;
-  border-left: 3rpx solid currentColor; border-top: 3rpx solid currentColor; }
+.tk-ico--clock::after { left: 14rpx; top: 8rpx; width: 4rpx; height: 10rpx; border-radius: 2rpx;
+  background: currentColor; }
 .tk-ico--star { font-size: 32rpx; line-height: 1; width: 32rpx; height: 32rpx; }
 
 /* 提醒横幅 */
