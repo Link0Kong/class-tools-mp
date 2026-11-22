@@ -5,6 +5,7 @@ const store = require('../../utils/store.js');
 const util = require('../../utils/util.js');
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');
+const task = require('../../utils/task.js');
 const version = require('../../utils/version.js');
 const flow = require('../../utils/flow.js');
 const share = require('../../utils/share.js');
@@ -199,11 +200,12 @@ Page({
   clearData() {
     wx.showModal({
       title: '清空数据',
-      content: '清空课表缓存 / 作业 / 通知 / 名单 / 体测 / 工作流，不可撤销。身份保留；云端副本不受影响。',
+      content: '清空课表缓存 / 作业 / 个人任务 / 通知 / 名单 / 体测 / 工作流，不可撤销。身份保留；云端副本不受影响。',
       confirmText: '清空',
       confirmColor: '#B87870',
       success: (r) => {
         if (!r.confirm) return;
+        try { task.clearFiles(); } catch (e) { /* 附件文件清理失败不影响主流程 */ }
         store.reset();
         try { wx.removeStorageSync('zq_flow'); } catch (e) { /* ignore */ }
         try { cloud.cache.clearAll(); } catch (e) { /* 缓存清理失败不影响清空本机数据 */ }

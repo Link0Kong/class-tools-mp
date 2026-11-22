@@ -10,6 +10,7 @@ const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 const sharecard = require('../../utils/sharecard.js');
 const shareflow = require('../../utils/shareflow.js');
+const task = require('../../utils/task.js');
 
 const TAG = { grey: 'muted', red: 'danger', warn: 'warn', ok: 'ok' };
 const ATT_PICK_IMAGE = 5 * 1024 * 1024, ATT_PICK_FILE = 2 * 1024 * 1024, ATT_STORE = 1.9 * 1024 * 1024, ATT_N = 2;
@@ -459,6 +460,12 @@ Page(shareflow.install({
         }
       });
     }).catch(() => { wx.hideLoading(); util.toast('打开失败'); });
+  },
+
+  toTask(e) {
+    const it = this.data.open[+e.currentTarget.dataset.index];
+    if (!it) return;
+    task.addFromHW(it);
   },
 
   remind(e) {

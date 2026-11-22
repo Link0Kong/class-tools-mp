@@ -399,9 +399,9 @@ function isLongterm(g, nowTs) { return !!longtermSubtypeOf(g, nowTs); }
 
 // 主列表档位（网页 orderRank 同口径）：0 alert / 1 urgent·today / 2 extended / 3 soon·active /
 // 4 发布时间卡·无时间兜底 / 7 延期已截止 / 8 已截止 / 9 已处理（主列表最后；长期通知本就不在主列表）
-function listRankOf(g, done) {
+function listRankOf(g, done, nowTs) {
   if (doneOf(done, g && g.id)) return 9;
-  const st = statusOf(g);
+  const st = statusOf(g, nowTs);
   if (st.key === 'alert') return 0;
   if (st.key === 'urgent' || st.key === 'today') return 1;
   if (st.key === 'extended') return 2;
@@ -423,7 +423,7 @@ function rank4Compare(a, b, nowTs) {
 // 主列表比较：先档位，档 4 按发布时间倒序；其余档内按主显示时间（报名优先）升序、无时间最后；
 // 相等返回 0（调用方按数据源顺序稳定排序）
 function mainListCompare(a, b, done, nowTs) {
-  const ra = listRankOf(a, done), rb = listRankOf(b, done);
+  const ra = listRankOf(a, done, nowTs), rb = listRankOf(b, done, nowTs);
   if (ra !== rb) return ra - rb;
   if (ra === 4) return rank4Compare(a, b, nowTs);
   const ta = whenOf(a, nowTs), tb = whenOf(b, nowTs);
@@ -681,17 +681,17 @@ function latestOf(all, nowTs) {
 
 // ---------------------------------------------------------------- 契约 2026-11-14 §1.3/§2.2：主列表排序（期次按 next 参与）
 // 期次卡按 next 时间参与主列表排序（相当于「今天/24h 内」档），不把整条长期安排作为普通卡重复展示。
-function entryRankOf(g, done, occ) {
+function entryRankOf(g, done, occ, nowTs) {
   if (occ) return doneOf(done, occ.key) ? 9 : 1;
-  return listRankOf(g, done);
+  return listRankOf(g, done, nowTs);
 }
 function entryWhenOf(g, nowTs, occ) {
   return occ ? occ.next : whenOf(g, nowTs);
 }
 // a/b = { g, occ }（occ 可空）；档位 → 档 4 发布时间倒序 / 其余主显示时间升序 → 稳定（调用方按数据源顺序兜底）
 function mainEntryCompare(a, b, done, nowTs) {
-  const ra = entryRankOf(a && a.g, done, a && a.occ);
-  const rb = entryRankOf(b && b.g, done, b && b.occ);
+  const ra = entryRankOf(a && a.g, done, a && a.occ, nowTs);
+  const rb = entryRankOf(b && b.g, done, b && b.occ, nowTs);
   if (ra !== rb) return ra - rb;
   if (ra === 4) return rank4Compare(a && a.g, b && b.g, nowTs);
   const ta = entryWhenOf(a && a.g, nowTs, a && a.occ);
@@ -752,17 +752,17 @@ function statOf(all, done, nowTs) {
 }
 
 // 待处理里最紧的一条：alert 优先，其次真实截止升序，无实时排后（done 可选，已处理不参与）
-function mostUrgent(all, done) {
+function mostUrgent(all, done, nowTs) {
   const list = (all || []).filter(function (g) {
-    if (isLongterm(g)) return false;        // 2026-11-12：长期通知不参与「最紧急一条」
-    const st = statusOf(g);
+    if (isLongterm(g, nowTs)) return false;        // 2026-11-12：长期通知不参与「最紧急一条」
+    const st = statusOf(g, nowTs);
     return !st.expired && isActionable(g) && !doneOf(done, g && g.id);
   });
   list.sort(function (a, b) {
     const aa = a.alert ? 1 : 0, ba = b.alert ? 1 : 0;
     if (aa !== ba) return ba - aa;
     // 按主显示时间（报名优先）升序，与卡片 chip 同口径
-    const ta = whenOf(a), tb = whenOf(b);
+    const ta = whenOf(a, nowTs), tb = whenOf(b, nowTs);
     if (ta == null && tb == null) return 0;
     if (ta == null) return 1;
     if (tb == null) return -1;

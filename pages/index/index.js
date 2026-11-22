@@ -17,6 +17,7 @@ const share = require('../../utils/share.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 const power = require('../../utils/power.js');
+const task = require('../../utils/task.js');
 
 const QUICK_N = 4;          // 首页常用工具最多 4 个（用户勾选；在「工具」页长按拖动排序 / 右侧勾选）
 const NT_TTL = 60000;       // 通知组缓存 60s（切 tab 回来不重复请求）
@@ -117,6 +118,7 @@ Page({
     quickEmpty: false,      // true = 用户没有勾选任何首页工具 → 「常用工具」区域显示引导空态
     today: null,            // utils/ttplan.plan() 的结果
     hw: { open: 0, items: [], idx: 0, title: '', sub: '', anim: '' },
+    task: { open: 0, myday: 0, important: 0, title: '', sub: '' },
     nt: { state: 'syncing', pending: 0, items: [], idx: 0, title: '', sub: '', anim: '' },
     // 关注宿舍电费卡片（v2.0.0）：未选择时只做引导、0 请求；选择后读 store.power + power 行
     powerCard: { has: false, sel: '', label: '', qText: '—', unit: '度', stateKey: 'idle', stateText: '未选择', updText: '', loading: false }
@@ -136,6 +138,7 @@ Page({
     if (!identity.ensure()) return;
     this._hidden = false;
     try { store.reload(); } catch (e) { /* ignore */ }
+    try { task.resetCache(); task.boot(); task.pull().then(() => { if (!this._hidden) this.refresh(); }).catch(function () {}); } catch (e) { /* ignore */ }
     this.applyAgentHandoff();
     if (this._first) {
       this._first = false;
@@ -164,22 +167,26 @@ Page({
       if (d.ttCache && Array.isArray(d.ttCache.c) && d.ttCache.c.length) return true;
       if (d.ntDone && Object.keys(d.ntDone).length) return true;
       if (d.classMembers && d.classMembers.length) return true;
+      if (d.task && ((d.task.items && d.task.items.length) || (d.task.lists && d.task.lists.length))) return true;
     } catch (e) { /* ignore */ }
     return false;
   },
   onHide() {
     this._hidden = true;
     this._rotStop();
+    try { task.flush(); } catch (e) { /* ignore */ }
     scrollmem.save(this); this.clearTimer(); },
   onUnload() {
     this._hidden = true;
     this._rotStop();
+    try { task.flush(); } catch (e) { /* ignore */ }
     scrollmem.save(this); this.clearTimer(); },
   clearTimer() { if (this._t) { clearTimeout(this._t); this._t = null; } },
 
   onPullDownRefresh() {
     this.pullTT(true);
     this.pullNotices(true);
+    task.pull(true).then(() => this.refresh()).catch(function () {});
     this.refresh();
     this.loadPowerCard(true);
     wx.stopPullDownRefresh();
@@ -192,6 +199,10 @@ Page({
       const d = store.get();
       const now = new Date();
       const id = identity.get();
+      // —— 任务待办（与网页任务/小程序任务页同一份数据；这里只显示数量与最紧一条）——
+      const tc = task.counts();
+      const taskOpen = task.viewItems('all', '', '', 'due');
+      const firstTask = taskOpen[0] || null;
 
       // —— 今日课程 / 下一次课 ——
       const cache = (d.ttCache && Array.isArray(d.ttCache.c)) ? d.ttCache : null;
@@ -223,7 +234,12 @@ Page({
         quick: quick,
         quickEmpty: quick.length === 0,
         today: plan,
-        hw: Object.assign({ open: open.length }, hwView)
+        hw: Object.assign({ open: open.length }, hwView),
+        task: {
+          open: tc.all, myday: tc.myday, important: tc.important,
+          title: firstTask ? shortTitle({ content: firstTask.title }) : '',
+          sub: firstTask ? task.dueText(firstTask) : ''
+        }
       };
       // 需求 9：只把变化的顶层字段 setData（避免每次 onShow 整页重渲染；首次 state 不同 → 全量下发）
       const patch = util.diffPatch(this.data, state);
@@ -413,6 +429,7 @@ Page({
   },
   goTT() { wx.navigateTo({ url: '/pages/tt/tt' }); },
   goHW() { wx.navigateTo({ url: '/pages/hw/hw' }); },
+  goTask() { wx.navigateTo({ url: '/pages/task/task' }); },
   goNT() { wx.navigateTo({ url: '/pages/nt/nt' }); },
   goMe() { wx.switchTab({ url: '/pages/me/me' }); },
   goAll() { wx.switchTab({ url: '/pages/all/all' }); },

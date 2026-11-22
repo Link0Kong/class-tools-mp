@@ -13,6 +13,7 @@ const util = require('../../utils/util.js');
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');
 const privacy = require('../../utils/privacy.js');
+const task = require('../../utils/task.js');
 const share = require('../../utils/share.js');
 const scrollmem = require('../../utils/scrollmem.js');
 
@@ -201,11 +202,12 @@ Page({
   clearLocal() {
     wx.showModal({
       title: '清除本机数据',
-      content: '清空课表缓存 / 作业 / 通知 / 名单 / 体测 / 工作流与同步缓存；身份保留。云端数据不受影响。',
+      content: '清空课表缓存 / 作业 / 个人任务 / 通知 / 名单 / 体测 / 工作流与同步缓存；身份保留。云端数据不受影响。',
       confirmText: '清空本机',
       confirmColor: '#B87870',
       success: (r) => {
         if (!r.confirm) return;
+        try { task.clearFiles(); } catch (e) { /* 附件文件清理失败不影响主流程 */ }
         store.reset();
         try { wx.removeStorageSync('zq_flow'); } catch (e) { /* ignore */ }
         try { cloud.cache.clearAll(); } catch (e) { /* 缓存清理失败不影响清空本机数据 */ }

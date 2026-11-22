@@ -93,6 +93,10 @@ function pageFor(row) {
   if (row.kind === 'ntremind') {
     return 'pages/nt/nt?gid=' + encodeURIComponent(String(row.ref || ''));
   }
+  // 个人任务提醒（2026-11-22）：ref = task_<任务 id>，点击回到任务详情
+  if (row.kind === 'hw' && /^task_/.test(String(row.ref || ''))) {
+    return 'pages/task/task?task=' + encodeURIComponent(String(row.ref).slice(5));
+  }
   return PAGE[row.kind] || 'pages/index/index';
 }
 // 时间字段：微信 time 类型只接受时间/日期文案，不能把任意字符串直接塞进去。

@@ -10,6 +10,7 @@
     "pages/group/group",
     "pages/sum/sum",
     "pages/hw/hw",
+    "pages/task/task",
     "pages/nt/nt",
     "pages/ft/ft",
     "pages/fttable/fttable",

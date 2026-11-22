@@ -16,6 +16,7 @@ const share = require('../../utils/share.js');
 const sharecard = require('../../utils/sharecard.js');
 const shareflow = require('../../utils/shareflow.js');
 const store = require('../../utils/store.js');
+const task = require('../../utils/task.js');
 const scrollmem = require('../../utils/scrollmem.js');
 
 const CAT_CLS = { '教务': 'jw', '团务': 'tw', '考试': 'ks', '缴费': 'jf', '活动': 'hd', '班级事务': 'qt' };
@@ -1062,6 +1063,13 @@ Page({
   },
   // 契约 2026-11-14 §2.5：普通通知 ref=组 id；期次 ref=<gid>@occ:<YYYYMMDD>；共用 marks kind='ntdone'。
   // 期次处理后该期卡片立即消失（下一期不受影响）；长期安排定义卡不提供「已处理」。
+  // 2026-11-22 通知 → 任务（与网页通知卡「加入任务」同口径）
+  addToTask(e) {
+    const gid = String(e.currentTarget.dataset.gid || '');
+    const raw = this._rawById(gid);
+    if (!raw) { util.toast('通知已更新，请重试'); return; }
+    task.addFromNotice(raw);
+  },
   toggleDone(e) {
     const gid = e.currentTarget.dataset.gid;
     const raw = this._rawById(gid);

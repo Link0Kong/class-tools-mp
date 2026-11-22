@@ -62,6 +62,8 @@ const CONFIG = {
   tables: {
     homework: 'homework', notices: 'notices', marks: 'marks',
     userdata: 'userdata', feedback: 'feedback', fitrecs: 'fitrecs', visits: 'visits',
+    // 2026-11-22 个人任务云同步（与网页 public.taskdata 同表；只本人 RLS）
+    taskdata: 'taskdata',
     // 与网站功能同步（v2.0.0）：宿舍电费 / 诊断（字段与 RLS 见 task-12 描述）
     power: 'power', powerHistory: 'power_history', serviceHealth: 'service_health',
     // 2026-11-07 课表去域名化：静态资源快照表（id='tt' 行 body={c,t,meta}）

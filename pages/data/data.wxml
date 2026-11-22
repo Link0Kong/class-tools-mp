@@ -59,6 +59,7 @@
       <view class="data-row"><text class="t-body-m">本机存储</text><text class="data-v t-label-m muted">{{storage.keys}} 项 · 约 {{storage.kb}} KB</text></view>
       <view class="divider"></view>
       <view class="data-grid">
+        <view class="data-cell"><view class="stat__value t-num">{{counts.tasks}}</view><view class="stat__label">个人任务</view></view>
         <view class="data-cell"><view class="stat__value t-num">{{counts.hwDone}}</view><view class="stat__label">已完成作业</view></view>
         <view class="data-cell"><view class="stat__value t-num">{{counts.ntDone}}</view><view class="stat__label">已处理通知</view></view>
         <view class="data-cell"><view class="stat__value t-num">{{counts.ntPin}}</view><view class="stat__label">置顶通知</view></view>
@@ -114,7 +115,7 @@
     <!-- —— 隐私说明（静态文本，克制分点）—— -->
     <view class="sec-title"><text class="t-label-l muted">隐私说明</text></view>
     <view class="m3-card m3-card--outlined enter enter-6">
-      <view class="data-li"><text class="data-li__k">收集</text><text class="data-li__v">姓名 / 角色 / 徽章 / 管理员标识（身份校验）；作业完成、通知已处理 / 置顶、工具栏顺序、体测录入与历史、抽签 / 分组参数与名单、点名名单与到·假、隐藏项、课表与提醒偏好、昵称、关注宿舍（仅规范楼栋 + 房间号，用于电费页本人查看）、反馈内容。</text></view>
+      <view class="data-li"><text class="data-li__k">收集</text><text class="data-li__v">姓名 / 角色 / 徽章 / 管理员标识（身份校验）；作业完成、通知已处理 / 置顶、工具栏顺序、体测录入与历史、抽签 / 分组参数与名单、点名名单与到·假、隐藏项、课表与提醒偏好、昵称、个人任务（分组 / 步骤 / 备注 / 截止 / 提醒，附件仅本机）、关注宿舍（仅规范楼栋 + 房间号，用于电费页本人查看）、反馈内容。</text></view>
       <view class="data-li"><text class="data-li__k">不采集</text><text class="data-li__v">证件信息、位置、通讯录、相册；不显示学号。</text></view>
       <view class="data-li"><text class="data-li__k">用途</text><text class="data-li__v">仅用于本班级工具功能与跨端（网页 / 小程序）同步，不做广告或其它用途。</text></view>
       <view class="data-li"><text class="data-li__k">存储</text><text class="data-li__v">本机微信存储 + 腾讯云 CloudBase PostgreSQL；云端数据只有本人 token 可读（RLS）。</text></view>

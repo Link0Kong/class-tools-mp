@@ -33,6 +33,7 @@ const FALLBACK = {
   group: '/images/share/draw.png',
   sum: '/images/share/default.png',
   hw: '/images/share/hw.png',
+  task: '/images/share/hw.png',
   fit: '/images/share/ft.png',
   tt: '/images/share/tt.png',
   roster: '/images/share/bz.png',
@@ -345,6 +346,32 @@ function buildHwView(opt) {
     lines: lines,
     note: open.length > 6 ? ('另有 ' + (open.length - 6) + ' 条未完成作业') : '',
     footer: o.nick ? ('署名 ' + o.nick) : '班级工具 · 作业板',
+    time: o.time
+  });
+}
+
+function buildTaskView(opt) {
+  const o = opt || {};
+  const open = Array.isArray(o.open) ? o.open : [];
+  const done = Array.isArray(o.done) ? o.done : [];
+  const lines = [];
+  open.slice(0, 6).forEach(function (t) {
+    const due = t && t.dueText ? (' · ' + t.dueText) : '';
+    lines.push({ label: t && t.starred ? '重要' : '任务', text: txt(t && t.title) + due });
+  });
+  if (!lines.length) {
+    done.slice(0, 6).forEach(function (t) {
+      lines.push({ label: '已完成', text: '✓ ' + txt(t && t.title) });
+    });
+  }
+  return infoView({
+    title: o.focus ? txt(o.focus.title) : '我的任务',
+    badge: o.focus ? '任务' : '任务清单',
+    subtitle: o.focus ? (txt(o.focus.subtitle) || '来自班级工具 · 任务') : ('未完成 ' + open.length + ' 条 · 已完成 ' + done.length + ' 条'),
+    stats: [{ k: '未完成', v: open.length }, { k: '已完成', v: done.length }],
+    lines: o.focus ? (Array.isArray(o.focus.lines) ? o.focus.lines.slice(0, 6) : []) : lines,
+    note: o.focus ? (txt(o.focus.note)) : (open.length > 6 ? ('另有 ' + (open.length - 6) + ' 条未完成') : ''),
+    footer: o.nick ? ('署名 ' + o.nick) : '班级工具 · 任务',
     time: o.time
   });
 }
@@ -806,6 +833,7 @@ module.exports = {
   buildGroupView: buildGroupView,
   buildSumView: buildSumView,
   buildHwView: buildHwView,
+  buildTaskView: buildTaskView,
   buildFitView: buildFitView,
   buildTtView: buildTtView,
   buildRosterView: buildRosterView,

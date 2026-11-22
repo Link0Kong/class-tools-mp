@@ -553,7 +553,7 @@ async function run(test) {
     const n = noticeMod();
     const noticeJs = src('utils/notice.js');
     assert.ok(/if \(isLongterm\(g\)\) return;/.test(noticeJs), 'statOf 应排除资料/无时间');
-    assert.ok(/if \(isLongterm\(g\)\) return false;/.test(noticeJs), 'mostUrgent 应排除资料/无时间');
+    assert.ok(/if \(isLongterm\(g, nowTs\)\) return false;/.test(noticeJs), 'mostUrgent 应排除资料/无时间');
     assert.ok(Object.prototype.hasOwnProperty.call(n, 'occOf') && typeof n.occOf === 'function');
     assert.ok(typeof n.mainEntryCompare === 'function' && typeof n.longtermCompare === 'function' && typeof n.orderLongterm === 'function');
     assert.ok(typeof n.fmtDatesCn === 'function' && typeof n.statOf === 'function');

@@ -240,6 +240,8 @@
 .nt-status--none     { background: var(--nt-grey-tint); color: var(--nt-ink-2); }
 .nt-status--recurring { background: var(--nt-bl-tint);  color: var(--nt-bl-ink); }
 .nt-raw-btn { flex: none; font-size: 20rpx; font-weight: 600; color: var(--nt-ink-2); padding: 8rpx 4rpx; }
+.nt-task-btn { flex: none; margin-right: 10rpx; padding: 7rpx 13rpx; border-radius: 999rpx; background: var(--md-primary-container);
+  color: var(--md-on-primary-container); font-size: 20rpx; font-weight: 700; }
 
 .nt-title { margin-top: 14rpx; font-size: 31rpx; font-weight: 600; line-height: 1.5; color: var(--nt-ink); }
 

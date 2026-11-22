@@ -121,6 +121,18 @@
       <text class="chev"></text>
     </view>
 
+    <!-- 个人任务（与任务页/网页 taskdata 同一份数据） -->
+    <view class="m3-card m3-card--outlined wb-task enter enter-3" bindtap="goTask" hover-class="wb-task--tap">
+      <view class="wb-task-ico wb-task-ico--primary">✅</view>
+      <view class="grow">
+        <view class="wb-task-t">任务<text wx:if="{{task.open}}" class="wb-task-n">{{task.open}}</text></view>
+        <view class="wb-task-s" wx:if="{{task.open}}">{{task.title}}<text wx:if="{{task.sub}}"> · {{task.sub}}</text></view>
+        <view class="wb-task-s muted" wx:else>没有待办任务</view>
+        <view class="wb-task-s muted" wx:if="{{task.myday || task.important}}">我的一天 {{task.myday}} · 重要 {{task.important}}</view>
+      </view>
+      <text class="chev"></text>
+    </view>
+
     <!-- 待办：通知（需求 11：同上，轮待处理通知） -->
     <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-b enter enter-4" bindtap="goNT" hover-class="wb-task--tap">
       <view class="wb-task-ico wb-task-ico--primary">📢</view>

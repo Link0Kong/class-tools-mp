@@ -14,6 +14,7 @@
       <text wx:if="{{card.hidden}}" class="nt-hidden-tag">已隐藏</text>
       <text wx:if="{{card.updated}}" class="nt-updated-tag">已更新</text>
       <view class="grow"></view>
+      <view class="nt-task-btn" data-gid="{{card.id}}" catchtap="addToTask">任务＋</view>
       <view wx:if="{{card.hasRaw}}" class="nt-raw-btn" data-gid="{{card.id}}" catchtap="openRaw">原始消息</view>
     </view>
 

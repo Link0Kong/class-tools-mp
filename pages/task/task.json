@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "任务",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "top-app-bar": "/components/top-app-bar/index",
+    "segmented": "/components/segmented/index",
+    "empty-state": "/components/empty-state/index",
+    "bottom-sheet": "/components/bottom-sheet/index",
+    "share-sheet": "/components/share-sheet/index"
+  }
+}

@@ -15,6 +15,7 @@
 | 命令 | 说明 |
 | --- | --- |
 | `node tests/unit.js` | 主测试集：纯逻辑、页面契约、云端请求与同步行为（约 25 个测试文件） |
+| `node tests/task_unit_tests.js` | 个人任务专项：归一/分组/步骤备注/作业与通知转入/重复/taskdata 附件剥离/分享卡/页面入口 |
 | `node tests/sync_contract_test.js` | 跨端 `userdata` v6 / `marks` 同步契约（夹具在 `_sync_fixtures/`） |
 | `python tests/staticcheck.py` | 静态检查：页面四件套、组件引用、事件 handler、分享、包体大小 |
 | `node tests/code_quality_check.js` | 离线复刻微信开发者工具「代码质量」规则（图片体积、未使用组件/文件） |

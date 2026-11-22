@@ -59,6 +59,14 @@ function save(id) {
   const old = get();
   if (old && old.sid && old.sid !== v.sid) {
     try { require('./cache.js').clearAll(); } catch (e) { /* ignore */ }
+    // 个人任务不是班级共享数据：换人验证时立即清掉，避免下一位同学看到上一位的备注/附件元数据
+    try {
+      const st = require('./store.js');
+      try { require('./task.js').clearFiles(); } catch (e) { /* ignore */ }
+      if (st.get().task) { st.get().task = null; st.saveQuiet(); }
+    } catch (e) { /* ignore */ }
+    try { wx.removeStorageSync('zq_task_owner_v1'); } catch (e) { /* ignore */ }
+    try { wx.removeStorageSync('zq_task_ui_mp_v1'); } catch (e) { /* ignore */ }
   }
   try { wx.setStorageSync(KEY, JSON.stringify(v)); return v; } catch (e) { return null; }
 }

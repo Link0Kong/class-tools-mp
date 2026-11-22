@@ -51,6 +51,7 @@ function toSyncKeys(list) {
 const TOOLS = [
   { key: 'tt',   name: '课表',   ico: '📅', icoImg: '/images/tool-tt.png', meta: '周次 · 下一节课', desc: '班级课表与下一节课；教务自动同步，全员查看', url: '/pages/tt/tt', tab: false, tone: 'primary' },
   { key: 'hw',   name: '作业板', ico: '📝', icoImg: '/images/tool-hw.png', meta: '截止提醒 · 完成勾选', desc: '作业清单与截止倒计时；查看与勾选完成，验证身份后可发布', url: '/pages/hw/hw', tab: false, tone: 'tertiary' },
+  { key: 'task', name: '任务',   ico: '✅', icoImg: '/images/tool-hw.png', meta: '分组 · 步骤 · 提醒 · 云同步', desc: '个人任务：分组/步骤/备注/附件/提醒/重复；可与网页任务双向同步，班级作业和通知可加入任务', url: '/pages/task/task', tab: false, tone: 'primary' },
   { key: 'nt',   name: '班级通知', ico: '📢', icoImg: '/images/tool-nt.png', meta: '简报 · 筛选 · 附件', desc: '云端班级通知；AI 拆分、附件预览、原始消息', url: '/pages/nt/nt', tab: false, tone: 'primary' },
   { key: 'ft',   name: '体测',   ico: '📏', icoImg: '/images/tool-ft.png', meta: '大学国标 · 加分', desc: '大学体测七项算分、附加分与等级，实时出分', url: '/pages/ft/ft', tab: false, tone: '' },
   { key: 'draw', name: '抽签分组', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 分组 · 结果单', desc: '抽号 → 分组 → 结果单；可剔除重抽、可分享卡片或长图', url: '/pages/draw/draw', tab: false, tone: '' },

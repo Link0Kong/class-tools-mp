@@ -245,10 +245,10 @@ async function run(test) {
     const pubFallback = { id: 'pubFallback', items: [{ kind: 'text', time: md(NOW - 30 * H) + ' ' + hhmm(NOW - 30 * H) }] };
     const noneG = { id: 'none' };                                                     // 档 4，无发布时间
     const donePub = { id: 'donePub', publishedAt: iso(NOW - 2 * H) };                 // 档 9
-    assert.strictEqual(n.listRankOf(pubNew), 4, '发布卡档位 4');
-    assert.strictEqual(n.listRankOf(noneG), 4, '无时间兜底同为 4');
-    assert.strictEqual(n.listRankOf(active), 3);
-    assert.strictEqual(n.listRankOf(donePub, { donePub: true }), 9, '已处理仍最后');
+    assert.strictEqual(n.listRankOf(pubNew, {}, NOW), 4, '发布卡档位 4');
+    assert.strictEqual(n.listRankOf(noneG, {}, NOW), 4, '无时间兜底同为 4');
+    assert.strictEqual(n.listRankOf(active, {}, NOW), 3);
+    assert.strictEqual(n.listRankOf(donePub, { donePub: true }, NOW), 9, '已处理仍最后');
     // 主列表：档 3 在前；档 4 内 publishedAt/回退推算倒序；无发布时间最后
     const source = [donePub, noneG, pubOld, pubFallback, active, pubNew];
     const sorted = source.slice().sort(function (a, b) {
@@ -297,8 +297,8 @@ async function run(test) {
     assert.ok(latest.text.indexOf('20:00') >= 0, 'latest 相对文案沿用既有格式：' + latest.text);
     assert.strictEqual(n.statOf([g], {}, NOW).latest, at(2026, 11, 17, 20, 0));
     // mostUrgent 仍排除资料兜底；发布卡可参与（无主显示时间 → 排后）
-    assert.strictEqual(n.mostUrgent([fallbackInfo], {}), null, '资料兜底不参与最紧急');
-    assert.strictEqual(n.mostUrgent([pub, fallbackInfo, urgent], {}).id, 'u', '发布卡不抢占真实截止的紧急位');
+    assert.strictEqual(n.mostUrgent([fallbackInfo], {}, NOW), null, '资料兜底不参与最紧急');
+    assert.strictEqual(n.mostUrgent([pub, fallbackInfo, urgent], {}, NOW).id, 'u', '发布卡不抢占真实截止的紧急位');
   });
 
   /* ============================================================

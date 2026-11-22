@@ -176,6 +176,30 @@ function listReminders(kind) {
     return Array.isArray(arr) ? arr : [];
   });
 }
+// 个人任务提醒：复用 hw 订阅行（ref = task_<任务 id>），云函数按日期模板发送；
+// 点击卡片由 cloudfunctions/notify 的 pageFor 转到 pages/task/task?task=<id>。
+function subscribeTask(t, fireAt, label) {
+  const id = String((t && t.id) || '');
+  if (!id) return Promise.reject(new Error('missing-ref'));
+  const title = String((t && t.title) || '个人任务');
+  return ask().then(function () {
+    return call({
+      action: 'subscribe', kind: 'hw',
+      ref: 'task_' + id,
+      fireAt: Number(fireAt) || 0,
+      label: label || '任务提醒',
+      tip: '任务提醒',
+      timeText: fmt(fireAt),
+      summary: title,
+      dateText: t && t.due ? fmt(new Date(String(t.due).replace(/-/g, '/') + ' ' + (t.dueTime || '09:00') + ':00')) : fmt(fireAt),
+      tmplId: TEMPLATE_ID
+    });
+  });
+}
+function cancelTask(id) {
+  return cancelReminder('task_' + String(id || ''), 'hw');
+}
+
 // 取消提醒（kind 默认 ntremind）；ref = 通知组 id。
 function cancelReminder(ref, kind) {
   return call({ action: 'cancel', kind: kind || 'ntremind', ref: String(ref || '') });
@@ -202,6 +226,8 @@ module.exports = {
   placeOf: placeOf,
   deadlineTsOf: deadlineTsOf,
   subscribeHomework: subscribeHomework,
+  subscribeTask: subscribeTask,
+  cancelTask: cancelTask,
   subscribeNoticeReminder: subscribeNoticeReminder,
   listReminders: listReminders,
   cancelReminder: cancelReminder,

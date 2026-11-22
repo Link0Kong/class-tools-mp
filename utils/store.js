@@ -21,6 +21,9 @@ const waterUtil = require('./water.js');
 //             用户下一次显式修改同步内容时解除（cloud.udTouch），30 天安全上限（cloud.UD_HOLD_MS）。
 const DEF = {
   course: [], homework: [], notices: [], termStart: '',
+  // 2026-11-22 个人任务（网页任务模块移植）：与 public.taskdata 的 blob 同格式。
+  // 只存本机 + 独立任务云表，不进 userdata v6；由 utils/task.js 归一/同步。
+  task: null,
   roster: '', rosterSel: [], classRoster: '', hwDone: {}, ntPin: {}, hwHide: {}, ntHide: {}, markPend: [],
   ntDone: {}, udCache: null, udPend: false, cloudOff: false, udHoldUntil: 0,
   rollNames: '', rollSel: [], rollSt: {}, did: '', hwRemind: {}, ntSub: false, ntSubAt: 0,
@@ -224,10 +227,14 @@ function save() {
   try { require('./cloud.js').udTouch(); } catch (e) { /* 同步脏检测失败不影响本机保存 */ }
   return ok;
 }
+// 只落本机、不触发 userdata v6 脏检测（任务只走独立 taskdata 表；避免无意义 UD 推送）
+function saveQuiet() {
+  return writeKey(KEY, get());
+}
 function reload() { cache = mkD(readKey(KEY)); return cache; }
 function reset() { cache = mkD(null); save(); return cache; }
 
 module.exports = {
   KEY, OLDKEY, DEF, mkD, readKey, writeKey, normSeats, normRemind, normLow, normTtLocal,
-  get, save, reload, reset
+  get, save, saveQuiet, reload, reset
 };

@@ -92,6 +92,8 @@ function countsOf(d) {
   return {
     homework: (d.homework || []).length,
     notices: (d.notices || []).length,
+    tasks: (d.task && d.task.items || []).length,
+    taskLists: (d.task && d.task.lists || []).length,
     hwDone: hit(d.hwDone),
     ntPin: hit(d.ntPin),
     ntDone: hit(d.ntDone),
@@ -152,7 +154,29 @@ function buildExport(d, id, now) {
       marks: { hwDone: clone(hwDone), ntPin: clone(ntPin), ntDone: clone(ntDone) }
     },
     fitRecs: fitRecs,
-    counts: countsOf(d)
+    counts: countsOf(d),
+    // 个人任务（本机 + 独立 taskdata 云表）：导出文字/分组/步骤/截止/提醒；不导出本机附件路径。
+    task: d.task ? {
+      v: 1,
+      lists: clone(d.task.lists || []),
+      items: (d.task.items || []).map(function (t) {
+        return {
+          id: String(t.id || ''), title: String(t.title || ''), notes: String(t.notes || ''),
+          list: String(t.list || ''), done: !!t.done, doneAt: Number(t.doneAt) || 0,
+          due: String(t.due || ''), dueTime: String(t.dueTime || ''),
+          remindMode: String(t.remindMode || 'none'), remindCustom: Number(t.remindCustom) || 0,
+          repeat: String(t.repeat || ''), starred: !!t.starred, myDay: String(t.myDay || ''),
+          tags: (t.tags || []).slice(), steps: clone(t.steps || []),
+          sourceHwId: String(t.sourceHwId || ''), sourceTitle: String(t.sourceTitle || ''),
+          sourceNoticeId: String(t.sourceNoticeId || ''),
+          createdAt: Number(t.createdAt) || 0, updatedAt: Number(t.updatedAt) || 0,
+          order: Number(t.order) || 0, fromId: String(t.fromId || ''),
+          attachments: ''
+        };
+      }),
+      prefs: clone(d.task.prefs || {}),
+      updatedAt: Number(d.task.updatedAt) || 0
+    } : null
   };
 }
 function exportJson(d, id, now) { return JSON.stringify(buildExport(d, id, now), null, 2); }
