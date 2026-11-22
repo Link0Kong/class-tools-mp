@@ -8,7 +8,45 @@
 //     不新增顶层键；toolOrderSetAt>0 才写云端，默认自然顺序不写；详见 utils/cloud.js）。
 //   拖动排序只改 toolOrder，并按新顺序重排 homeTools（勾选集合不变）；homeTools 顺序变了才提升
 //   homeToolsAt 并触发 UD 同步（与网页端 LWW 合并）。
+//
+// 2026-11-22 跨端 key 归一（用户反馈「安卓端排序/首页勾选同步不到小程序」）：
+//   userdata v6 的 homeTools / prefs.toolOrder 是五端共用同一份数组，但历史 key 词表并不统一：
+//     · 小程序本机：体测 = ft，名单 = bz，分组并入 draw；
+//     · 网页：      体测 = ft，名单 = committee；
+//     · 安卓/鸿蒙：  体测 = fit，名单 = roster，另有独立 group 工具。
+//   小程序把安卓/鸿蒙写入的 fit / roster / group 当未知 key 丢弃 → 体测、名单从首页消失、顺序也丢，
+//   随后还会把过滤后的数组回推云端，把安卓端的勾选一起改掉。这里统一在读写云端时做别名转换：
+//   读云端 = 外部 key → 本机 key；写云端 = 本机 key → 网页 canonical key（bz → committee），
+//   安卓/鸿蒙侧对 ft / committee 做反向映射（见各端 ToolCatalog/HomeToolsEditor）。
 const identity = require('./identity.js');
+
+// 云端 key → 本机 key（读）；本机 key → 云端 key（写）
+const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', group: 'draw' };
+const SYNC_KEY_OUT = { bz: 'committee' };
+
+// 把任意端写入的 key 归一成本机 key（未知 key 原样返回，由调用方决定丢弃/保留）
+function localKey(k) { return SYNC_KEY_IN[k] || k; }
+// 本机 key → 跨端 canonical key（网页/安卓/鸿蒙都能识别）
+function syncKey(k) { return SYNC_KEY_OUT[k] || k; }
+
+// 云端数组 → 本机数组（保序去重；未知 key 原样保留，避免改写别的端的偏好）
+function fromSyncKeys(list) {
+  const out = [];
+  (Array.isArray(list) ? list : []).forEach(function (k) {
+    const lk = localKey(k);
+    if (out.indexOf(lk) < 0) out.push(lk);
+  });
+  return out;
+}
+// 本机数组 → 云端数组（保序去重；未知 key 原样保留）
+function toSyncKeys(list) {
+  const out = [];
+  (Array.isArray(list) ? list : []).forEach(function (k) {
+    const sk = syncKey(localKey(k));
+    if (out.indexOf(sk) < 0) out.push(sk);
+  });
+  return out;
+}
 
 const TOOLS = [
   { key: 'tt',   name: '课表',   ico: '📅', icoImg: '/images/tool-tt.png', meta: '周次 · 下一节课', desc: '班级课表与下一节课；教务自动同步，全员查看', url: '/pages/tt/tt', tab: false, tone: 'primary' },
@@ -18,8 +56,9 @@ const TOOLS = [
   { key: 'draw', name: '抽签分组', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 分组 · 结果单', desc: '抽号 → 分组 → 结果单；可剔除重抽、可分享卡片或长图', url: '/pages/draw/draw', tab: false, tone: '' },
   { key: 'roll', name: '点名',   ico: '🙋', icoImg: '/images/tool-roll.png', meta: '到 · 假 · 沉底', desc: '线下点名核对：叫到一个勾一个，可到/请假，已处理自动沉底', url: '/pages/roll/roll', tab: false, tone: 'tertiary' },
   { key: 'bz',   name: '名单',   ico: '🏅', icoImg: '/images/tool-bz.png', meta: '班委 · 团员 · 全班', desc: '班级名单三分类：班委职务 / 团员 / 全班；所有已认证同学都可查看', url: '/pages/committee/committee', tab: false, tone: 'tertiary' },
-  // v2.0.0 与网站功能同步：宿舍电费（普通工具，不进首页勾选，与网站一致）；诊断（2026-11-08 起对所有已认证同学可见）
-  { key: 'power', name: '宿舍电费', ico: '⚡', icoImg: '/images/tool-power.png', meta: '关注宿舍 · 电量 · 24h 趋势', desc: '关注自己宿舍，查看剩余电量、近 24h 趋势与估算可用天数；与网站同一份云端数据', url: '/pages/power/power', tab: false, tone: 'tertiary', noHome: true },
+  // v2.0.0 与网站功能同步：宿舍电费（普通工具；2026-11-22 起可主动勾选进首页，与网页工具栏/安卓一致）；
+  // 诊断（2026-11-08 起对所有已认证同学可见；2026-11-22 起同样可勾选）
+  { key: 'power', name: '宿舍电费', ico: '⚡', icoImg: '/images/tool-power.png', meta: '关注宿舍 · 电量 · 24h 趋势', desc: '关注自己宿舍，查看剩余电量、近 24h 趋势与估算可用天数；与网站同一份云端数据', url: '/pages/power/power', tab: false, tone: 'tertiary' },
   // 2026-11-06 水量统计（与网站同口径）：关注宿舍沿用「宿舍电费」的选择；**可以勾选进首页**（用户可主动选择）
   { key: 'water', name: '水量', ico: '💧', icoImg: '/images/tool-water.png', meta: '每月抄表 · 自动对比 · 水费', desc: '每月手动抄一次水表，自动对比上次算用量；按校方规则（2 吨/人/月免费，超出 3.03 元/吨）估水费与折合扣电', url: '/pages/water/water', tab: false, tone: 'primary' },
   // 2026-11-11 投票（与网页 TOOLS 对齐，契约 web/vote/CONTRACT.md §4.1）：限时/长时、自定义标题与选项、实时结果；
@@ -30,8 +69,8 @@ const TOOLS = [
   { key: 'file', name: '文件传输', ico: '☁', icoImg: '/images/tool-file.png', meta: '临时云空间 · 3 天', desc: '同账号跨设备临时云空间：上传/下载/删除文件，任意大小分片上传，文件自上传起保留 3 天', url: '/pages/cloudspace/cloudspace', tab: false, tone: 'primary' },
   { key: 'map', name: '地图', ico: '🗺', icoImg: '/images/tool-map.png', meta: '2.5D · 道路导航', desc: '校园 2.5D 地图、楼栋楼层与按道路步行导航；与课表下一节联动', url: '/pages/map/map', tab: false, tone: 'primary' },
   { key: 'stats', name: '统计',  ico: '📊', icoImg: '/images/tool-stats.png', meta: '访问次数 · 设备 · 版本 · 仅管理员', desc: '按访问次数排序的访问统计（同次数按最近访问；汇总摘要、趋势、登录端、版本/设备分布与账号明细，不显示学号），仅管理员可见', url: '/pages/stats/stats', tab: false, tone: 'primary', admin: true },
-  // 2026-11-08 诊断 v2：所有有效班级身份可见（不再仅管理员）；与电费一样不进首页勾选（noHome）
-  { key: 'diag', name: '诊断',  ico: '🩺', icoImg: '/images/tool-diag.png', meta: '服务状态 · 设备诊断 · AI 分析', desc: '依赖服务运行状态 + 本机设备诊断 + AI 原因/修复流程；所有已认证同学可查看', url: '/pages/diag/diag', tab: false, tone: 'tertiary', noHome: true },
+  // 2026-11-08 诊断 v2：所有有效班级身份可见（不再仅管理员）；2026-11-22 起可主动勾选进首页
+  { key: 'diag', name: '诊断',  ico: '🩺', icoImg: '/images/tool-diag.png', meta: '服务状态 · 设备诊断 · AI 分析', desc: '依赖服务运行状态 + 本机设备诊断 + AI 原因/修复流程；所有已认证同学可查看', url: '/pages/diag/diag', tab: false, tone: 'tertiary' },
   // 2026-11-09 PPT 演示（与网页「演示」同名，契约 web/ppt/CONTRACT.md §8.3）：
   // 上传 .ppt/.pptx → 本机转换机转分步图片 + 外挂媒体 → 任意设备流畅播放；可主动勾选进首页
   { key: 'ppt', name: '演示',  ico: '📽', icoImg: '/images/tool-ppt.png', meta: '上传 PPT · 自动转换 · 分步播放', desc: '上传 PPT 自动转换成分步图片与视频热点；老电脑/手机都能流畅播放，班级共享', url: '/pages/ppt/ppt', tab: false, tone: 'primary' }
@@ -58,8 +97,13 @@ function entryAllowed(t, id) {
   if (t.key === VOTE_KEY && !identity.canUseVote(id)) return false;
   return true;
 }
-// 可作为首页勾选项：可见、非管理员工具、非 noHome（宿舍电费不参与；水量可参与）
-function homeEligible(t, id) { return !!t && entryAllowed(t, id) && !t.admin && !t.noHome; }
+// 可作为首页勾选项：可见、非 noHome、管理员工具仅管理员可勾选（2026-11-22：电费/诊断恢复可勾选，
+// 与网页工具栏（电费用短标签「电费」）和安卓端「全部工具」编辑一致；stats 仍是管理员工具）
+function homeEligible(t, id) {
+  if (!visible(t) || !entryAllowed(t, id) || t.noHome) return false;
+  if (!t.admin) return true;
+  return (id === undefined) ? identity.isAdmin() : !!(id && id.is_admin);
+}
 
 function same(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); }
 
@@ -83,12 +127,14 @@ function syncPrefs() {
 // toolOrder（本机「全部工具」顺序）
 // ---------------------------------------------------------------------------
 
-// 归一：合法可见 key 去重；未知/缺失的新工具按 TOOLS 自然顺序补到末尾
+// 归一：合法可见 key 去重；跨端别名（fit/roster/committee/group）先归一成本机 key；
+// 未知/缺失的新工具按 TOOLS 自然顺序补到末尾
 function normalizeToolOrder(raw) {
   const out = [];
   (Array.isArray(raw) ? raw : []).forEach(function (k) {
-    const t = toolOf(k);
-    if (visible(t) && out.indexOf(k) < 0) out.push(k);
+    const lk = localKey(k);
+    const t = toolOf(lk);
+    if (visible(t) && out.indexOf(lk) < 0) out.push(lk);
   });
   TOOLS.forEach(function (t) { if (visible(t) && out.indexOf(t.key) < 0) out.push(t.key); });
   return out;
@@ -175,12 +221,15 @@ function byToolOrder(order) {
 // homeTools（云端勾选集合，≤4）
 // ---------------------------------------------------------------------------
 
-// 只做去重/过滤（可见、非管理员、非 noHome），**只保留前 4 个**，不再自动补齐
+// 只做去重/过滤（可见、非 noHome、管理员工具按身份），**只保留前 4 个**，不再自动补齐。
+// 2026-11-22：先做跨端 key 归一（安卓 fit/roster/group、网页 committee → 本机 ft/bz/draw），
+// 否则安卓端勾选的「体测/名单」会被当未知 key 丢掉，并回推覆盖云端。
 function normalizeHome(home, id) {
   const out = [];
   (home || []).forEach(function (k) {
-    const t = toolOf(k);
-    if (homeEligible(t, id) && out.indexOf(k) < 0 && out.length < HOME_MAX) out.push(k);
+    const lk = localKey(k);
+    const t = toolOf(lk);
+    if (homeEligible(t, id) && out.indexOf(lk) < 0 && out.length < HOME_MAX) out.push(lk);
   });
   return out;
 }
@@ -253,6 +302,7 @@ function catalog(id) {
 module.exports = {
   TOOLS: TOOLS, HOME_MAX: HOME_MAX, HIDDEN: HIDDEN, toolOf: toolOf, isHidden: isHidden,
   visible: visible, entryAllowed: entryAllowed, homeEligible: homeEligible,
+  localKey: localKey, syncKey: syncKey, fromSyncKeys: fromSyncKeys, toSyncKeys: toSyncKeys,
   defaultHome: defaultHome, normalizeHome: normalizeHome, homeTools: homeTools,
   normalizeToolOrder: normalizeToolOrder, migrateLegacy: migrateLegacy,
   toolOrder: toolOrder, setToolOrder: setToolOrder, moveTool: moveTool,

@@ -1264,7 +1264,11 @@ function udSections() {
   // 无基线时 homeTools 用本机 homeToolsAt 作为最后修改时间（首次同步更准；其余 section 无本机时间戳）
   if (!c) view.at.homeTools = udNum(d.homeToolsAt);
   // 契约：工具 key 数组（≤4），与网页端一致；v2.0.0 起语义 = 用户勾选的首页工具（不再自动补齐）
-  view.homeTools = (d.homeTools || []).slice(0, 4);
+  // 2026-11-22：写云端时换成本机 → 跨端 canonical key（bz → committee）；安卓/鸿蒙读取时做反向映射。
+  // 否则安卓端勾选的 fit/roster 会在小程序侧被丢弃后回推，把安卓的首页勾选一起改掉。
+  let homeOut = (d.homeTools || []).slice(0, 4);
+  try { homeOut = require('./tools.js').toSyncKeys(homeOut); } catch (e) { /* tools 未加载时保底用原数组 */ }
+  view.homeTools = homeOut;
   view.fit = Object.assign({}, d.fit || {});
   const dr = d.draw || {};
   view.draw = {
@@ -1311,7 +1315,8 @@ function udSections() {
   // 仅在用户拖过排序（toolOrderSetAt>0）时写入，默认自然顺序不污染 blob / 既有夹具。
   if (udNum(d.toolOrderSetAt) > 0) {
     let od = Array.isArray(d.toolOrder) ? d.toolOrder.slice() : [];
-    try { od = require('./tools.js').normalizeToolOrder(od); } catch (e) { /* tools 未加载时保底用原数组 */ }
+    try { od = require('./tools.js').toSyncKeys(require('./tools.js').normalizeToolOrder(od)); }
+    catch (e) { /* tools 未加载时保底用原数组 */ }
     view.prefs.toolOrder = od;
     // 无基线（首次同步/清缓存）时用本机改动时间抢 prefs 时间戳，避免自定义顺序被旧云端 prefs 覆盖
     if (!c) view.at.prefs = Math.max(udNum(view.at.prefs), udNum(d.toolOrderSetAt));
@@ -1409,7 +1414,11 @@ function udApply(blob) {
     // 空数组语义：at=0 视为「云端没有数据」（新账号/旧版清除），不覆盖本机默认勾选；
     //             at>0 是用户主动全部取消（v2.0.0 空勾选合法）→ 必须应用，否则取消无法跨端生效。
     if (j.homeTools.length || at > 0 || localEmpty) {
-      d.homeTools = j.homeTools.slice(0, 4);
+      // 2026-11-22：云端数组（安卓 fit/roster/group、网页 committee）→ 本机 key（ft/bz/draw）再落盘，
+      // 否则「体测 / 名单」会被当未知项过滤掉，且下次推送会把过滤后的集合写回云端（安卓首页被改）。
+      let nextHome = j.homeTools.slice(0, 4);
+      try { nextHome = require('./tools.js').normalizeHome(nextHome); } catch (e) { /* tools 未加载时保底 */ }
+      d.homeTools = nextHome;
       d.homeToolsAt = at || d.homeToolsAt || 0;
     }
   }

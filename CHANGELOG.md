@@ -1,5 +1,30 @@
 # 版本记录
 
+## 首页工具可勾选 + 跨端工具 key 归一（2026-11-22，源码就绪；待用户上传发布；VERSION 仍 2.0.4）
+
+> 用户反馈：「微信小程序的部分工具无法被勾选到首页」；「自定义顺序和自定义首页的云同步功能似乎失效，
+> 安卓端的排序无法同步到小程序」。
+
+- **根因 1（跨端 key 词表不一致，主因）**：userdata v6 的 `homeTools` / `prefs.toolOrder` 是五端共用的同一份数组，
+  但历史 key 并不统一——安卓/鸿蒙把体测存 `fit`、名单存 `roster`（另有独立 `group` 分组），网页是 `ft` / `committee`，
+  小程序是 `ft` / `bz`。小程序 `normalizeHome` / `normalizeToolOrder` 把 `fit` / `roster` / `group` 当**未知 key 丢弃**：
+  安卓端勾选的体测、名单在小程序首页消失，安卓排序里的这两项被移到末尾；随后小程序把过滤后的数组回推云端，
+  安卓端自己的勾选/排序也被改掉，看起来就是「云同步失效」。
+- **根因 2（noHome + 静默失败）**：宿舍电费 / 诊断在「全部工具」里可见，但 `homeEligible` 直接拒绝，
+  `pages/all` 的 `invalid` 分支又静默 return —— 编辑首页时点它们「一点反应都没有」，即「部分工具勾不上」。
+- **`utils/tools.js`**：新增 `SYNC_KEY_IN` / `SYNC_KEY_OUT` 与 `localKey` / `syncKey` / `fromSyncKeys` / `toSyncKeys`
+  （读云端：`fit→ft`、`roster/committee→bz`、`group→draw`；写云端：`bz→committee`，与网页/安卓 canonical 对齐）；
+  `normalizeToolOrder` / `normalizeHome` 先做 key 归一；`homeEligible` 去掉电费/诊断的 noHome 限制，
+  管理员工具按身份放行（`stats` 仅管理员可勾选）。
+- **`utils/cloud.js`**：`udSections` 写云端时 `homeTools` / `prefs.toolOrder` 统一换成 canonical key；
+  `udApply` 把云端数组先归一再落盘，不再丢体测/名单、也不会用过滤后的数组回推覆盖安卓端。
+- **`pages/all/all.js`**：编辑态遇到 `invalid` 时 toast「该工具不能加入首页」，不再静默失败。
+- **测试**：`tool_sort_unit.js` **24/0**（新增 3 组：安卓 `fit/roster/group` 读入归一、写云端 canonical、电费/诊断勾选）；
+  `unit.js` **631/3**（3 项均为既有时间依赖失败：期次§1.3、发布§4/§5，HEAD 基线同样失败，与本次无关）；
+  `staticcheck.py` / `code_quality_check.js` 退出 0。
+- **兼容/未改**：UD v6 顶层键、11 个 section、VERSION 2.0.4 均不变；安卓/鸿蒙侧对 `ft`/`committee` 做反向映射
+  （`android-class-tools` 同步修复），网页端本身识别 `ft` / `committee`，因此小程序勾选的名单在网页工具栏也能显示。
+
 ## 版本号 2.0.4（2026-11-21，源码就绪；待用户上传发布）
 
 > 用户要求：截止此版本设置微信小程序版本为 2.0.4。

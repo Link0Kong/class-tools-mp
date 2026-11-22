@@ -176,6 +176,9 @@ Page({
     const rev = tools.setHomeTool(key, !item.home);
     if (!rev.ok) {
       if (rev.reason === 'max') wx.showToast({ title: '最多选 4 个', icon: 'none' });
+      // 2026-11-22：以前 invalid（noHome/身份不允许）是静默失败，用户会以为「部分工具勾不上」；
+      // 现在电费/诊断/管理员工具都可勾选，仍不可勾选时明确提示，不再无反馈。
+      else if (rev.reason === 'invalid') wx.showToast({ title: '该工具不能加入首页', icon: 'none' });
       return;
     }
     this.render();                              // 选中徽标/描边联动刷新

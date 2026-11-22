@@ -385,11 +385,13 @@ const fakeCanvas = (() => {
     const committee = { token: 'tok-ut-c', sid: 'fixture-committee-ut', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
     assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
     assert.strictEqual(tools.toolOf('stats').admin, true, '统计仍是管理工具，不进首页勾选');
-    // 2026-11-08 诊断 v2：全班可见（不再是 admin 工具），但仍不进首页勾选（noHome）
+    // 2026-11-22：电费 / 诊断恢复可勾选（与网页工具栏、安卓端一致）；统计仍按身份可勾选
     assert.strictEqual(tools.toolOf('diag').admin, undefined, '诊断对全班可见，不再是仅管理员工具');
-    assert.strictEqual(tools.toolOf('diag').noHome, true, '诊断不进首页勾选（仅「全部」页可见）');
-    assert.strictEqual(tools.toolOf('power').noHome, true, '宿舍电费与网站一致：不参与首页勾选');
+    assert.strictEqual(!!tools.toolOf('diag').noHome, false, '诊断可以勾选进首页（2026-11-22）');
+    assert.strictEqual(!!tools.toolOf('power').noHome, false, '宿舍电费可以勾选进首页（与网页/安卓一致）');
     assert.strictEqual(!!tools.toolOf('water').noHome, false, '水量可主动勾选进首页（2026-11-06 用户口径）');
+    assert.strictEqual(tools.homeEligible(tools.toolOf('power')), true);
+    assert.strictEqual(tools.homeEligible(tools.toolOf('diag')), true);
     assert.strictEqual(tools.homeEligible(tools.toolOf('water')), true);
     assert.strictEqual(tools.toolOf('water').url, '/pages/water/water');
     assert.deepStrictEqual(tools.quickList().map((t) => t.key), ['draw', 'hw', 'tt', 'nt']);

@@ -3778,19 +3778,20 @@ function run(test) {
     /* ============================================================
        E. 工程/契约静态断言：工具入口 / app.json / 图标 / 分享 / 页面注册 / 60s 常量
        ============================================================ */
-    await test('工程：tools 增 power（noHome 普通）与 diag（diag v2 全班可见、不进首页）、app.json 注册、图标存在且媒体预算内、页面有分享 handler', function () {
+    await test('工程：tools 增 power/diag（普通工具、可勾选首页）、app.json 注册、图标存在且媒体预算内、页面有分享 handler', function () {
       purge();
       const tools = R('utils/tools.js');
       const pwTool = tools.toolOf('power');
       const dgTool = tools.toolOf('diag');
-      assert.ok(pwTool && !pwTool.admin && pwTool.noHome === true, 'power 应为普通工具且不进首页常用 (noHome)');
+      assert.ok(pwTool && !pwTool.admin && !pwTool.noHome, 'power 应为普通工具且可勾选进首页（2026-11-22 与网页/安卓一致）');
       assert.strictEqual(pwTool.url, '/pages/power/power');
-      // 2026-11-08 诊断 v2：去掉管理员门禁（所有人可见），与电费一样不进首页勾选
+      // 2026-11-08 诊断 v2：去掉管理员门禁（所有人可见）；2026-11-22 起可勾选首页
       assert.ok(dgTool && !dgTool.admin, 'diag 不再是仅管理员工具（所有有效班级身份可见）');
-      assert.strictEqual(dgTool.noHome, true, 'diag 不进首页常用（仅「全部」页可见）');
+      assert.strictEqual(!!dgTool.noHome, false, 'diag 可以勾选进首页');
       assert.ok(!/仅管理员/.test(String(dgTool.meta || '') + String(dgTool.desc || '')), 'diag 文案不应再写「仅管理员」');
       assert.strictEqual(dgTool.url, '/pages/diag/diag');
-      assert.strictEqual(tools.quickList(4).filter(function (t) { return t.key === 'power' || t.key === 'diag'; }).length, 0, '首页常用不应出现 power/diag');
+      assert.strictEqual(tools.homeEligible(pwTool), true, '电费可进首页勾选');
+      assert.strictEqual(tools.homeEligible(dgTool), true, '诊断可进首页勾选');
       assert.ok(tools.catalog().some(function (t) { return t.key === 'diag'; }), '「全部工具」目录应含 diag（非管理员也可看到）');
       const app = JSON.parse(src('app.json'));
       assert.ok(allPages(app).indexOf('pages/power/power') >= 0, 'app.json 应注册 power 页');

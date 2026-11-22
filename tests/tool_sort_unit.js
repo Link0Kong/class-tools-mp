@@ -137,23 +137,27 @@ function pageCtx(def) {
   });
 
   /* ---------- 2. 归一：只去重/过滤，不补齐 ---------- */
-  await test('归一：去重 / 非法 key / 管理员 / noHome 过滤，最多保留前 4 个（不自动补齐）', () => {
+  await test('归一：去重 / 非法 key / 管理员工具按身份过滤，最多保留前 4 个（不自动补齐）', () => {
     const { store, tools } = fresh();
     clearMem();
+    setIdentity();
     // 直接写脏数据 → homeTools() 归一后落盘
     store.get().homeTools = ['hw', 'hw', 'bogus', 'stats', 'diag', 'power', 'nt', 'ft', 'draw', 'roll'];
     tools.homeTools();
-    assert.deepStrictEqual(store.get().homeTools, ['hw', 'nt', 'ft', 'draw'], '应去重并过滤非法/管理员/noHome，只留前 4');
+    assert.deepStrictEqual(store.get().homeTools, ['hw', 'diag', 'power', 'nt'], '应去重并过滤非法/非管理员工具，只留前 4');
     // 不足 4 个不再补齐（新语义：勾选几个就几个）
     store.get().homeTools = ['draw', 'hw'];
     assert.deepStrictEqual(tools.homeTools(), ['draw', 'hw']);
     // 空集合保持空（不自动回默认）
     store.get().homeTools = [];
     assert.deepStrictEqual(tools.homeTools(), []);
-    // 水量（water）可以勾选；宿舍电费（power）不参与
+    // 2026-11-22：电费 / 诊断恢复可勾选（安卓与网页工具栏都允许），管理员工具仅管理员可勾选
     assert.strictEqual(tools.homeEligible(tools.toolOf('water')), true, '水量可以勾选进首页');
-    assert.strictEqual(tools.homeEligible(tools.toolOf('power')), false, '宿舍电费不参与首页勾选');
-    assert.strictEqual(tools.homeEligible(tools.toolOf('stats')), false, '管理员工具不参与首页勾选');
+    assert.strictEqual(tools.homeEligible(tools.toolOf('power')), true, '宿舍电费可以勾选进首页');
+    assert.strictEqual(tools.homeEligible(tools.toolOf('diag')), true, '诊断可以勾选进首页');
+    assert.strictEqual(tools.homeEligible(tools.toolOf('stats')), false, '非管理员不能勾选统计');
+    const admin = { token: 'tok-tool-admin', sid: 'fixture-admin-tools', name: '管理员夹具', role: '班长', badge: '班委', is_admin: true, ts: 1 };
+    assert.strictEqual(tools.homeEligible(tools.toolOf('stats'), admin), true, '管理员可以勾选统计');
   });
 
   /* ---------- 3. 勾选上限 4 / 取消勾选 / 按 toolOrder 排列 ---------- */
@@ -186,9 +190,9 @@ function pageCtx(def) {
     // toggleHome 取反
     assert.strictEqual(tools.toggleHome('tt').ok, true);
     assert.deepStrictEqual(tools.homeTools(), ['draw', 'hw', 'ft']);
-    // 非法 key / noHome 工具 → invalid，不产生变化
+    // 非法 key → invalid；非管理员的统计工具 → invalid，不产生变化
     assert.strictEqual(tools.setHomeTool('bogus', true).reason, 'invalid');
-    assert.strictEqual(tools.setHomeTool('power', true).reason, 'invalid');
+    assert.strictEqual(tools.setHomeTool('stats', true).reason, 'invalid');
     // 同步触发（tools.js 复用 cloud.udPushSoon；测试里打桩计数）
     let pushN = 0;
     const orig = cloud.udPushSoon;
@@ -355,6 +359,62 @@ function pageCtx(def) {
     assert.deepStrictEqual(B.tools.toolOrder().slice(0, 4), order.slice(0, 4), '设备 B：工具自定义顺序从云端恢复');
     assert.deepStrictEqual(B.tools.homeTools(), ['draw', 'roll'], '设备 B：首页勾选/顺序从云端恢复');
     assert.deepStrictEqual(B.tools.quickList(4).map(function (t) { return t.key; }), ['draw', 'roll']);
+  });
+
+  /* ---------- 8b. 跨端 key（2026-11-22：安卓/鸿蒙 fit/roster/group、网页 committee） ---------- */
+  await test('跨端 key：安卓写入 fit/roster/group → 小程序首页归一为体测/名单/分组', () => {
+    const { store, tools, cloud } = fresh();
+    clearMem();
+    setIdentity();
+    const T1 = 1800000020000, T2 = 1800000021000;
+    const android = {
+      v: 6,
+      at: { homeTools: T1, fit: 0, draw: 0, group: 0, roster: 0, hide: 0, tt: 0, prefs: T2, nick: 0, power: 0, water: 0 },
+      homeTools: ['fit', 'roster', 'hw', 'nt'],
+      fit: {}, draw: {}, group: {}, roster: { rosterSel: [], rollSel: [], rollSt: {}, rollNames: '' },
+      hide: { hwHide: {}, ntHide: {} }, tt: { termStart: '' },
+      prefs: { hwRemind: {}, ntSub: false, ntSubAt: 0, toolOrder: ['roster', 'fit', 'hw', 'nt', 'draw', 'tt', 'group', 'roll'] },
+      nick: '', power: { sel: '', at: 0, low: 30 }, water: { rooms: {} }, homeToolsAt: T1
+    };
+    assert.strictEqual(cloud.udApply(android), true);
+    assert.deepStrictEqual(tools.homeTools(), ['ft', 'bz', 'hw', 'nt'], '安卓的 fit/roster 必须是体测/名单，不能丢');
+    assert.deepStrictEqual(tools.toolOrder().slice(0, 6), ['bz', 'ft', 'hw', 'nt', 'draw', 'tt'], '安卓顺序归一后保持相对位置');
+    assert.strictEqual(store.get().toolOrderSetAt, T2, '应用安卓顺序后本机时间戳 = 云端 at.prefs');
+  });
+
+  await test('跨端 key：小程序写云端统一 canonical（bz→committee），不写 fit/roster/bz', () => {
+    const { store, tools, cloud } = fresh();
+    clearMem();
+    setIdentity();
+    tools.setToolOrder(['draw', 'ft', 'bz', 'hw', 'nt', 'tt', 'roll', 'water']);
+    store.get().homeTools = ['ft', 'bz', 'hw'];
+    store.get().homeToolsAt = 1800000030000;
+    store.save();
+    const view = cloud.udSections();
+    assert.deepStrictEqual(view.homeTools, ['ft', 'committee', 'hw'], 'homeTools 写云端用网页/安卓可识别的 committee');
+    assert.ok(view.prefs.toolOrder.indexOf('committee') >= 0, 'prefs.toolOrder 写云端同样用 committee');
+    ['fit', 'roster', 'bz'].forEach(function (k) {
+      assert.strictEqual(view.prefs.toolOrder.indexOf(k), -1, '写云端不得出现小程序本机/安卓旧 key：' + k);
+    });
+    // 网页 canonical（committee）再回读 → 仍是本机 bz（幂等，不会来回改名）
+    assert.deepStrictEqual(tools.normalizeHome(['ft', 'committee', 'hw']), ['ft', 'bz', 'hw']);
+    assert.deepStrictEqual(tools.normalizeToolOrder(['committee', 'ft']).slice(0, 2), ['bz', 'ft']);
+  });
+
+  await test('跨端 key：小程序勾选电费/诊断（原 noHome）可进首页并写云端', () => {
+    const { store, tools, cloud } = fresh();
+    clearMem();
+    setIdentity();
+    // 默认已勾 4 个（hw/nt/ft/draw）→ 先取消两个腾位子
+    assert.strictEqual(tools.setHomeTool('ft', false).ok, true);
+    assert.strictEqual(tools.setHomeTool('nt', false).ok, true);
+    assert.deepStrictEqual(tools.homeTools(), ['hw', 'draw']);
+    assert.strictEqual(tools.setHomeTool('power', true).ok, true, '电费可勾选');
+    assert.strictEqual(tools.setHomeTool('diag', true).ok, true, '诊断可勾选');
+    assert.deepStrictEqual(tools.homeTools(), ['hw', 'draw', 'power', 'diag'], '勾选顺序按 toolOrder');
+    const view = cloud.udSections();
+    assert.ok(view.homeTools.indexOf('power') >= 0 && view.homeTools.indexOf('diag') >= 0, '电费/诊断随 homeTools 进云端');
+    assert.ok(store.get().homeTools.indexOf('power') >= 0);
   });
 
   await test('云同步边界：无基线时自定义顺序抢时间戳；远端 prefs 无 toolOrder 不清空本机自定义', () => {
