@@ -13,10 +13,10 @@ module.exports = guard.run(async function getGroupResult() {
 
   if (!st || !st.result || !st.result.length) {
     const data = Object.assign({
-      exists: false, groups: [], source: null, mode: null, value: null, shuffle: false, cfg: null, steps: algo.steps()
+      exists: false, groups: [], source: null, mode: null, value: null, shuffle: false, cfg: null
     }, base);
-    return result.ok('还没有分组结果。可以先抽签（runDraw）再调用 runGroup 分组，或打开分组页设置。', data,
-      { handoff: handoff.handoffTo('group', 'step=2') });
+    return result.ok('还没有分组结果。分组不依赖抽签：可用全班、最近抽签或班级名单，打开分组页或调用 runGroup 即可。', data,
+      { handoff: handoff.handoffTo('group') });
   }
 
   const info = algo.groupInfo(st);
@@ -27,10 +27,9 @@ module.exports = guard.run(async function getGroupResult() {
     mode: info.mode,
     value: info.value,
     shuffle: info.shuffle,
-    cfg: st.cfg || null,
-    steps: algo.steps()
+    cfg: st.cfg || null
   }, base);
   const content = '当前分组结果共 ' + info.groups.length + ' 组（共 ' + info.total + ' 人，来源：' +
-    (info.source === 'prev' ? '上一步抽签序号' : '班级名单') + '）。下一步：调用 getResultSummary 生成结果单，或打开分组页查看。';
-  return result.ok(content, data, { handoff: handoff.handoffTo('group', 'step=2') });
+    (info.source === 'prev' ? '最近抽签' : '班级名单') + '）。需要文字摘要时调用 getResultSummary，或打开分组页查看 / 复制 / 分享。';
+  return result.ok(content, data, { handoff: handoff.handoffTo('group') });
 }, '分组结果');

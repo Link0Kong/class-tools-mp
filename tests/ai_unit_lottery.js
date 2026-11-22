@@ -1,14 +1,14 @@
-/* ai_unit_lottery.js —— 抽签 / 分组 / 结果单（SKILL lottery）原子接口单元测试
+/* ai_unit_lottery.js —— 抽签 / 分组（SKILL lottery）原子接口单元测试
  *
  * 运行：cd mp-class-tools-tests && node ai_unit_lottery.js
  * 基座：_ai_harness.js（mock wx / modelContext / storage 夹具）
  *
  * 覆盖：10 个接口（成功 / 空结果 / 参数错误 / 确认门禁 / 未认证）+ 与主包页面逐字节的算法/文案断言：
  *   - runDraw 结果与 cfg 文案（"1 – 4" 的 en dash、dup 是/否、excl 无…）逐字节；
- *   - zq_flow 结构 = {draw:{result,pool,removed,log,cfg}, group:{result,cfg}}（与 utils/flow.js 页面写入一致）；
+ *   - zq_flow 结构 = {draw, drawLast, group}（与 utils/flow.js 页面写入一致）；
  *   - refill / removeAt(autoRe) / reset 语义 = pages/draw/draw.js；
  *   - 分组算法 = pages/group/group.js（按组数/每组人数/打乱/轮流分配）；
- *   - 结果单文本 = pages/sum/sum.js build（含 2000 字截断）。
+ *   - 摘要文本 = 抽签 + 分组（含 2000 字截断）；结果单页已删除。
  * 随机数通过 lib/algo.setRng 注入，断言完全确定。
  */
 'use strict';
@@ -16,13 +16,13 @@
 const path = require('path');
 const H = require('./_ai_harness.js');
 
-const EMPTY_FLOW = { draw: null, group: null, updatedAt: 0 };
+const EMPTY_FLOW = { draw: null, drawLast: null, group: null, updatedAt: 0 };
 const PAGE_CFG = {
   range: '1 – 4', rangeF: '1-4', count: '2', dup: '否', excl: '无',
   sort: '按抽取顺序', pool: '4', sel: '0', selF: ''
 };
 const GROUP_CFG = {
-  source: '上一步抽签序号', mode: '按组数(2 组)', total: '4', groups: '2', inner: '按原顺序轮流分配'
+  source: '最近抽签（4 人）', mode: '按组数(2 组)', total: '4', groups: '2', inner: '按原顺序轮流分配'
 };
 const GROUP_CFG_ROSTER = {
   source: '班级名单（3 人）', mode: '按组数(2 组)', total: '3', groups: '2', inner: '按原顺序轮流分配'
@@ -102,7 +102,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.eq(sc.hasDrawResult, true);
     H.eq(sc.hasGroupResult, true);
     H.eq(sc.pagePath, '/pages/draw/draw');
-    H.eq(H.handoffOf(res).query, 'step=1');
+    H.eq(H.handoffOf(res).query, '');
   });
 
   await H.test('getDrawConfig：无结果 / 未选名单 → 池 = 范围', async function () {
@@ -126,10 +126,10 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.deepEq(sc.items, [{ number: 2, name: '' }, { number: 3, name: '' }], 'rng=0 的洗牌结果');
     H.eq(sc.poolSize, 4);
     H.deepEq(sc.cfg, PAGE_CFG, 'cfg 文案与 pages/draw doDraw 逐字节一致');
-    H.deepEq(names(sc.steps, 'done'), [true, false, false], '步骤条');
+    H.eq(sc.steps, undefined, '抽签与分组独立后不再返回步骤条');
     H.eq(typeof sc.drawnAt, 'number');
     H.eq(sc.pagePath, '/pages/draw/draw');
-    H.eq(H.handoffOf(res).query, 'step=1');
+    H.eq(H.handoffOf(res).query, '');
 
     const fl = flowOf(m.wx);
     H.deepEq(Object.keys(fl.draw), ['result', 'pool', 'removed', 'log', 'cfg'], 'draw 结构 = 页面 flow.patch');
@@ -137,6 +137,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.deepEq(fl.draw.pool, [1, 2, 3, 4]);
     H.deepEq(fl.draw.removed, []);
     H.deepEq(fl.draw.log, []);
+    H.deepEq(fl.drawLast.result, [2, 3], '抽签成功写「最近抽签」快照');
     H.eq(fl.group, null);
     H.ok(fl.updatedAt > 0);
 
@@ -359,7 +360,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.deepEq(names(sc.items, 'number'), [3, 17, 24, 42]);
     H.deepEq(names(sc.items, 'name'), ['', '', '测试账号', ''], '只匹配 roster 里的 24');
     H.deepEq(objectKeys(sc.cfg), ['range', 'rangeF', 'count', 'dup', 'excl', 'sort', 'pool', 'sel', 'selF']);
-    H.eq(H.handoffOf(res).query, 'step=1');
+    H.eq(H.handoffOf(res).query, '');
   });
 
   await H.test('getDrawResult：无结果 → exists=false', async function () {
@@ -391,15 +392,15 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.eq(JSON.stringify(flowOf(m.wx)), before);
   });
 
-  await H.test('resetDraw：确认后清空 draw+group，保留抽签参数', async function () {
+  await H.test('resetDraw：确认后只清空 draw，保留分组结果与最近抽签快照', async function () {
     const m = make();
     const res = await m.call('resetDraw', { confirmed: true });
     H.isOk(res);
-    H.deepEq(res.structuredContent.cleared, { draw: true, group: true });
+    H.deepEq(res.structuredContent.cleared, { draw: true, group: false });
     const fl = flowOf(m.wx);
     H.eq(fl.draw, null);
-    H.eq(fl.group, null);
-    H.deepEq(names(res.structuredContent.steps, 'done'), [false, false, false]);
+    H.ok(fl.group && fl.group.result && fl.group.result.length, '分组结果不被抽签重置清空');
+    H.ok(fl.drawLast && fl.drawLast.result.length, '最近抽签快照保留（分组仍可沿用）');
     H.eq(storeOf(m.wx).draw.end, 50, 'store.draw 参数不受重置影响（页面 reset 同口径）');
   });
 
@@ -419,7 +420,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.deepEq(sc.groups.map(function (g) { return names(g.members, 'number'); }), [[12, 26], [24, 31]]);
     H.deepEq(sc.groups[0].members[1], { number: 26, name: '测试辛' }, '姓名取 store.roster');
     H.deepEq(sc.cfg, GROUP_CFG, 'cfg 文案与 pages/group doGroup 逐字节');
-    H.eq(H.handoffOf(res).query, 'step=2');
+    H.eq(H.handoffOf(res).query, '');
     const fl = flowOf(m.wx);
     H.deepEq(Object.keys(fl.group), ['result', 'cfg']);
     H.deepEq(fl.group.result[0].map(function (x) { return x.n; }), [12, 26]);
@@ -490,7 +491,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.eq(sc.shuffle, false);
     H.eq(sc.groups.length, 2);
     H.deepEq(sc.groups[0].members, [{ number: 3, name: '测试甲' }, { number: 17, name: '' }]);
-    H.eq(H.handoffOf(res).query, 'step=2');
+    H.eq(H.handoffOf(res).query, '');
   });
 
   await H.test('getGroupResult：无结果 → exists=false', async function () {
@@ -531,11 +532,11 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     const fl = flowOf(m.wx);
     H.eq(fl.group, null);
     H.ok(fl.draw && fl.draw.result.length, '抽签结果保留');
-    H.deepEq(names(res.structuredContent.steps, 'done'), [true, false, false]);
+    H.eq(res.structuredContent.steps, undefined, '不再返回步骤条');
   });
 
   /* ================================================================ getResultSummary */
-  await H.test('getResultSummary：结果单文本 = pages/sum build（关键行逐字节）', async function () {
+  await H.test('getResultSummary：抽签 + 分组摘要（关键行逐字节）', async function () {
     const m = make();
     const res = await m.call('getResultSummary', {});
     H.isOk(res);
@@ -552,12 +553,12 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.eq(lines[3], '抽签 · 排除：无');
     H.eq(lines[4], '抽签 · 排序：按抽取顺序');
     H.eq(lines[5], '抽签 · 名单对应：已启用（8 人）');
-    H.notIncludes(sc.text, '抽签结果（4 个）', '页面 sum.js 文本中抽签块不带 label（只有分组块带）');
+    H.notIncludes(sc.text, '抽签结果（4 个）', '摘要文本中抽签块不带 label（只有分组块带）');
     H.includes(sc.text, '第 1 组（2 人）');
-    H.includes(sc.text, '分组 · 成员来源：上一步抽签序号');
+    H.includes(sc.text, '分组 · 成员来源：最近抽签（4 人）');
     H.ok(sc.text.length <= 2000, 'text ≤2000 字');
-    H.eq(sc.pagePath, '/pages/sum/sum');
-    H.eq(H.handoffOf(res).query, 'step=3');
+    H.eq(sc.pagePath, '/pages/group/group', '摘要接力到分组页（结果单页已删除）');
+    H.eq(H.handoffOf(res).query, '');
   });
 
   await H.test('getResultSummary：无抽签无分组 → 空结果说明（isError=false）', async function () {
@@ -570,7 +571,7 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
     H.includes(res.content[0].text, '还没有抽签或分组结果');
   });
 
-  await H.test('getResultSummary：超长结果单截断到 ≤2000 字', async function () {
+  await H.test('getResultSummary：超长摘要截断到 ≤2000 字', async function () {
     const many = [];
     for (let i = 1; i <= 800; i++) many.push(i);
     const m = make({
@@ -589,9 +590,9 @@ function names(list, key) { return list.map(function (x) { return x[key]; }); }
   });
 
   /* ================================================================ 其它 */
-  await H.test('mcp.json：10 个接口均声明 pagePath + componentPath，pagePath 属 draw/group/sum', function () {
+  await H.test('mcp.json：10 个接口均声明 pagePath + componentPath，pagePath 属 draw/group', function () {
     const m = make();
-    const allow = ['/pages/draw/draw', '/pages/group/group', '/pages/sum/sum'];
+    const allow = ['/pages/draw/draw', '/pages/group/group'];
     m.L.mcp.apis.forEach(function (a) {
       const ui = (a._meta && a._meta.ui) || {};
       H.eq(typeof ui.pagePath, 'string', a.name + ' pagePath');

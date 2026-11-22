@@ -289,14 +289,14 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
   });
 
   /* ================= getToolsDirectory ================= */
-  await H.test('getToolsDirectory：管理员 → 8 个工具含统计 + 首页快捷 4 个', async function () {
+  await H.test('getToolsDirectory：管理员 → 9 个工具含统计 + 首页快捷 4 个', async function () {
     const s = start();
     const { apis } = load(s.wx);
     const res = await H.call(s.wx, apis, 'getToolsDirectory', {});
     H.isOk(res);
     const sc = res.structuredContent;
     H.eq(sc.homeTools.length, 4);
-    H.eq(sc.all.length, 8);
+    H.eq(sc.all.length, 9);
     H.eq(sc.pagePath, '/pages/all/all');
     const stats = sc.all.filter(function (t) { return t.key === 'stats'; })[0];
     H.ok(stats, '管理员应能看到统计工具');
@@ -310,7 +310,7 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
     const { apis } = load(s.wx);
     const res = await H.call(s.wx, apis, 'getToolsDirectory', {});
     H.isOk(res);
-    H.eq(res.structuredContent.all.length, 7);
+    H.eq(res.structuredContent.all.length, 8);
     H.eq(res.structuredContent.all.filter(function (t) { return t.key === 'stats'; }).length, 0);
   });
 
@@ -319,7 +319,7 @@ function textOf(res) { return (res.content || []).map(function (c) { return c.te
     const { apis } = load(s.wx);
     const res = await H.call(s.wx, apis, 'getToolsDirectory', {});
     H.isOk(res);
-    H.eq(res.structuredContent.all.length, 7);
+    H.eq(res.structuredContent.all.length, 8);
     H.eq(res.structuredContent.pagePath, '/pages/all/all');
   });
 

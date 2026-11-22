@@ -1,4 +1,4 @@
-// ai/skills/lottery/index.js —— 注册抽签 / 分组 / 结果单原子接口
+// ai/skills/lottery/index.js —— 注册抽签 / 分组 / 摘要原子接口
 // 接口名必须与 mcp.json apis[].name、apis/ 文件名（小驼峰）逐字一致。
 const skill = wx.modelContext.createSkill('ai/skills/lottery');
 

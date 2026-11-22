@@ -302,9 +302,9 @@ function run(test) {
       assert.strictEqual(sm.svGet(p, 'ttgrid'), null);
     });
 
-    await test('需求2：17 个页面都接入 scrollmem（attach/restore/save/onScroll）', function () {
+    await test('需求2：16 个页面都接入 scrollmem（attach/restore/save/onScroll；结果单页已删除）', function () {
       const pages = ['index/index', 'all/all', 'me/me', 'nt/nt', 'hw/hw', 'ft/ft', 'fb/fb', 'data/data',
-        'committee/committee', 'stats/stats', 'ug/ug', 'fttable/fttable', 'roll/roll', 'group/group', 'sum/sum', 'draw/draw', 'tt/tt'];
+        'committee/committee', 'stats/stats', 'ug/ug', 'fttable/fttable', 'roll/roll', 'group/group', 'draw/draw', 'tt/tt'];
       pages.forEach(function (rel) {
         const s = src('pages/' + rel + '.js');
         assert.ok(/scrollmem\.attach\(this\)/.test(s), rel + ' 缺 attach');

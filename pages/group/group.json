@@ -3,7 +3,6 @@
   "enablePullDownRefresh": true,
   "usingComponents": {
     "touchable": "/components/touchable/index",
-    "segmented": "/components/segmented/index",
     "empty-state": "/components/empty-state/index",
     "roster-picker": "/components/roster-picker/index",
     "share-sheet": "/components/share-sheet/index"

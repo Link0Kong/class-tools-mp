@@ -152,6 +152,8 @@ function mkD(raw) {
   d.draw = Object.assign({}, DEF.draw, raw.draw || {});
   d.group = Object.assign({}, DEF.group, raw.group || {});
   d.group.sel = normSeats(d.group.sel);
+  // 契约 web/group/CONTRACT.md §4：group.source 只保留 prev | pick；旧 'paste'/未知值归一 prev（paste 归一 pick）
+  d.group.source = (d.group.source === 'pick' || d.group.source === 'paste') ? 'pick' : 'prev';
   d.rosterSel = normSeats(raw.rosterSel);
   d.rollSel = normSeats(raw.rollSel);
   d.selVer = Number(raw.selVer) || 0;

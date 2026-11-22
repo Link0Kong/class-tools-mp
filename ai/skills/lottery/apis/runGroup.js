@@ -1,4 +1,4 @@
-// ai/skills/lottery/apis/runGroup.js —— 分组（上一步抽签序号 / 班级名单已选座号）
+// ai/skills/lottery/apis/runGroup.js —— 分组（最近抽签序号 / 班级名单已选座号）
 const local = require('../../../common/local.js');
 const result = require('../../../common/result.js');
 const handoff = require('../../../common/handoff.js');
@@ -16,7 +16,7 @@ module.exports = guard.run(async function runGroup(args) {
   }
   const sourceIn = args.source == null ? 'prev' : String(args.source);
   if (sourceIn !== 'prev' && sourceIn !== 'roster') {
-    return result.invalid('source 只能为 prev（上一步抽签序号）或 roster（班级名单已选座号）。');
+    return result.invalid('source 只能为 prev（最近抽签序号）或 roster（班级名单已选座号）。');
   }
   const shuffle = args.shuffle === true;
 
@@ -54,7 +54,7 @@ module.exports = guard.run(async function runGroup(args) {
   } else {
     mem = algo.prevMembers();
     if (!mem) {
-      return result.invalid('请先在第 1 步抽签：当前还没有抽签结果，无法用上一步序号分组。可先调用 runDraw 抽签，或改用 source=roster 从班级名单分组。');
+      return result.invalid('还没有最近抽签结果，无法用最近抽签序号分组。可先调用 runDraw 抽签，或改用 source=roster 从班级名单分组（分组不依赖抽签）。');
     }
   }
 
@@ -75,11 +75,10 @@ module.exports = guard.run(async function runGroup(args) {
     shuffle: shuffle,
     source: sourceIn,
     cfg: g.st.cfg,
-    steps: algo.steps(),
     pagePath: pg.pagePath,
     pageTitle: pg.pageTitle
   };
-  const content = '已分 ' + g.groups + ' 组（共 ' + mem.length + ' 人，来源：' + (sourceIn === 'prev' ? '上一步抽签序号' : '班级名单') +
-    '，' + (shuffle ? '打乱后随机分配' : '按原顺序轮流分配') + '）。下一步：可打开分组页查看，或调用 getResultSummary 生成结果单。';
-  return result.ok(content, data, { handoff: handoff.handoffTo('group', 'step=2') });
+  const content = '已分 ' + g.groups + ' 组（共 ' + mem.length + ' 人，来源：' + (sourceIn === 'prev' ? '最近抽签' : '班级名单') +
+    '，' + (shuffle ? '打乱后随机分配' : '按原顺序轮流分配') + '）。可打开分组页查看 / 复制 / 分享，或调用 getResultSummary 生成文字摘要。';
+  return result.ok(content, data, { handoff: handoff.handoffTo('group') });
 }, '分组结果');

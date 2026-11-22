@@ -6,7 +6,7 @@
 //   store.group.sel    分组 · 班级名单成员
 //   store.rollSel      点名名单
 // 同时写派生文本，兼容旧渲染/旧算法（页面不再手工编辑这些文本）：
-//   store.roster      "座号 姓名\n…"（util.rosterMap 解析，抽签/结果单名字用）
+//   store.roster      "座号 姓名\n…"（util.rosterMap 解析，抽签/分组名字用）
 //   store.group.names "姓名\n…"（分组派生）
 //   store.rollNames   "座号 姓名\n…"（点名 renders 解析用，parseNames 会去掉座号）
 //

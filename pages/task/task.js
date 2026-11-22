@@ -58,7 +58,15 @@ function tagsOf(s) {
   return String(s || '').split(/[,，;；#]+/).map(function (x) { return x.trim(); })
     .filter(function (x, i, a) { return x && a.indexOf(x) === i; }).slice(0, 6);
 }
-function attsOf(t) { return task.parseAttachments(t && t.attachments).map(function (a) { return Object.assign({}, a, { sizeText: fmtSize(a.s) }); }); }
+function attsOf(t) {
+  return task.parseAttachments(t && t.attachments).map(function (a) {
+    const ext = extOf(a.n);
+    return Object.assign({}, a, {
+      sizeText: fmtSize(a.s),
+      badge: a.img ? 'IMG' : (ext ? ext.toUpperCase().slice(0, 4) : 'FILE')
+    });
+  });
+}
 
 Page(shareflow.install({
   data: {

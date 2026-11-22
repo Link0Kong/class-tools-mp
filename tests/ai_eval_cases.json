@@ -54,7 +54,7 @@
     { "id": "lottery-group", "intent": "把抽签结果分成 4 组", "tags": ["lottery"], "entities": { "source": "runGroup" } },
     { "id": "lottery-group-result", "intent": "分组结果给我看看", "tags": ["lottery"], "entities": { "source": "getGroupResult" } },
     { "id": "lottery-group-reset", "intent": "重置分组，确认", "tags": ["lottery", "confirm"], "entities": { "source": "resetGroup" } },
-    { "id": "lottery-flow-complex", "intent": "在 1-70 里抽 8 个号，分成 2 组，最后生成结果单", "tags": ["lottery", "complex", "multi-step"], "entities": { "source": "runDraw", "tools": ["runDraw", "runGroup", "getResultSummary"] } },
+    { "id": "lottery-flow-complex", "intent": "在 1-70 里抽 8 个号，分成 2 组，最后生成摘要", "tags": ["lottery", "complex", "multi-step"], "entities": { "source": "runDraw", "tools": ["runDraw", "runGroup", "getResultSummary"] } },
     { "id": "lottery-config-draw-complex", "intent": "先看抽签配置，如果池子不超过 50 个号就抽 10 个", "tags": ["lottery", "complex", "multi-step"], "entities": { "source": "getDrawConfig", "tools": ["getDrawConfig", "runDraw"] } },
     { "id": "lottery-neg-confirm", "intent": "再抽一次，直接覆盖现在的结果", "tags": ["lottery", "negative", "business-state", "confirm"], "entities": { "source": "runDraw" } },
     { "id": "fitness-calc-complex", "intent": "男大一大二，身高 175、体重 68，肺活量 4200，50 米 7.2 秒，坐位体前屈 12.5，立定跳远 240，引体向上 12 个，1000 米 3 分 50，算一下体测成绩", "tags": ["fitness", "complex"], "entities": { "source": "calculateFitness", "conditions": 9 } },

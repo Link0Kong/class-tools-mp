@@ -39,5 +39,5 @@ module.exports = guard.run(async function removeDrawResult(args) {
   };
   const content = '已剔除序号 ' + number + (r.added != null ? ('，并自动补抽 ' + r.added) : '，未自动补抽') +
     '；当前结果 ' + st.result.length + ' 个、已剔除 ' + (st.removed || []).length + ' 个。下一步：可继续补抽 refillDraw 或打开抽签页查看。';
-  return result.ok(content, data, { handoff: handoff.handoffTo('draw', 'step=1') });
+  return result.ok(content, data, { handoff: handoff.handoffTo('draw') });
 }, '抽签结果');

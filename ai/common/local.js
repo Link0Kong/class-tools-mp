@@ -2,7 +2,7 @@
 //
 // 键（与 mp-class-tools 主包完全一致）：
 //   zq_tools_v2        主数据（作业/通知/名单/体测/工具顺序/偏好…）
-//   zq_flow            抽签→分组→结果单跨页状态（utils/flow.js 同结构）
+//   zq_flow            抽签 / 分组本机跨页状态（utils/flow.js 同结构，含最近抽签 drawLast）
 //   zq_class_identity  身份（见 ai/common/auth.js，这里不碰）
 //
 // 约定：
@@ -111,12 +111,12 @@ function saveClassMembers(list) {
   });
 }
 
-// ---------------------------------------------------------------- 抽签→分组→结果单（zq_flow）
-function emptyFlow() { return { draw: null, group: null, updatedAt: 0 }; }
+// ---------------------------------------------------------------- 抽签 / 分组（zq_flow，两个独立工具）
+function emptyFlow() { return { draw: null, drawLast: null, group: null, updatedAt: 0 }; }
 function getFlow() {
   const f = readKey(FLOW);
   if (!f || typeof f !== 'object') return emptyFlow();
-  return { draw: f.draw || null, group: f.group || null, updatedAt: num(f.updatedAt, 0) };
+  return { draw: f.draw || null, drawLast: f.drawLast || null, group: f.group || null, updatedAt: num(f.updatedAt, 0) };
 }
 function setFlow(f) {
   const next = Object.assign(emptyFlow(), f || {});
@@ -127,7 +127,23 @@ function setFlow(f) {
 function patchFlow(k, v) {
   const f = getFlow();
   f[k] = v;
+  // 抽签成功 / 结果变化 → 同步「最近抽签」快照，供分组页「最近抽签」跨重启沿用（与主包 flow.saveLastDraw 一致）
+  if (k === 'draw' && v && Array.isArray(v.result) && v.result.length) {
+    f.drawLast = {
+      at: Date.now(),
+      result: v.result.slice(),
+      pool: Array.isArray(v.pool) ? v.pool.slice() : [],
+      cfg: v.cfg ? Object.assign({}, v.cfg) : null
+    };
+  }
   return setFlow(f);
+}
+// 最近一次成功抽签：drawLast 优先，旧数据回退 draw
+function lastDraw() {
+  const f = getFlow();
+  if (f.drawLast && Array.isArray(f.drawLast.result) && f.drawLast.result.length) return f.drawLast;
+  if (f.draw && Array.isArray(f.draw.result) && f.draw.result.length) return f.draw;
+  return null;
 }
 
 // ---------------------------------------------------------------- 课表
@@ -217,7 +233,7 @@ module.exports = {
   readKey: readKey, writeKey: writeKey, removeKey: removeKey,
   readStore: readStore, writeStore: writeStore, patchStore: patchStore,
   getClassMembers: getClassMembers, saveClassMembers: saveClassMembers, rosterTextOf: rosterTextOf,
-  emptyFlow: emptyFlow, getFlow: getFlow, setFlow: setFlow, patchFlow: patchFlow,
+  emptyFlow: emptyFlow, getFlow: getFlow, setFlow: setFlow, patchFlow: patchFlow, lastDraw: lastDraw,
   getTermStart: getTermStart, setTermStart: setTermStart, getTtCache: getTtCache, setTtCache: setTtCache,
   getFitRecs: getFitRecs, setFitRecs: setFitRecs,
   getCloudOff: getCloudOff, setCloudOff: setCloudOff, getUdCache: getUdCache,

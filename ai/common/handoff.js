@@ -14,7 +14,6 @@ const PAGES = {
   nt: '/pages/nt/nt',
   draw: '/pages/draw/draw',
   group: '/pages/group/group',
-  sum: '/pages/sum/sum',
   ft: '/pages/ft/ft',
   fttable: '/pages/fttable/fttable',
   roll: '/pages/roll/roll',

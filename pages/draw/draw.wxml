@@ -4,10 +4,8 @@
 
   <view class="page-head">
     <view class="t-headline-m">抽签</view>
-    <view class="t-body-m muted">第 1 步 · 抽号并保存结果</view>
+    <view class="t-body-m muted">抽号 · 剔除补抽 · 存证与分享</view>
   </view>
-
-  <segmented items="{{steps}}" value="s1" bindchange="onStep" />
 
   <view class="section-gap"></view>
 
@@ -30,7 +28,7 @@
       <view class="m3-card m3-card--elevated enter enter-1">
         <view class="m3-card__head">
           <view class="t-title-m">抽签参数</view>
-          <view class="pill pill--neutral">第 1 步</view>
+          <view class="pill pill--neutral">本机</view>
         </view>
 
         <view class="field">
@@ -164,7 +162,6 @@
       <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="openShare">分享</touchable>
     </view>
     <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="doDraw">{{rows.length ? '重新抽签' : '开始抽签'}}</touchable>
-    <touchable cls="m3-btn m3-btn--text m3-btn--block" bindtap="toGroup">下一步 · 分组</touchable>
   </view>
 
   <!-- —— 名称映射弹层（契约 §3.1：textarea + 已映射计数 + 清空/取消/保存） —— -->

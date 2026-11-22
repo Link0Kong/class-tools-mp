@@ -31,7 +31,6 @@ const FALLBACK = {
   vote: '/images/share/default.png',
   notice: '/images/share/nt.png',
   group: '/images/share/draw.png',
-  sum: '/images/share/default.png',
   hw: '/images/share/hw.png',
   task: '/images/share/hw.png',
   fit: '/images/share/ft.png',
@@ -257,7 +256,7 @@ function buildNoticeView(opt) {
   };
 }
 
-// 通用 5:4 信息卡（分组 / 结果单 / 作业 / 体测 / 课表 / 名单 / 国标表）。
+// 通用 5:4 信息卡（分组 / 作业 / 体测 / 课表 / 名单 / 国标表）。
 // opt = {title, badge, subtitle, stats:[{k,v}], lines:[{label,text}], note, footer, time}
 function infoView(o) {
   o = o || {};
@@ -296,30 +295,6 @@ function buildGroupView(opt) {
     lines: lines,
     note: groups.length > 6 ? ('另有 ' + (groups.length - 6) + ' 组未在卡片展示') : '',
     footer: cfg.source ? ('成员来源 ' + cfg.source) : '班级工具 · 分组结果',
-    time: o.time
-  });
-}
-
-function buildSumView(opt) {
-  const o = opt || {};
-  const blocks = Array.isArray(o.blocks) ? o.blocks : [];
-  let drawN = 0, groupN = 0;
-  blocks.forEach(function (b) {
-    if (String(b && b.label || '').indexOf('抽签结果') === 0) drawN = (b.items || []).length;
-    if (String(b && b.label || '').indexOf('第 ') === 0) groupN += 1;
-  });
-  const lines = blocks.slice(0, 6).map(function (b) {
-    return {
-      label: txt(b && b.label),
-      text: (b && b.items || []).map(function (it) { return (it.n != null && it.n !== '' ? it.n + ' ' : '') + txt(it.nm); }).join('、')
-    };
-  });
-  return infoView({
-    title: '抽签分组结果单', badge: '结果单', subtitle: o.sub || '',
-    stats: [{ k: '抽签', v: drawN || '' }, { k: '分组', v: groupN || '' }, { k: '汇总块', v: blocks.length || '' }],
-    lines: lines,
-    note: blocks.length > 6 ? ('另有 ' + (blocks.length - 6) + ' 个汇总块') : '',
-    footer: '班级工具 · 结果单',
     time: o.time
   });
 }
@@ -497,7 +472,7 @@ function drawDraw(g, v) {
 
   g.font = '14px ' + FONT;
   g.fillStyle = COLOR.ink2;
-  g.fillText(clipText(g, v.subtitle || '抽号 · 分组 · 结果单', W - 56, '14px ' + FONT), 28, 118);
+  g.fillText(clipText(g, v.subtitle || '抽号 · 剔除补抽 · 存证', W - 56, '14px ' + FONT), 28, 118);
 
   const rows = v.rows || [];
   if (!rows.length) {
@@ -680,7 +655,7 @@ function drawNotice(g, v) {
   footer(g, v.source ? ('来源 ' + v.source) : '班级工具 · 通知', v.time);
 }
 
-// 通用信息卡：用于分组 / 结果单 / 作业 / 体测 / 课表 / 名单 / 国标表。
+// 通用信息卡：用于分组 / 作业 / 体测 / 课表 / 名单 / 国标表。
 // 结构：标题 + 副标题 + 最多 3 个统计块 + 最多 6 行「标签 + 文本」+ 备注 + 页脚。
 function drawInfo(g, v) {
   base(g);
@@ -831,7 +806,6 @@ module.exports = {
   buildVoteView: buildVoteView,
   buildNoticeView: buildNoticeView,
   buildGroupView: buildGroupView,
-  buildSumView: buildSumView,
   buildHwView: buildHwView,
   buildTaskView: buildTaskView,
   buildFitView: buildFitView,

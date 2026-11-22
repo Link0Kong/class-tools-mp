@@ -1,10 +1,9 @@
-// ai/skills/lottery/lib/algo.js —— 抽签 / 分组 / 结果单的算法与本机状态
+// ai/skills/lottery/lib/algo.js —— 抽签 / 分组两个独立工具的算法与本机状态
 //
 // 逐字节对齐主包页面：
-//   pages/draw/draw.js   buildPool / doDraw / refill / removeAt / reset / saveCfg / apply / syncSteps
+//   pages/draw/draw.js   buildPool / doDraw / refill / removeAt / reset / saveCfg / apply
 //   pages/group/group.js members / doGroup / saveCfg
-//   pages/sum/sum.js     build（结果单文本）
-//   utils/flow.js        zq_flow 结构 { draw, group, updatedAt }
+//   utils/flow.js        zq_flow 结构 { draw, drawLast, group, updatedAt }
 //   utils/roster.js      参与名单 = classMembers 座号；派生文本 roster = "座号 姓名\n…"
 //   utils/store.js       store.draw / store.group 参数结构
 //
@@ -15,11 +14,10 @@ const fmt = require('../../../common/fmt.js');
 // 与 pages/draw/draw.js 顶部一致
 const SORT_LABEL = { draw: '按抽取顺序', num: '按序号升序', desc: '从大到小', rand: '随机打乱' };
 
-// mcp.json _meta.ui.pagePath 必须与这里一致
+// mcp.json _meta.ui.pagePath 必须与这里一致（结果单页已删除，摘要接口不再单独占用页面）
 const PAGE = {
   draw: { pagePath: '/pages/draw/draw', pageTitle: '打开抽签页' },
-  group: { pagePath: '/pages/group/group', pageTitle: '打开分组页' },
-  sum: { pagePath: '/pages/sum/sum', pageTitle: '打开结果单页' }
+  group: { pagePath: '/pages/group/group', pageTitle: '打开分组页' }
 };
 
 // ---------------------------------------------------------------- 随机数（可注入）
@@ -242,23 +240,13 @@ function itemsOf(rows) {
   return (rows || []).map(function (r) { return { number: r.n, name: r.nm || '' }; });
 }
 
-// 步骤条（pages/* syncSteps）
-function steps() {
-  const fl = local.getFlow();
-  const drawN = (fl.draw && fl.draw.result) ? fl.draw.result.length : 0;
-  const grpN = (fl.group && fl.group.result) ? fl.group.result.length : 0;
-  return [
-    { id: 's1', label: '抽签', done: drawN > 0 },
-    { id: 's2', label: '分组', done: grpN > 0 },
-    { id: 's3', label: '结果单', done: !!(drawN && grpN) }
-  ];
-}
+// 步骤条已随「结果单」删除：抽签与分组互相独立，不再在接口里返回 steps。
 
 function patchDraw(st) { return local.patchFlow('draw', st); }
 function patchGroup(st) { return local.patchFlow('group', st); }
-function resetBoth() {
+// 重置只清空抽签结果；分组结果与最近抽签快照保留（与页面「重置」一致）
+function resetDraw() {
   local.patchFlow('draw', null);
-  local.patchFlow('group', null);
   return local.getFlow();
 }
 function nowText() { return fmt.fmtDateTime(Date.now()); }
@@ -327,7 +315,7 @@ function doGroup(opts) {
   const st = {
     result: out,
     cfg: {
-      source: opts.source === 'prev' ? '上一步抽签序号' : ('班级名单（' + mem.length + ' 人）'),
+      source: opts.source === 'prev' ? ('最近抽签（' + mem.length + ' 人）') : ('班级名单（' + mem.length + ' 人）'),
       mode: opts.mode === 'groups' ? ('按组数(' + groups + ' 组)') : ('按每组人数(' + n + ' 人)'),
       total: String(mem.length),
       groups: String(groups),
@@ -336,12 +324,14 @@ function doGroup(opts) {
   };
   return { st: st, groups: groups };
 }
-// 上一步抽签序号成员（pages/group members 的 prev 分支）
+// 最近抽签成员（pages/group members 的 prev 分支；旧数据回退 flow.draw）
 function prevMembers() {
-  const fl = local.getFlow();
-  if (!fl.draw || !fl.draw.result || !fl.draw.result.length) return null;
-  const rm = rosterMap(local.readStore().roster).m;
-  return fl.draw.result.map(function (x) { return { n: x, nm: rm[x] || '' }; });
+  const last = local.lastDraw();
+  if (!last || !last.result || !last.result.length) return null;
+  const d = local.readStore();
+  // 名称优先级（与抽签页 nameOf 一致）：名称映射 > 班级名单派生名 > 空
+  const rm = Object.assign({}, rosterMap(d.roster).m, rosterMap(d.draw && d.draw.names).m);
+  return last.result.map(function (x) { return { n: x, nm: rm[x] || '' }; });
 }
 function groupSelMembers() {
   return pickedOf(groupSelSeats()).map(function (m) { return { n: m.seat, nm: m.name }; });
@@ -351,7 +341,7 @@ function groupInfo(st) {
   const cfg = st.cfg || {};
   const srcText = String(cfg.source || '');
   const modeText = String(cfg.mode || '');
-  const source = /^上一步/.test(srcText) ? 'prev' : 'roster';
+  const source = /^(上一步|最近抽签)/.test(srcText) ? 'prev' : 'roster';
   const mode = /^按组数/.test(modeText) ? 'groups' : 'size';
   let value = 0;
   if (mode === 'groups') value = Number(cfg.groups) || 0;
@@ -375,7 +365,7 @@ function groupInfo(st) {
   };
 }
 
-// ---------------------------------------------------------------- 结果单（pages/sum build 逐字节）
+// ---------------------------------------------------------------- 抽签 + 分组摘要（纯文本，供读给用户/复制）
 function buildSummary() {
   const fl = local.getFlow();
   const rm = rosterMap(local.readStore().roster).m;
@@ -437,7 +427,7 @@ function buildSummary() {
   };
 }
 
-// 结果单 text 上限（契约：≤2000 字）
+// 摘要 text 上限（契约：≤2000 字）
 function capText(t, max) {
   const s = String(t == null ? '' : t);
   const m = max || 2000;
@@ -466,8 +456,8 @@ module.exports = {
   setRosterSel: setRosterSel, setGroupSel: setGroupSel, resolveSeats: resolveSeats,
   loadDraw: loadDraw, saveDraw: saveDraw, loadGroup: loadGroup, saveGroup: saveGroup,
   poolFilter: poolFilter, buildPool: buildPool, resultCfg: resultCfg,
-  doDraw: doDraw, drawRows: drawRows, itemsOf: itemsOf, steps: steps,
-  patchDraw: patchDraw, patchGroup: patchGroup, resetBoth: resetBoth, nowText: nowText,
+  doDraw: doDraw, drawRows: drawRows, itemsOf: itemsOf,
+  patchDraw: patchDraw, patchGroup: patchGroup, resetDraw: resetDraw, nowText: nowText,
   refill: refill, removeAt: removeAt,
   shuffleList: shuffleList, doGroup: doGroup, prevMembers: prevMembers,
   groupSelMembers: groupSelMembers, groupInfo: groupInfo,

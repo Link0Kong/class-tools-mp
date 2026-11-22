@@ -1,4 +1,4 @@
-// ai/skills/lottery/components/lottery-card/index.js —— 抽签结果 / 结果单卡片
+// ai/skills/lottery/components/lottery-card/index.js —— 抽签结果 / 抽签+分组摘要卡片
 Component({
   data: {
     kind: 'draw',
@@ -15,7 +15,7 @@ Component({
       try {
         this._ctx = wx.modelContext.getContext(this);
         this._view = wx.modelContext.getViewContext(this);
-        this._view.setRelatedPage({ query: 'step=1' });
+        this._view.setRelatedPage({ query: '' });
         const NT = wx.modelContext.NotificationType;
         this._ctx.on(NT.Result, (data) => this._render(data));
       } catch (e) { /* 卡片环境异常时保持初始态 */ }
@@ -25,11 +25,11 @@ Component({
     _render(data) {
       const res = (data && data.result) || {};
       const sc = res.structuredContent || (data && data.structuredContent) || {};
-      // 结果单模式：有 text 且没有 items
+      // 摘要模式：有 text 且没有 items
       if (sc.text && !sc.items) {
         const lines = String(sc.text).split('\n').filter((s) => !!s).slice(0, 16);
-        this.setData({ kind: 'summary', title: '抽签 · 分组 结果单', cfgRows: [], rows: [], more: 0, removedText: '', textLines: lines, empty: false });
-        try { this._view.setRelatedPage({ query: 'step=3' }); } catch (e) { /* ignore */ }
+        this.setData({ kind: 'summary', title: '抽签 · 分组摘要', cfgRows: [], rows: [], more: 0, removedText: '', textLines: lines, empty: false });
+        try { this._view.setRelatedPage({ query: '' }); } catch (e) { /* ignore */ }
         return;
       }
       const items = Array.isArray(sc.items) ? sc.items : [];
@@ -53,7 +53,7 @@ Component({
         textLines: [],
         empty: !items.length
       });
-      try { this._view.setRelatedPage({ query: 'step=1' }); } catch (e) { /* ignore */ }
+      try { this._view.setRelatedPage({ query: '' }); } catch (e) { /* ignore */ }
     }
   }
 });

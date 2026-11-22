@@ -12,10 +12,9 @@ module.exports = guard.run(async function resetGroup(args) {
   const pg = guard.page('group');
   const data = {
     ok: true,
-    steps: algo.steps(),
     pagePath: pg.pagePath,
     pageTitle: pg.pageTitle
   };
-  return result.ok('已重置分组结果，抽签结果保留。下一步可重新调用 runGroup 分组。', data,
-    { handoff: handoff.handoffTo('group', 'step=2') });
+  return result.ok('已重置分组结果，抽签结果与最近抽签快照保留。可以重新调用 runGroup 分组。', data,
+    { handoff: handoff.handoffTo('group') });
 }, '分组结果');

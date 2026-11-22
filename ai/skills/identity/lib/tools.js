@@ -7,7 +7,8 @@ const TOOLS = [
   { key: 'hw', name: '作业板', cat: '学习', desc: '作业清单与截止倒计时；查看与勾选完成，验证身份后可发布', admin: false },
   { key: 'nt', name: '班级通知', cat: '学习', desc: '云端班级通知；AI 拆分、附件预览、原始消息', admin: false },
   { key: 'ft', name: '体测', cat: '健康', desc: '大学体测七项算分、附加分与等级，实时出分', admin: false },
-  { key: 'draw', name: '抽签分组', cat: '班级事务', desc: '抽号 → 分组 → 结果单；可剔除重抽、可分享卡片或长图', admin: false },
+  { key: 'draw', name: '抽签', cat: '班级事务', desc: '抽号并保存结果；可剔除补抽、存证核验、分享卡片或长图', admin: false },
+  { key: 'group', name: '分组', cat: '班级事务', desc: '全班 / 最近抽签 / 自选名单一键分组；按组数或每组人数，可复制与分享', admin: false },
   { key: 'roll', name: '点名', cat: '班级事务', desc: '线下点名核对：叫到一个勾一个，可到/请假，已处理自动沉底', admin: false },
   { key: 'bz', name: '名单', cat: '班级事务', desc: '班级名单三分类（班委 / 团员 / 全班）；所有已认证同学都可查看', admin: false },
   { key: 'stats', name: '统计', cat: '管理', desc: '按姓名聚合的访问统计（不显示学号），仅管理员可见', admin: true }

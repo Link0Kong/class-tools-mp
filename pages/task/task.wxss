@@ -5,18 +5,52 @@
 .muted { color: var(--md-on-surface-variant); }
 .section-gap { height: 8rpx; }
 
+/* 统一图标：固定 32rpx 光学盒，全部用 currentColor 绘制，避免 Unicode/emoji 基线漂移 */
+.tk-ico { position: relative; display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: 32rpx; height: 32rpx; line-height: 0; color: currentColor; }
+.tk-ico::before, .tk-ico::after { content: ""; position: absolute; box-sizing: border-box; }
+.tk-ico--check::after { left: 7rpx; top: 4rpx; width: 12rpx; height: 20rpx;
+  border-right: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; transform: rotate(45deg); }
+.tk-ico--chevron::after { left: 50%; top: 46%; width: 11rpx; height: 11rpx;
+  border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
+  transform: translate(-50%, -50%) rotate(45deg); }
+.tk-ico--chevron-up::after { left: 50%; top: 54%; width: 11rpx; height: 11rpx;
+  border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
+  transform: translate(-50%, -50%) rotate(225deg); }
+.tk-ico--chevron-right::after { left: 44%; top: 50%; width: 11rpx; height: 11rpx;
+  border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor;
+  transform: translate(-50%, -50%) rotate(-45deg); }
+.tk-ico--plus::before { left: 7rpx; top: 14rpx; width: 18rpx; height: 4rpx; border-radius: 2rpx; background: currentColor; }
+.tk-ico--plus::after { left: 14rpx; top: 7rpx; width: 4rpx; height: 18rpx; border-radius: 2rpx; background: currentColor; }
+.tk-ico--close::before { left: 8rpx; top: 14rpx; width: 16rpx; height: 3rpx; border-radius: 2rpx;
+  background: currentColor; transform: rotate(45deg); }
+.tk-ico--close::after { left: 8rpx; top: 14rpx; width: 16rpx; height: 3rpx; border-radius: 2rpx;
+  background: currentColor; transform: rotate(-45deg); }
+.tk-ico--more::after { left: 50%; top: 50%; width: 5rpx; height: 5rpx; border-radius: 50%;
+  background: currentColor; transform: translate(-50%, -50%);
+  box-shadow: 0 -9rpx 0 currentColor, 0 9rpx 0 currentColor; }
+.tk-ico--search::before { left: 4rpx; top: 4rpx; width: 17rpx; height: 17rpx;
+  border: 3rpx solid currentColor; border-radius: 50%; }
+.tk-ico--search::after { left: 19rpx; top: 21rpx; width: 9rpx; height: 3rpx; border-radius: 2rpx;
+  background: currentColor; transform: rotate(45deg); }
+.tk-ico--clock::before { left: 4rpx; top: 4rpx; width: 24rpx; height: 24rpx;
+  border: 3rpx solid currentColor; border-radius: 50%; }
+.tk-ico--clock::after { left: 13rpx; top: 9rpx; width: 8rpx; height: 8rpx;
+  border-left: 3rpx solid currentColor; border-top: 3rpx solid currentColor; }
+.tk-ico--star { font-size: 32rpx; line-height: 1; width: 32rpx; height: 32rpx; }
+
 /* 提醒横幅 */
 .tk-remind { display: flex; align-items: center; gap: 12rpx; margin: 0 0 18rpx; padding: 18rpx 20rpx;
   border-radius: var(--md-shape-md); background: var(--md-primary-container); color: var(--md-on-primary-container); }
-.tk-remind-ico { font-size: 30rpx; }
+.tk-remind-ico { width: 32rpx; height: 32rpx; display: flex; align-items: center; justify-content: center; }
 .tk-remind-t { font-size: 29rpx; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tk-remind-s { font-size: 24rpx; opacity: .75; margin-top: 2rpx; }
 .tk-remind-a { flex: none; font-size: 25rpx; font-weight: 700; padding: 10rpx 8rpx; }
-.tk-remind-x { flex: none; width: 48rpx; text-align: center; font-size: 34rpx; opacity: .65; }
+.tk-remind-x { flex: none; width: 48rpx; height: 48rpx; display: flex; align-items: center; justify-content: center; opacity: .65; }
 
 /* 顶部工具 */
 .tk-toolbar { display: flex; align-items: center; gap: 12rpx; margin: 4rpx 0 14rpx; }
-.tk-search-t, .tk-sort, .tk-manage { min-height: 68rpx; display: flex; align-items: center; gap: 6rpx;
+.tk-search-t, .tk-sort, .tk-manage { min-height: 68rpx; display: flex; align-items: center; gap: 8rpx;
   padding: 0 18rpx; border-radius: 999rpx; background: var(--md-surface-container-low);
   color: var(--md-on-surface-variant); font-size: 25rpx; font-weight: 600; }
 .tk-sort { margin-left: auto; }
@@ -31,7 +65,6 @@
   border-radius: 999rpx; background: var(--md-surface-container-low); color: var(--md-on-surface-variant);
   font-size: 27rpx; font-weight: 600; vertical-align: top; }
 .tk-chip.on { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-.tk-chip-ico { font-size: 24rpx; }
 .tk-chip-n { opacity: .6; font-size: 23rpx; margin-left: 2rpx; }
 .tk-chip--group { background: transparent; border: 1rpx solid var(--md-outline-variant); }
 .tk-chip--group.on { border-color: transparent; }
@@ -79,7 +112,7 @@
 .tk-tag { font-size: 24rpx; color: var(--md-secondary); }
 .tk-expand { display: flex; align-items: center; gap: 5rpx; margin-top: 9rpx; color: var(--md-primary);
   font-size: 26rpx; font-weight: 600; width: fit-content; }
-.tk-chev { display: inline-block; transition: transform .16s ease; font-size: 24rpx; }
+.tk-chev { width: 28rpx; height: 28rpx; transition: transform .16s ease; }
 .tk-chev.on { transform: rotate(180deg); }
 .tk-steps { margin-top: 8rpx; padding: 4rpx 0 2rpx 8rpx; border-left: 3rpx solid var(--md-primary-container); }
 .tk-step { display: flex; align-items: flex-start; gap: 7rpx; padding: 3rpx 0; }
@@ -91,6 +124,7 @@
 .tk-acts { display: flex; align-items: center; gap: 0; flex: none; }
 .tk-icon { width: 56rpx; height: 60rpx; display: flex; align-items: center; justify-content: center;
   border-radius: 14rpx; color: var(--md-outline); font-size: 31rpx; }
+.tk-icon--label { font-size: 22rpx; font-weight: 600; color: var(--md-primary); }
 .tk-icon.on { color: var(--md-tertiary); }
 
 /* 已完成 */
@@ -119,6 +153,8 @@
 .tk-dt-sub { margin-top: 6rpx; font-size: 25rpx; color: var(--md-on-surface-variant); }
 .tk-dt-act { flex: none; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center;
   border-radius: 50%; color: var(--md-outline); font-size: 34rpx; }
+.tk-dt-act--text { width: auto; min-width: 68rpx; padding: 0 8rpx; border-radius: 999rpx;
+  font-size: 22rpx; font-weight: 600; color: var(--md-primary); }
 .tk-dt-act.on { color: var(--md-tertiary); background: var(--md-tertiary-container); }
 .tk-dt-meta { margin-top: 12rpx; }
 .tk-dt-sec { margin-top: 22rpx; padding-top: 18rpx; border-top: 1rpx solid var(--md-outline-variant); }
@@ -134,7 +170,7 @@
 .tk-dt-foot { display: flex; align-items: center; gap: 12rpx; margin-top: 20rpx; padding-top: 18rpx; border-top: 1rpx solid var(--md-outline-variant); }
 .tk-dt-foot .m3-btn { flex: 1; }
 .tk-dt-move { flex: none; width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
-  border-radius: 14rpx; color: var(--md-primary); font-size: 30rpx; background: var(--md-surface-container-low); }
+  border-radius: 14rpx; color: var(--md-primary); background: var(--md-surface-container-low); }
 
 /* 编辑器 */
 .tk-ed { padding-bottom: calc(12rpx + env(safe-area-inset-bottom)); }
@@ -154,7 +190,7 @@
 .tk-step-line .tk-check { width: 50rpx; height: 50rpx; font-size: 24rpx; }
 .tk-ed-step-in { flex: 1; min-width: 0; height: 64rpx; font-size: 28rpx; }
 .tk-del { flex: none; width: 48rpx; height: 48rpx; display: flex; align-items: center; justify-content: center;
-  color: var(--md-outline); font-size: 30rpx; }
+  color: var(--md-outline); }
 .tk-ed-step-note { width: 100%; min-height: 62rpx; box-sizing: border-box; margin-top: 6rpx; padding: 10rpx 12rpx;
   border-radius: 10rpx; background: var(--md-surface-container-lowest); font-size: 26rpx; line-height: 1.45; }
 .tk-step-add { display: flex; align-items: center; gap: 10rpx; margin-top: 10rpx; }
@@ -162,9 +198,13 @@
 .tk-att-row { display: flex; flex-wrap: wrap; gap: 10rpx; }
 .tk-att { display: flex; align-items: center; gap: 7rpx; max-width: 100%; min-height: 62rpx; padding: 0 12rpx;
   border-radius: 10rpx; background: var(--md-surface-container-low); font-size: 25rpx; }
-.tk-att > text:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tk-att-x { width: 38rpx; text-align: center; color: var(--md-outline); font-size: 28rpx; }
-.tk-att--add { color: var(--md-primary); padding: 0 16rpx; }
+.tk-att-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-att-badge { flex: none; min-width: 42rpx; height: 42rpx; padding: 0 6rpx; border-radius: 8rpx;
+  display: flex; align-items: center; justify-content: center; background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant); font-size: 17rpx; font-weight: 700; letter-spacing: 0; }
+.tk-att-badge--img { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.tk-att-x { flex: none; width: 44rpx; height: 44rpx; display: flex; align-items: center; justify-content: center; color: var(--md-outline); }
+.tk-att--add { display: flex; align-items: center; gap: 8rpx; color: var(--md-primary); padding: 0 16rpx; }
 .tk-ed-flags { display: flex; gap: 10rpx; flex-wrap: wrap; margin-top: 20rpx; }
 .tk-flag { min-height: 68rpx; display: flex; align-items: center; padding: 0 20rpx; border-radius: 999rpx;
   border: 1rpx solid var(--md-outline-variant); color: var(--md-on-surface-variant); font-size: 25rpx; font-weight: 600; }
@@ -178,11 +218,11 @@
 .tk-manage-label { margin: 20rpx 0 7rpx; font-size: 26rpx; font-weight: 700; color: var(--md-outline); }
 .tk-manage-row { display: flex; align-items: center; gap: 10rpx; min-height: 86rpx; padding: 0 4rpx;
   border-bottom: 1rpx solid var(--md-outline-variant); font-size: 29rpx; }
-.tk-manage-ico { width: 34rpx; text-align: center; color: var(--md-primary); }
 .tk-move { width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center;
-  border-radius: 12rpx; color: var(--md-primary); font-size: 30rpx; }
+  border-radius: 12rpx; color: var(--md-primary); }
+.tk-move--text { width: auto; min-width: 64rpx; padding: 0 8rpx; font-size: 22rpx; font-weight: 600; }
 .tk-move:active { background: var(--md-surface-container-high); }
-.tk-manage-add { margin-top: 18rpx; width: 100%; }
+.tk-manage-add { margin-top: 18rpx; width: 100%; gap: 8rpx; }
 
 /* 分组表单 */
 .tk-groupform { padding-bottom: env(safe-area-inset-bottom); }

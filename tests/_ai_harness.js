@@ -1153,9 +1153,16 @@ function mkFixture(over) {
         [{ n: 3, nm: '测试甲' }, { n: 17, nm: '' }],
         [{ n: 24, nm: '测试账号' }, { n: 42, nm: '' }]
       ],
-      cfg: { source: '上一步抽签序号', mode: '按组数(2 组)', total: '4', groups: '2', inner: '按原顺序轮流分配' }
+      cfg: { source: '最近抽签（4 人）', mode: '按组数(2 组)', total: '4', groups: '2', inner: '按原顺序轮流分配' }
     },
     updatedAt: now - 2 * HOUR
+  };
+  // 2026-11-22 分组拆分：最近一次成功抽签快照（分组页「最近抽签」跨重启读取）
+  FLOW.drawLast = {
+    at: now - 2 * HOUR,
+    result: FLOW.draw.result.slice(),
+    pool: FLOW.draw.pool.slice(),
+    cfg: Object.assign({}, FLOW.draw.cfg)
   };
 
   const storage = {};

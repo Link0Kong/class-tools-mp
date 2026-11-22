@@ -28,6 +28,7 @@
 ```bash
 node tests/identity_encoding_unit.js
 node tests/tool_sort_unit.js
+node tests/group_split_unit.js
 node tests/cloud_patch_fallback_test.js
 node tests/notify_flush_ui_test.js
 ```

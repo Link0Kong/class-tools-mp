@@ -36,7 +36,7 @@ utils/agent.js            主包页面侧 handoff 消费工具
 | ai/skills/homework | 作业列表/详情/摘要/完成标记/发布/删除 |
 | ai/skills/notice | 通知简报/列表/详情/已处理/置顶 |
 | ai/skills/timetable | 周次/整周/今天/下一节/课程详情/开学日期 |
-| ai/skills/lottery | 抽签/补抽/剔除/重置/分组/结果单 |
+| ai/skills/lottery | 抽签/补抽/剔除/重置/分组/摘要（抽签与分组独立） |
 | ai/skills/fitness | 体测评分/国标表/历史记录/保存/重命名/删除 |
 | ai/skills/roll | 点名名单/到·假/批量/重置/统计/沿用抽签名单 |
 | ai/skills/account | 同步状态/立即同步/数据概览/导出/清除云端/清除本机/反馈/访问统计 |

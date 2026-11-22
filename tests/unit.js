@@ -380,10 +380,17 @@ const fakeCanvas = (() => {
     assert.deepStrictEqual(tools.quickList(4).map((t) => t.key), ['draw', 'hw', 'tt', 'nt']);
     assert.strictEqual(tools.quickList(99).length, 4, 'quickList 最多 4 个（勾选集合本身 ≤4）');
     // 当前身份是测试账号：投票入口隐藏（2026-11-21 用户口径），其余工具顺序不变
-    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'file', 'map', 'stats', 'diag', 'ppt']);
+    // 2026-11-22 分组拆分：draw 与 group 是两个独立工具（group 紧跟 draw，可勾选进首页）
+    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'file', 'map', 'stats', 'diag', 'ppt']);
     // 班委（非测试身份）仍可见投票入口，且目录顺序仍 = toolOrder
     const committee = { token: 'tok-ut-c', sid: 'fixture-committee-ut', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
-    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
+    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
+    assert.strictEqual(tools.toolOf('draw').name, '抽签');
+    assert.strictEqual(tools.toolOf('group').name, '分组');
+    assert.strictEqual(tools.toolOf('group').url, '/pages/group/group');
+    assert.strictEqual(tools.toolOf('group').icoImg, '/images/tool-group.png');
+    assert.strictEqual(tools.localKey('group'), 'group', '分组不再映射到 draw（可独立同步）');
+    assert.deepStrictEqual(tools.fromSyncKeys(['group', 'draw', 'group']), ['group', 'draw']);
     assert.strictEqual(tools.toolOf('stats').admin, true, '统计仍是管理工具，不进首页勾选');
     // 2026-11-22：电费 / 诊断恢复可勾选（与网页工具栏、安卓端一致）；统计仍按身份可勾选
     assert.strictEqual(tools.toolOf('diag').admin, undefined, '诊断对全班可见，不再是仅管理员工具');
@@ -2485,6 +2492,9 @@ const fakeCanvas = (() => {
 
   /* ---------------- 2026-11-11 task-7 专项（反馈 2/6/8/9/11：缓存提速 / 新通知提醒 / 水量共享 / 名单预设 / 徽章） ---------------- */
   await require('./task7_unit_tests.js').run(test);
+
+  /* ---------------- 2026-11-22 抽签/分组拆分 + 删除结果单（web/group/CONTRACT.md） ---------------- */
+  await require('./group_split_unit.js').run(test);
 
   /* ---------------- 2026-11-12 抽签升级 v1（名称映射 / 云端存证 / 记录页 / 导出二维码；断言在 drawproof_unit_tests.js） ---------------- */
   await require('./drawproof_unit_tests.js').run(test);

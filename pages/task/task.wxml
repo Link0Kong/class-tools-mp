@@ -4,7 +4,7 @@
   <view class="tk-card {{item.done ? 'tk-card--done' : ''}}" bindtap="onTaskTap" data-id="{{item.id}}">
     <view class="tk-row">
       <view class="tk-check {{item.done ? 'on' : ''}}" catchtap="onCheck" data-id="{{item.id}}" aria-role="checkbox" aria-checked="{{item.done}}">
-        <text wx:if="{{item.done}}">✓</text>
+        <view wx:if="{{item.done}}" class="tk-ico tk-ico--check"></view>
       </view>
       <view class="tk-body">
         <view class="tk-title">{{item.title}}</view>
@@ -24,12 +24,12 @@
           <text wx:if="{{item.moreTags}}" class="tk-tag">+{{item.moreTags}}</text>
         </view>
         <view wx:if="{{item.stepTotal}}" class="tk-expand" catchtap="onExpand" data-id="{{item.id}}">
-          <text>{{item.expanded ? '收起步骤' : '展开步骤'}}</text><text class="tk-chev {{item.expanded ? 'on' : ''}}">⌄</text>
+          <text>{{item.expanded ? '收起步骤' : '展开步骤'}}</text><view class="tk-chev tk-ico tk-ico--chevron {{item.expanded ? 'on' : ''}}"></view>
         </view>
         <view wx:if="{{item.expanded}}" class="tk-steps">
           <view wx:for="{{item.steps}}" wx:for-item="s" wx:key="idx" class="tk-step {{s.done ? 'done' : ''}}"
                 catchtap="onStepTap" data-id="{{item.id}}" data-idx="{{s.idx}}" data-done="{{s.done}}">
-            <view class="tk-step-check {{s.done ? 'on' : ''}}"><text wx:if="{{s.done}}">✓</text></view>
+            <view class="tk-step-check {{s.done ? 'on' : ''}}"><view wx:if="{{s.done}}" class="tk-ico tk-ico--check"></view></view>
             <view class="tk-step-body">
               <view class="tk-step-text">{{s.text}}</view>
               <view wx:if="{{s.note}}" class="tk-step-note">{{s.note}}</view>
@@ -38,8 +38,8 @@
         </view>
       </view>
       <view class="tk-acts">
-        <view class="tk-icon {{item.starred ? 'on' : ''}}" catchtap="onStar" data-id="{{item.id}}" aria-label="标记重要">★</view>
-        <view class="tk-icon" catchtap="onEdit" data-id="{{item.id}}" aria-label="编辑任务">✎</view>
+        <view class="tk-icon {{item.starred ? 'on' : ''}}" catchtap="onStar" data-id="{{item.id}}" aria-label="标记重要"><view class="tk-ico tk-ico--star">{{item.starred ? '★' : '☆'}}</view></view>
+        <view class="tk-icon tk-icon--label" catchtap="onEdit" data-id="{{item.id}}" aria-label="编辑任务">编辑</view>
       </view>
     </view>
   </view>
@@ -58,15 +58,15 @@
 
   <block wx:if="{{seg === 'my'}}">
     <view wx:if="{{remindBar.show}}" class="tk-remind">
-      <view class="tk-remind-ico">⏰</view>
+      <view class="tk-remind-ico"><view class="tk-ico tk-ico--clock"></view></view>
       <view class="grow"><view class="tk-remind-t">{{remindBar.title}}</view><view class="tk-remind-s">{{remindBar.meta}}</view></view>
       <view class="tk-remind-a" bindtap="remindDone">完成</view>
       <view class="tk-remind-a" bindtap="remindSnooze">稍后</view>
-      <view class="tk-remind-x" bindtap="remindClose">×</view>
+      <view class="tk-remind-x" bindtap="remindClose"><view class="tk-ico tk-ico--close"></view></view>
     </view>
 
     <view class="tk-toolbar">
-      <view class="tk-search-t" bindtap="toggleSearch">⌕ <text>搜索</text></view>
+      <view class="tk-search-t" bindtap="toggleSearch"><view class="tk-ico tk-ico--search"></view><text>搜索</text></view>
       <view class="tk-sort" bindtap="onSort">{{sortLabel}} ▾</view>
       <view class="tk-manage" bindtap="openShare">分享</view>
       <view class="tk-manage" bindtap="openManage">管理</view>
@@ -77,7 +77,7 @@
 
     <scroll-view scroll-x class="tk-chips" enhanced show-scrollbar="{{false}}">
       <view wx:for="{{views}}" wx:key="k" class="tk-chip {{item.on ? 'on' : ''}}" bindtap="onView" data-k="{{item.k}}">
-        <text class="tk-chip-ico">{{item.icon}}</text><text>{{item.n}}</text><text class="tk-chip-n">{{item.count}}</text>
+        <text>{{item.n}}</text><text class="tk-chip-n">{{item.count}}</text>
       </view>
       <view wx:for="{{groups}}" wx:key="id" class="tk-chip tk-chip--group {{item.on ? 'on' : ''}}" bindtap="onGroup" data-id="{{item.id}}">
         <text class="tk-dot" style="background:{{item.hex}}"></text><text>{{item.name}}</text><text class="tk-chip-n">{{item.count}}</text>
@@ -85,11 +85,11 @@
     </scroll-view>
 
     <view class="tk-quick">
-      <view class="tk-quick-plus" bindtap="addQuick">＋</view>
+      <view class="tk-quick-plus" bindtap="addQuick"><view class="tk-ico tk-ico--plus"></view></view>
       <input class="tk-quick-in" value="{{quickTitle}}" placeholder="添加任务，回车保存" bindinput="onQuickInput" bindconfirm="addQuick" confirm-type="done" />
-      <view class="tk-quick-btn {{quickStar ? 'on' : ''}}" bindtap="toggleQuickStar">★</view>
-      <view class="tk-quick-btn {{quickDate ? 'on' : ''}}" bindtap="toggleQuickDue">⌄</view>
-      <view class="tk-quick-btn" bindtap="openEditor">⋯</view>
+      <view class="tk-quick-btn {{quickStar ? 'on' : ''}}" bindtap="toggleQuickStar"><view class="tk-ico tk-ico--star">{{quickStar ? '★' : '☆'}}</view></view>
+      <view class="tk-quick-btn {{quickDate ? 'on' : ''}}" bindtap="toggleQuickDue"><view class="tk-ico tk-ico--chevron"></view></view>
+      <view class="tk-quick-btn" bindtap="openEditor"><view class="tk-ico tk-ico--more"></view></view>
     </view>
     <view wx:if="{{quickDueOpen}}" class="tk-quickdue">
       <picker mode="date" value="{{quickDate}}" bindchange="onQuickDate"><view class="tk-field">{{quickDate || '选择日期'}}</view></picker>
@@ -107,7 +107,7 @@
     </block>
 
     <view wx:if="{{doneTasks.length}}" class="tk-done">
-      <view class="tk-done-hd" bindtap="toggleDoneOpen"><text>已完成</text><text class="tk-done-n">{{counts.done}}</text><text class="tk-chev {{doneOpen ? 'on' : ''}}">⌄</text></view>
+      <view class="tk-done-hd" bindtap="toggleDoneOpen"><text>已完成</text><text class="tk-done-n">{{counts.done}}</text><view class="tk-chev tk-ico tk-ico--chevron {{doneOpen ? 'on' : ''}}"></view></view>
       <block wx:if="{{doneOpen}}">
         <template is="taskCard" wx:for="{{doneTasks}}" wx:key="id" data="{{item: item}}" />
       </block>
@@ -149,9 +149,9 @@
           <view class="tk-dt-title">{{detail.task.title}}</view>
           <view class="tk-dt-sub">{{detail.task.listName}}{{detail.task.done ? ' · 已完成' : ''}}{{detail.task.starred ? ' · 重要' : ''}}</view>
         </view>
-        <view class="tk-dt-act {{detail.task.starred ? 'on' : ''}}" bindtap="detailStar">★</view>
-        <view class="tk-dt-act" bindtap="detailEdit">✎</view>
-        <view class="tk-dt-act" bindtap="closeDetail">×</view>
+        <view class="tk-dt-act {{detail.task.starred ? 'on' : ''}}" bindtap="detailStar"><view class="tk-ico tk-ico--star">{{detail.task.starred ? '★' : '☆'}}</view></view>
+        <view class="tk-dt-act tk-dt-act--text" bindtap="detailEdit">编辑</view>
+        <view class="tk-dt-act" bindtap="closeDetail"><view class="tk-ico tk-ico--close"></view></view>
       </view>
       <view class="tk-meta tk-dt-meta">
         <text wx:if="{{detail.task.dueText}}" class="tk-pill tk-pill--primary">{{detail.task.dueText}}</text>
@@ -167,7 +167,7 @@
         <view class="tk-dt-label">步骤</view>
         <view wx:for="{{detail.task.steps}}" wx:for-item="s" wx:key="idx" class="tk-dt-step {{s.done ? 'done' : ''}}"
               bindtap="detailStep" data-idx="{{s.idx}}" data-done="{{s.done}}">
-          <view class="tk-step-check {{s.done ? 'on' : ''}}"><text wx:if="{{s.done}}">✓</text></view>
+          <view class="tk-step-check {{s.done ? 'on' : ''}}"><view wx:if="{{s.done}}" class="tk-ico tk-ico--check"></view></view>
           <view class="tk-step-body"><view class="tk-step-text">{{s.text}}</view><view wx:if="{{s.note}}" class="tk-step-note">{{s.note}}</view></view>
         </view>
       </view>
@@ -175,20 +175,20 @@
         <view class="tk-dt-label">附件</view>
         <view class="tk-att-row">
           <view wx:for="{{detail.task.attachments}}" wx:for-item="a" wx:key="index" class="tk-att" data-i="{{index}}" bindtap="detailAtt">
-            <text>{{a.img ? '🖼' : '📎'}} {{a.n}}</text><text class="muted">{{a.sizeText}}</text>
+            <view class="tk-att-badge {{a.img ? 'tk-att-badge--img' : ''}}">{{a.badge}}</view><text class="tk-att-name">{{a.n}}</text><text class="muted">{{a.sizeText}}</text>
           </view>
         </view>
       </view>
       <view wx:if="{{detail.task.hasSource}}" class="tk-dt-sec">
         <view class="tk-dt-label">来源</view>
-        <view class="tk-dt-src" bindtap="detailSource"><view class="grow"><view class="tk-dt-src-t">{{detail.task.sourceType}} · {{detail.task.sourceTitle}}</view><view class="tk-dt-src-s">点击定位原内容</view></view><text>›</text></view>
+        <view class="tk-dt-src" bindtap="detailSource"><view class="grow"><view class="tk-dt-src-t">{{detail.task.sourceType}} · {{detail.task.sourceTitle}}</view><view class="tk-dt-src-s">点击定位原内容</view></view><view class="tk-ico tk-ico--chevron-right"></view></view>
       </view>
       <view class="tk-dt-times">创建 {{detail.task.createdText}} · 更新 {{detail.task.updatedText}}</view>
       <view class="tk-dt-foot">
         <view class="m3-btn m3-btn--tonal" bindtap="detailCheck">{{detail.task.done ? '标记未完成' : '标记完成'}}</view>
         <view class="m3-btn m3-btn--text" bindtap="detailShare">分享</view>
-        <view wx:if="{{!detail.task.done}}" class="tk-dt-move" bindtap="moveTask" data-d="-1">↑</view>
-        <view wx:if="{{!detail.task.done}}" class="tk-dt-move" bindtap="moveTask" data-d="1">↓</view>
+        <view wx:if="{{!detail.task.done}}" class="tk-dt-move" bindtap="moveTask" data-d="-1"><view class="tk-ico tk-ico--chevron-up"></view></view>
+        <view wx:if="{{!detail.task.done}}" class="tk-dt-move" bindtap="moveTask" data-d="1"><view class="tk-ico tk-ico--chevron"></view></view>
       </view>
     </view>
   </bottom-sheet>
@@ -228,9 +228,9 @@
       <view class="tk-ed-steps">
         <view wx:for="{{editor.steps}}" wx:for-item="s" wx:key="index" class="tk-ed-step">
           <view class="tk-step-line">
-            <view class="tk-check {{s.done ? 'on' : ''}}" catchtap="onEditStepDone" data-i="{{index}}"><text wx:if="{{s.done}}">✓</text></view>
+            <view class="tk-check {{s.done ? 'on' : ''}}" catchtap="onEditStepDone" data-i="{{index}}"><view wx:if="{{s.done}}" class="tk-ico tk-ico--check"></view></view>
             <input class="tk-ed-step-in" value="{{s.text}}" maxlength="120" placeholder="步骤" data-i="{{index}}" bindinput="onEditStepText" />
-            <view class="tk-del" catchtap="onEditStepDel" data-i="{{index}}">×</view>
+            <view class="tk-del" catchtap="onEditStepDel" data-i="{{index}}"><view class="tk-ico tk-ico--close"></view></view>
           </view>
           <textarea class="tk-ed-step-note" value="{{s.note}}" maxlength="500" placeholder="步骤备注（可选）" data-i="{{index}}" bindinput="onEditStepNote" auto-height></textarea>
         </view>
@@ -243,16 +243,16 @@
       <view class="tk-ed-label">附件 <text class="muted">最多 2 个 · 仅本机</text></view>
       <view class="tk-att-row">
         <view wx:for="{{editor.attachments}}" wx:for-item="a" wx:key="index" class="tk-att" data-i="{{index}}" bindtap="previewEditorAtt">
-          <text>{{a.img ? '🖼' : '📎'}} {{a.n}}</text><text class="muted">{{a.sizeText}}</text>
-          <text class="tk-att-x" catchtap="removeAttachment" data-i="{{index}}">×</text>
+          <view class="tk-att-badge {{a.img ? 'tk-att-badge--img' : ''}}">{{a.badge}}</view><text class="tk-att-name">{{a.n}}</text><text class="muted">{{a.sizeText}}</text>
+          <view class="tk-att-x" catchtap="removeAttachment" data-i="{{index}}"><view class="tk-ico tk-ico--close"></view></view>
         </view>
-        <view wx:if="{{editor.attachments.length < 2}}" class="tk-att tk-att--add" bindtap="chooseAttachment">＋ 添加附件</view>
+        <view wx:if="{{editor.attachments.length < 2}}" class="tk-att tk-att--add" bindtap="chooseAttachment"><view class="tk-ico tk-ico--plus"></view><text>添加附件</text></view>
       </view>
 
       <view class="tk-ed-flags">
-        <view class="tk-flag {{editor.starred ? 'on' : ''}}" bindtap="toggleEditStar">★ 重要</view>
-        <view class="tk-flag {{editor.myDay ? 'on' : ''}}" bindtap="toggleEditMyDay">☀ 我的一天</view>
-        <view class="tk-flag {{editor.done ? 'on' : ''}}" bindtap="toggleEditDone">✓ 已完成</view>
+        <view class="tk-flag {{editor.starred ? 'on' : ''}}" bindtap="toggleEditStar">重要</view>
+        <view class="tk-flag {{editor.myDay ? 'on' : ''}}" bindtap="toggleEditMyDay">我的一天</view>
+        <view class="tk-flag {{editor.done ? 'on' : ''}}" bindtap="toggleEditDone">已完成</view>
       </view>
 
       <view class="tk-ed-foot">
@@ -269,16 +269,16 @@
     <view wx:if="{{manage.show}}" class="tk-manage-panel">
       <view class="tk-manage-label">视图顺序</view>
       <view wx:for="{{manage.views}}" wx:key="k" class="tk-manage-row">
-        <text class="tk-manage-ico">{{item.icon}}</text><text class="grow">{{item.n}}</text>
-        <view class="tk-move" data-i="{{item.i}}" data-d="-1" bindtap="moveView">↑</view>
-        <view class="tk-move" data-i="{{item.i}}" data-d="1" bindtap="moveView">↓</view>
+        <text class="grow">{{item.n}}</text>
+        <view class="tk-move" data-i="{{item.i}}" data-d="-1" bindtap="moveView"><view class="tk-ico tk-ico--chevron-up"></view></view>
+        <view class="tk-move" data-i="{{item.i}}" data-d="1" bindtap="moveView"><view class="tk-ico tk-ico--chevron"></view></view>
       </view>
       <view class="tk-manage-label">分组顺序</view>
       <view wx:for="{{manage.groups}}" wx:key="id" class="tk-manage-row">
         <text class="tk-dot" style="background:{{item.hex}}"></text><text class="grow">{{item.name}}</text>
-        <view class="tk-move" data-i="{{item.i}}" data-d="-1" bindtap="moveGroup">↑</view>
-        <view class="tk-move" data-i="{{item.i}}" data-d="1" bindtap="moveGroup">↓</view>
-        <view class="tk-move" data-id="{{item.id}}" bindtap="openGroupForm">✎</view>
+        <view class="tk-move" data-i="{{item.i}}" data-d="-1" bindtap="moveGroup"><view class="tk-ico tk-ico--chevron-up"></view></view>
+        <view class="tk-move" data-i="{{item.i}}" data-d="1" bindtap="moveGroup"><view class="tk-ico tk-ico--chevron"></view></view>
+        <view class="tk-move tk-move--text" data-id="{{item.id}}" bindtap="openGroupForm">编辑</view>
       </view>
       <view class="tk-manage-label">默认提醒</view>
       <view class="tk-manage-row">
@@ -287,7 +287,7 @@
           <view class="tk-field tk-field--mini">{{defaultRemindLabel}}</view>
         </picker>
       </view>
-      <view class="m3-btn m3-btn--tonal tk-manage-add" bindtap="openGroupForm">＋ 新建分组</view>
+      <view class="m3-btn m3-btn--tonal tk-manage-add" bindtap="openGroupForm"><view class="tk-ico tk-ico--plus"></view><text>新建分组</text></view>
       <view class="m3-btn m3-btn--text tk-manage-add" bindtap="exportIcs">导出日历（.ics）</view>
     </view>
   </bottom-sheet>

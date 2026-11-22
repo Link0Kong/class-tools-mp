@@ -9,7 +9,7 @@
 // 数据契约（本机保存，未改字段名）：
 //   zq_tools_v2            主数据（作业 / 通知 / 名单 / 体测 / 工具顺序等）
 //   zq_class_identity      班级身份 {token,sid,name,role,badge,is_admin,ts}
-//   zq_flow                抽签 → 分组 → 结果单 的跨页状态
+//   zq_flow                抽签 / 分组 的本机跨页状态（含最近一次抽签 drawLast，供分组沿用）
 //   ziqi.tools.v1          旧版数据（只读兼容）
 //
 // 云端：只用 wx.request，配置在 utils/cloud-config.js；未配置 / 断网 → 本机功能照常。

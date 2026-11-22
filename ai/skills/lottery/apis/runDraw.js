@@ -74,12 +74,11 @@ module.exports = guard.run(async function runDraw(args) {
     items: algo.itemsOf(rows),
     poolSize: b.pool.length,
     cfg: st.cfg,
-    steps: algo.steps(),
     drawnAt: flow.updatedAt,
     pagePath: pg.pagePath,
     pageTitle: pg.pageTitle
   };
   const content = '抽签完成：共 ' + rows.length + ' 个结果' + (named ? ('（' + named + ' 个带姓名）') : '') +
-    '，抽签池 ' + b.pool.length + ' 个。下一步：需要分组时调用 runGroup，或打开抽签页查看结果。';
-  return result.ok(content, data, { handoff: handoff.handoffTo('draw', 'step=1') });
+    '，抽签池 ' + b.pool.length + ' 个。最近抽签结果已保存，分组工具可直接沿用；也可以打开抽签页查看结果。';
+  return result.ok(content, data, { handoff: handoff.handoffTo('draw') });
 }, '抽签结果');

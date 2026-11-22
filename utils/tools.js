@@ -1,5 +1,7 @@
 // utils/tools.js —— 工具目录（唯一真源）
-// 与网页版 TOOLS 对齐；「抽签 / 分组 / 结果单」是同一个工具：draw 页为第 1 步，group / sum 页为第 2 / 3 步。
+// 与网页版 TOOLS 对齐。2026-11-22 起「抽签（draw）」与「分组（group）」是两个独立工具：
+//   抽签 = 抽号 + 存证 + 分享；分组 = 全班 / 最近抽签 / 自选名单 → 组卡 + 复制/分享。
+//   两者各有独立入口，分组不再依赖抽签页跳转；结果单（pages/sum）已删除。
 //
 // 2026-11-06 v2.0.0 语义调整（与网页「全部页」拖动排序口径一致）：
 //   homeTools（云端 userdata v6，≤4）= 用户**主动勾选**的首页工具 key 数组（按 toolOrder 的相对顺序）；
@@ -11,17 +13,18 @@
 //
 // 2026-11-22 跨端 key 归一（用户反馈「安卓端排序/首页勾选同步不到小程序」）：
 //   userdata v6 的 homeTools / prefs.toolOrder 是五端共用同一份数组，但历史 key 词表并不统一：
-//     · 小程序本机：体测 = ft，名单 = bz，分组并入 draw；
+//     · 小程序本机：体测 = ft，名单 = bz；
 //     · 网页：      体测 = ft，名单 = committee；
 //     · 安卓/鸿蒙：  体测 = fit，名单 = roster，另有独立 group 工具。
-//   小程序把安卓/鸿蒙写入的 fit / roster / group 当未知 key 丢弃 → 体测、名单从首页消失、顺序也丢，
+//   小程序把安卓/鸿蒙写入的 fit / roster 当未知 key 丢弃 → 体测、名单从首页消失、顺序也丢，
 //   随后还会把过滤后的数组回推云端，把安卓端的勾选一起改掉。这里统一在读写云端时做别名转换：
 //   读云端 = 外部 key → 本机 key；写云端 = 本机 key → 网页 canonical key（bz → committee），
 //   安卓/鸿蒙侧对 ft / committee 做反向映射（见各端 ToolCatalog/HomeToolsEditor）。
+//   2026-11-22 分组拆分：group 已是本机独立工具 key，**不再**映射到 draw（否则分组无法独立同步）。
 const identity = require('./identity.js');
 
 // 云端 key → 本机 key（读）；本机 key → 云端 key（写）
-const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', group: 'draw', task: 'hw' };
+const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', task: 'hw' };
 const SYNC_KEY_OUT = { bz: 'committee' };
 
 // 把任意端写入的 key 归一成本机 key（未知 key 原样返回，由调用方决定丢弃/保留）
@@ -53,7 +56,8 @@ const TOOLS = [
   { key: 'hw',   name: '任务',   ico: '✓', icoImg: '/images/tool-task.png', meta: '个人任务 · 班级作业 · 云同步', desc: '个人任务与班级作业统一入口：分组、步骤备注、附件、截止提醒、重复；班级作业/通知可加入任务', url: '/pages/task/task', tab: false, tone: 'primary' },
   { key: 'nt',   name: '班级通知', ico: '📢', icoImg: '/images/tool-nt.png', meta: '简报 · 筛选 · 附件', desc: '云端班级通知；AI 拆分、附件预览、原始消息', url: '/pages/nt/nt', tab: false, tone: 'primary' },
   { key: 'ft',   name: '体测',   ico: '📏', icoImg: '/images/tool-ft.png', meta: '大学国标 · 加分', desc: '大学体测七项算分、附加分与等级，实时出分', url: '/pages/ft/ft', tab: false, tone: '' },
-  { key: 'draw', name: '抽签分组', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 分组 · 结果单', desc: '抽号 → 分组 → 结果单；可剔除重抽、可分享卡片或长图', url: '/pages/draw/draw', tab: false, tone: '' },
+  { key: 'draw', name: '抽签', ico: '🎲', icoImg: '/images/tool-draw.png', meta: '抽号 · 剔除补抽 · 存证', desc: '抽号并保存结果；支持排除/重复/名单、剔除补抽、存证核验与分享卡片或长图', url: '/pages/draw/draw', tab: false, tone: '' },
+  { key: 'group', name: '分组', ico: '👥', icoImg: '/images/tool-group.png', meta: '全班 · 最近抽签 · 自选名单', desc: '把全班、最近一次抽签结果或自选名单分成若干组；按组数/每组人数，可打乱、复制与分享', url: '/pages/group/group', tab: false, tone: '' },
   { key: 'roll', name: '点名',   ico: '🙋', icoImg: '/images/tool-roll.png', meta: '到 · 假 · 沉底', desc: '线下点名核对：叫到一个勾一个，可到/请假，已处理自动沉底', url: '/pages/roll/roll', tab: false, tone: 'tertiary' },
   { key: 'bz',   name: '名单',   ico: '🏅', icoImg: '/images/tool-bz.png', meta: '班委 · 团员 · 全班', desc: '班级名单三分类：班委职务 / 团员 / 全班；所有已认证同学都可查看', url: '/pages/committee/committee', tab: false, tone: 'tertiary' },
   // v2.0.0 与网站功能同步：宿舍电费（普通工具；2026-11-22 起可主动勾选进首页，与网页工具栏/安卓一致）；
@@ -128,7 +132,7 @@ function syncPrefs() {
 // toolOrder（本机「全部工具」顺序）
 // ---------------------------------------------------------------------------
 
-// 归一：合法可见 key 去重；跨端别名（fit/roster/committee/group）先归一成本机 key；
+// 归一：合法可见 key 去重；跨端别名（fit/roster/committee）先归一成本机 key；
 // 未知/缺失的新工具按 TOOLS 自然顺序补到末尾
 function normalizeToolOrder(raw) {
   const out = [];
@@ -223,7 +227,7 @@ function byToolOrder(order) {
 // ---------------------------------------------------------------------------
 
 // 只做去重/过滤（可见、非 noHome、管理员工具按身份），**只保留前 4 个**，不再自动补齐。
-// 2026-11-22：先做跨端 key 归一（安卓 fit/roster/group、网页 committee → 本机 ft/bz/draw），
+// 2026-11-22：先做跨端 key 归一（安卓 fit/roster、网页 committee → 本机 ft/bz；group 已是本机独立 key），
 // 否则安卓端勾选的「体测/名单」会被当未知 key 丢掉，并回推覆盖云端。
 function normalizeHome(home, id) {
   const out = [];

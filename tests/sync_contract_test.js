@@ -282,6 +282,30 @@ function loadPage(rel) {
     assert.strictEqual(d.nick, undefined, 'mp store 没有 nick 字段（网页端字段）');
   });
 
+  await test('homeTools：draw 与 group 是两个独立 key（不再把 group 映射成 draw）', () => {
+    const { cloud, store } = cloudFresh();
+    setIdentity(ID);
+    seedClassMembers(store);
+    const tools = require(path.join(ROOT, 'utils/tools.js'));
+    const remote = JSON.parse(JSON.stringify(WEB));
+    const at = Date.now() + 60000;
+    remote.homeTools = ['draw', 'group', 'hw', 'nt'];
+    remote.homeToolsAt = at;
+    remote.at.homeTools = at;
+    remote.prefs = Object.assign({}, remote.prefs, { toolOrder: ['draw', 'group', 'hw', 'nt', 'tt'] });
+    remote.at.prefs = at;
+    assert.strictEqual(cloud.udApply(remote), true);
+    assert.deepStrictEqual(store.get().homeTools, ['draw', 'group', 'hw', 'nt'], '两个 key 都要保留');
+    assert.strictEqual(tools.localKey('group'), 'group', '读云端不得把 group 归一到 draw');
+    assert.strictEqual(tools.toolOf('group').url, '/pages/group/group');
+    assert.deepStrictEqual(tools.toolOrder().slice(0, 5), ['draw', 'group', 'hw', 'nt', 'tt'], '云端顺序保留 group 独立位置');
+    const view = cloud.udSections();
+    assert.deepStrictEqual(view.homeTools, ['draw', 'group', 'hw', 'nt'], '写回云端 group 保持独立 key');
+    // 小程序本机 key → 云端 canonical：只改 bz，不碰 group
+    assert.deepStrictEqual(tools.toSyncKeys(['group', 'bz', 'draw']), ['group', 'committee', 'draw']);
+    cloud.udStop();
+  });
+
   await test('应用：v5 blob 也可直接应用（归一为 v6 基线）', () => {
     const { cloud, store } = cloudFresh();
     setIdentity(ID);

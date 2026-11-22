@@ -1,4 +1,4 @@
-/* lottery-card：抽签结果 / 结果单（原子组件约束：无动画、无 overflow-y） */
+/* lottery-card：抽签结果 / 抽签+分组摘要（原子组件约束：无动画、无 overflow-y） */
 .ld-card {
   box-sizing: border-box;
   padding: 12px 14px;

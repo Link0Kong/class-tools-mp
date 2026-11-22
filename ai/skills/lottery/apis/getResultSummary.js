@@ -1,4 +1,4 @@
-// ai/skills/lottery/apis/getResultSummary.js —— 抽签 + 分组结果单（纯文本，可直接给用户）
+// ai/skills/lottery/apis/getResultSummary.js —— 抽签 + 分组文字摘要（纯文本，可直接读给用户或复制）
 const result = require('../../../common/result.js');
 const handoff = require('../../../common/handoff.js');
 const algo = require('../lib/algo.js');
@@ -6,7 +6,7 @@ const guard = require('../lib/guard.js');
 
 module.exports = guard.run(async function getResultSummary() {
   const s = algo.buildSummary();
-  const pg = guard.page('sum');
+  const pg = guard.page('group');
   const hasDraw = !!s.drawBlock;
   const hasGroup = !!s.groupBlocks;
   const text = algo.capText(s.text, 2000);
@@ -42,13 +42,13 @@ module.exports = guard.run(async function getResultSummary() {
   };
 
   if (!hasDraw && !hasGroup) {
-    return result.ok('还没有抽签或分组结果，暂时无法生成结果单。请先调用 runDraw 抽签' + '，需要分组时再调用 runGroup。', data,
-      { handoff: handoff.handoffTo('sum', 'step=3') });
+    return result.ok('还没有抽签或分组结果，暂时无法生成摘要。可以调用 runDraw 抽签，或调用 runGroup 直接从全班/班级名单分组。', data,
+      { handoff: handoff.handoffTo('group') });
   }
 
   const parts = [];
   if (hasDraw) parts.push('抽签 ' + drawData.count + ' 个');
   if (hasGroup) parts.push('分组 ' + groupData.groupCount + ' 组');
-  const content = '结果单已生成：' + parts.join(' / ') + '。可直接把 text 读给用户或让用户复制，也可以打开结果单页复制 / 分享。';
-  return result.ok(content, data, { handoff: handoff.handoffTo('sum', 'step=3') });
-}, '结果单');
+  const content = '摘要已生成：' + parts.join(' / ') + '。可直接把 text 读给用户或让用户复制；需要图片时打开抽签页/分组页分享。';
+  return result.ok(content, data, { handoff: handoff.handoffTo('group') });
+}, '抽签与分组摘要');

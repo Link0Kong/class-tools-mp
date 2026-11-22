@@ -1,4 +1,4 @@
-// pages/draw/draw.js —— 第 1 步：抽签（三步向导）
+// pages/draw/draw.js —— 抽签（独立工具；不再有「下一步 · 分组」，分组在 pages/group）
 // 算法：draw-v1（utils/drawproof.js，与网页/核验页逐字节一致：seed → mulberry32 → 洗牌不放回 / 允许重复）。
 // 1.3.4 名单改造：参与名单只能从班级名单（class_members）里按座号选择，不再支持自定义文本；
 //   未选择名单 = 只抽序号；选择了名单 = 抽签池只保留所选座号，结果必带姓名。
@@ -7,6 +7,8 @@
 //   * 每次「开始抽签」= 1 条云端存证（draw_record_create，异步不阻塞页面），结果区显示「今日第 N 次」；
 //   * 剔除 / 补抽 / 重置 → draw_event_append 追加时间线（失败静默）；
 //   * 导出图：编号 = 存证 id、参数区含存证信息、二维码 = webBase + '/#verify=<id>'；未存证不加二维码。
+// 2026-11-22 分组拆分（契约 web/group/CONTRACT.md §1.1/§3）：重置只清抽签结果；每次成功抽签
+//   额外写 flow.drawLast，分组页「最近抽签」跨重启可读，重置也不清空它。
 const store = require('../../utils/store.js');
 const util = require('../../utils/util.js');
 const flow = require('../../utils/flow.js');
@@ -35,12 +37,7 @@ Page(shareflow.install({
     // 存证状态（契约 §3.2/§3.3）：'' | pending | ok | failed
     proofStatus: '', proofCls: '', proofText: '', proofId: '',
     picker: false,
-    th: { primary: '#5E8F87', track: '#E6E9E8' },   // 原生 slider/switch 配色（跟随系统主题）
-    steps: [
-      { id: 's1', label: '抽签', done: false },
-      { id: 's2', label: '分组', done: false },
-      { id: 's3', label: '结果单', done: false }
-    ]
+    th: { primary: '#5E8F87', track: '#E6E9E8' }   // 原生 slider/switch 配色（跟随系统主题）
   },
 
   onLoad(options) {
@@ -97,15 +94,13 @@ Page(shareflow.install({
   },
   onPullDownRefresh() { this.load(); wx.stopPullDownRefresh(); },
 
-  // —— AI 页面接力（step=1）：抽签结果本就落在 zq_flow，先按 payload 兜底落盘再渲染，随后 load() 刷新 ——
+  // —— AI 页面接力：抽签结果本就落在 zq_flow，先按 payload 兜底落盘再渲染，随后 load() 刷新 ——
   applyAgentHandoff() {
     if (this._agentApplied) return false;
     this._agentApplied = true;
     const h = this._agent;
     const p = (h && h.payload) || {};
-    const q = Object.assign({}, this._agentQ || {}, (h && h.query) || {});
     if (!h && !this._agentQ) return false;
-    this._hoStep = parseInt(q.step, 10) || 1;
     try {
       const fl = flow.getFlow();
       const has = !!(fl.draw && fl.draw.result);
@@ -191,7 +186,6 @@ Page(shareflow.install({
           rows: [], removed: [], cfg: null, poolLen: 0, state: 'empty',
           proofStatus: '', proofCls: '', proofText: '', proofId: ''
         });
-        this.syncSteps();
       }
     } catch (e) {
       this.setData({ state: 'error', errorText: '读取失败：' + ((e && e.message) || e) });
@@ -334,6 +328,7 @@ Page(shareflow.install({
     };
     this._pendEvents = [];
     flow.patch('draw', st);
+    flow.saveLastDraw(st);                         // 最近一次成功抽签（分组页「最近抽签」）
     this.apply(st);
     wx.showToast({ title: '抽签完成', icon: 'success', duration: 900 });
     this._createProof(st, b, n, names);
@@ -450,22 +445,7 @@ Page(shareflow.install({
       state: rows.length ? 'data' : 'empty'
     });
     this.applyProof(st.proof || null);
-    this.syncSteps();
     this._scheduleShareCard();
-  },
-
-  // 步骤条完成态（只读 flow，不改动任何业务数据）
-  syncSteps() {
-    const fl = flow.getFlow();
-    const drawN = (fl.draw && fl.draw.result) ? fl.draw.result.length : 0;
-    const grpN = (fl.group && fl.group.result) ? fl.group.result.length : 0;
-    this.setData({
-      steps: [
-        { id: 's1', label: '抽签', done: drawN > 0 },
-        { id: 's2', label: '分组', done: grpN > 0 },
-        { id: 's3', label: '结果单', done: !!(drawN && grpN) }
-      ]
-    });
   },
 
 
@@ -494,6 +474,7 @@ Page(shareflow.install({
     }
     flow.patch('draw', st);
     this.apply(st);
+    if (st.result.length) flow.saveLastDraw(st);   // 剔除/补抽后的可用结果同步给分组页
     // 契约 §3.2：剔除 → kind:'remove', n:剔除号, added:补抽号（无自动重抽则 null）；失败静默
     this._appendEvent('remove', { n: n, added: pick });
   },
@@ -529,6 +510,7 @@ Page(shareflow.install({
     if (!addedList.length) util.toast('没有可补抽的序号了');
     flow.patch('draw', st);
     this.apply(st);
+    if (st.result.length) flow.saveLastDraw(st);
     // 契约 §3.2：补抽 → kind:'refill', added:补抽号（逐个追加；失败静默只影响时间线）
     addedList.forEach((n) => this._appendEvent('refill', { added: n }));
   },
@@ -536,38 +518,25 @@ Page(shareflow.install({
   reset() {
     wx.showModal({
       title: '重置抽签',
-      content: '清空本次抽签结果、分组结果与剔除记录？',
+      content: '清空本次抽签结果与剔除记录？（不影响分组结果，最近抽签结果仍可在分组页沿用）',
       confirmText: '重置',
       confirmColor: '#A2543E',
       success: (r) => {
         if (!r.confirm) return;
         // 契约 §3.2：清空结果前先追加 kind:'reset'（在途事件随创建成功后补发；未存证则跳过）
         this._appendEvent('reset', {});
-        flow.patch('draw', null);
-        flow.patch('group', null);
+        flow.patch('draw', null);        // 只清当前抽签；flow.drawLast 保留给分组页
         this._pendEvents = [];
         this.setData({
           rows: [], removed: [], cfg: null, poolLen: 0, state: 'empty',
           proofStatus: '', proofCls: '', proofText: '', proofId: ''
         });
-        this.syncSteps();
-        util.toast('已重置抽签与分组');
+        util.toast('已重置本轮抽签');
       }
     });
   },
 
-  onStep(e) {
-    const i = e.detail.index;
-    if (i === 2) this.toGroup();
-    else if (i === 3) this.toSum();
-  },
-  toGroup() {
-    if (!this.data.rows.length) { util.toast('先抽一次签再分组'); return; }
-    wx.navigateTo({ url: '/pages/group/group' });
-  },
-  toSum() { wx.navigateTo({ url: '/pages/sum/sum' }); },
-
-  /* ---------------- 记录入口（契约 §3.2：STEP1「抽签记录」→ pages/drawrec） ---------------- */
+  /* ---------------- 记录入口（契约 §3.2：「抽签记录」→ pages/drawrec） ---------------- */
   openRecords() { wx.navigateTo({ url: '/pages/drawrec/drawrec' }); },
   openRecordDetail() {
     if (!this.data.proofId) return;
@@ -636,7 +605,7 @@ Page(shareflow.install({
     const ready = drawproof.proofReady(st.proof);
     const n = (this.data.rows || []).length;
     const cfg = this.data.cfg || {};
-    let title = n ? ('抽签结果 · ' + n + ' 个') : '抽签｜抽号 · 分组 · 结果单';
+    let title = n ? ('抽签结果 · ' + n + ' 个') : '抽签｜抽号 · 存证 · 分享';
     if (n && cfg.range) title += '（' + cfg.range + (cfg.dup === '是' ? ' · 可重复' : '') + '）';
     if (ready && st.proof && st.proof.id) {
       return { title: title, path: '/pages/drawrec/drawrec', query: 'id=' + encodeURIComponent(String(st.proof.id)) };

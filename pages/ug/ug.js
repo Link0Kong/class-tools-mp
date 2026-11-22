@@ -1,12 +1,12 @@
 // pages/ug/ug.js —— 使用说明（v2.0.0 卡片化重构：一屏一张卡 + 分类 chips + 总览 + 上下张）
 //
 // 结构（契约 2026-11-12「使用说明卡片化重构」§1/§2/§4）：
-//   * 19 张卡片，一屏一张；swiper 横向跟手、首尾 clamp 不循环；
-//     投票卡仅班委可见（2026-11-21），普通同学/测试账号实际为 18 张；
+//   * 20 张卡片，一屏一张；swiper 横向跟手、首尾 clamp 不循环；
+//     投票卡仅班委可见（2026-11-21），普通同学/测试账号实际为 19 张；
 //   * 卡面：hero 场景图（WXSS view 形状，11 类 scene，不新增图片资源）+ 标题 + 一句话作用 + 3 条步骤 + 1 条提示；
 //   * 顶部：分类胶囊 + 页码 + 「总览」按钮；分类 chips 点按跳到该分类首卡；
 //   * 底部：上一张 / 页码 / 下一张（首尾禁用态）；
-//   * 总览：遮罩弹层按分类分组列出全部 19 张卡，点条目关闭并跳卡；
+//   * 总览：遮罩弹层按分类分组列出全部 20 张卡，点条目关闭并跳卡；
 //   * swiper 高度由 selector query 实测卡片最大高度后 setData（clamp 屏幕可用高度），不写死避免截断。
 //
 // 保留：top-app-bar / share.enable / onShareAppMessage / onShareTimeline /
@@ -26,7 +26,7 @@ const CATS = [
   { key: 'more', name: '更多' }
 ];
 
-// 19 张卡（顺序即轮播顺序，契约 §4.2）；文案按 §0 硬规则：标题 ≤8 字、作用 ≤20 字、步骤 ≤24 字、提示 ≤30 字。
+// 20 张卡（顺序即轮播顺序，契约 §4.2）；文案按 §0 硬规则：标题 ≤8 字、作用 ≤20 字、步骤 ≤24 字、提示 ≤30 字。
 const CARDS = [
   {
     id: 'id', cat: 'start', icon: '🛡',
@@ -44,10 +44,17 @@ const CARDS = [
   },
   {
     id: 'draw', cat: 'study', icon: '🎲',
-    title: '抽签分组', sub: '抽号 → 分组 → 结果单，可分享',
-    steps: ['设范围、个数与参与名单', '结果可左滑剔除或补抽', '分组后结果单可复制、分享卡片或长图'],
-    tip: '点「重置」清空本轮抽签与分组结果',
+    title: '抽签', sub: '抽号、剔除补抽，存证可核验',
+    steps: ['设范围、个数与参与名单', '结果可左滑剔除，自动补抽', '可存证核验、分享卡片或长图'],
+    tip: '重置只清空本轮抽签，不影响分组',
     scene: 'picks', tone: 'sand'
+  },
+  {
+    id: 'group', cat: 'study', icon: '👥',
+    title: '分组', sub: '全班 / 最近抽签 / 自选名单',
+    steps: ['选成员来源：全班、最近抽签或自选', '按组数或每组人数分组', '可复制、分享卡片或导出长图'],
+    tip: '分组独立使用，不抽签也能直接分组',
+    scene: 'people', tone: 'blue'
   },
   {
     id: 'roster', cat: 'study', icon: '👥',
@@ -167,7 +174,7 @@ const CARDS = [
 const SECTION_MAP = {
   identity: 'id', id: 'id',
   home: 'home', index: 'home', workspace: 'home', features: 'home', share: 'home',
-  draw: 'draw', lottery: 'draw', group: 'draw',
+  draw: 'draw', lottery: 'draw', group: 'group',
   roster: 'roster', names: 'roster',
   hw: 'hw', homework: 'hw', task: 'hw',
   nt: 'nt', notice: 'nt', ntattach: 'nt',

@@ -4,10 +4,8 @@
 
   <view class="page-head">
     <view class="t-headline-m">分组</view>
-    <view class="t-body-m muted">第 2 步 · 成员来自抽签序号或班级名单</view>
+    <view class="t-body-m muted">全班 · 最近抽签 · 自选名单，一键分组</view>
   </view>
-
-  <segmented items="{{steps}}" value="s2" bindchange="onStep" />
 
   <view class="section-gap"></view>
 
@@ -30,25 +28,38 @@
       <view class="m3-card m3-card--elevated enter enter-1">
         <view class="m3-card__head">
           <view class="t-title-m">分组参数</view>
-          <view class="pill pill--neutral">第 2 步</view>
+          <view class="pill pill--neutral">本机</view>
         </view>
 
         <view class="field">
           <view class="field__label">成员来源</view>
-          <view class="row wrap">
-            <touchable cls="m3-chip {{source === 'prev' ? 'm3-chip--selected' : ''}}" data-v="prev" bindtap="setSource">上一步抽签（{{prevN}}）</touchable>
-            <touchable cls="m3-chip {{source === 'pick' ? 'm3-chip--selected' : ''}}" data-v="pick" bindtap="setSource">班级名单</touchable>
+          <view class="src-row">
+            <view class="src-btn {{src === 'all' ? 'src-btn--on' : ''}}" bindtap="useAll" hover-class="src-btn--tap">
+              <view class="src-btn__t">全班</view>
+              <view class="src-btn__s">{{allN ? allN + ' 人' : '名单未同步'}}</view>
+            </view>
+            <view class="src-btn {{src === 'prev' ? 'src-btn--on' : ''}} {{prevN ? '' : 'src-btn--off'}}" bindtap="useRecent" hover-class="src-btn--tap">
+              <view class="src-btn__t">最近抽签</view>
+              <view class="src-btn__s">{{prevN ? (prevN + ' 人' + (prevTime ? ' · ' + prevTime : '')) : '暂无'}}</view>
+            </view>
+            <view class="src-btn {{src === 'pick' ? 'src-btn--on' : ''}}" bindtap="useManual" hover-class="src-btn--tap">
+              <view class="src-btn__t">自选名单</view>
+              <view class="src-btn__s">{{selCount ? selCount + ' 人' : '未选择'}}</view>
+            </view>
           </view>
+          <view wx:if="{{source === 'prev' && !prevN}}" class="field__hint">还没有最近抽签结果；可以先抽一次签，或改用「全班 / 自选名单」。</view>
+          <view wx:if="{{source === 'prev' && prevN}}" class="field__hint">沿用最近一次抽签：{{prevN}} 人{{prevTime ? ' · ' + prevTime : ''}}（只读，不会改动抽签记录）</view>
         </view>
 
+        <!-- 全班 / 自选名单都展开名单气泡；数据上都是 source='pick' + group.sel（契约 §4） -->
         <view class="field" wx:if="{{source === 'pick'}}">
           <view class="field__label">班级名单成员</view>
-          <view class="row between">
-            <view class="col grow">
-              <text class="t-body-m muted">{{selCount ? '已选 ' + selCount + ' 人 · 按座号升序分组' : '未选择 · 点右侧从班级名单选人'}}</text>
-            </view>
+          <view class="row wrap">
             <touchable cls="m3-btn m3-btn--tonal m3-btn--sm" bindtap="openPicker">选择名单</touchable>
+            <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="selectAll">全选</touchable>
+            <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="clearAll">清空</touchable>
           </view>
+          <view class="field__hint">{{selCount ? '已选 ' + selCount + ' 人 · 按座号升序轮流分配' : '未选择 · 从班级名单点选，或直接点「全选」'}}</view>
           <view wx:if="{{selCount}}" class="sel-wrap">
             <view class="lp-chip" wx:for="{{selChips}}" wx:key="seat">
               <text class="lp-chip__seat">{{item.seat}}</text><text class="lp-chip__name">{{item.name}}</text>
@@ -59,15 +70,20 @@
 
         <view class="field">
           <view class="field__label">分组方式</view>
-          <view class="row wrap">
-            <touchable cls="m3-chip {{mode === 'groups' ? 'm3-chip--selected' : ''}}" data-v="groups" bindtap="setMode">按组数</touchable>
-            <touchable cls="m3-chip {{mode === 'per' ? 'm3-chip--selected' : ''}}" data-v="per" bindtap="setMode">按每组人数</touchable>
+          <view class="seg">
+            <view class="seg__btn {{mode === 'groups' ? 'seg__btn--on' : ''}}" data-v="groups" bindtap="setMode">按组数</view>
+            <view class="seg__btn {{mode === 'per' ? 'seg__btn--on' : ''}}" data-v="per" bindtap="setMode">每组人数</view>
           </view>
         </view>
 
         <view class="field">
           <view class="field__label">{{mode === 'groups' ? '组数' : '每组人数'}}</view>
-          <view class="field__ctrl"><input class="field__input" type="number" value="{{n}}" bindinput="onNum" /></view>
+          <view class="stepper">
+            <view class="stepper__btn" bindtap="nMinus" hover-class="stepper__btn--tap">−</view>
+            <input class="stepper__input" type="number" value="{{n}}" bindinput="onNum" />
+            <view class="stepper__btn" bindtap="nPlus" hover-class="stepper__btn--tap">＋</view>
+          </view>
+          <view class="field__hint">{{mode === 'groups' ? '最少 2 组；超过人数时按实际人数分组' : '每组至少 1 人；按人数自动决定组数'}}</view>
         </view>
 
         <view class="field field--row" style="margin-bottom:0">
@@ -85,13 +101,14 @@
           <view class="t-title-m">分组结果</view>
           <view class="row">
             <view wx:if="{{groups.length}}" class="share-btn" bindtap="openShare" hover-class="share-btn--tap">分享</view>
-            <view class="pill {{groups.length ? 'pill--primary' : 'pill--neutral'}}">{{groups.length}} 组</view>
+            <view class="pill {{groups.length ? 'pill--primary' : 'pill--neutral'}}">{{groupN}} 组</view>
           </view>
         </view>
 
-        <empty-state wx:if="{{state === 'empty'}}" icon="👥" title="还没有分组结果" text="设置好参数点下面的「开始分组」" action-text="开始分组" bind:action="doGroup"></empty-state>
+        <empty-state wx:if="{{state === 'empty'}}" icon="👥" title="还没有分组结果" text="选好成员来源与分组方式，点下面的「开始分组」" action-text="开始分组" bind:action="doGroup"></empty-state>
 
         <block wx:else>
+          <view class="sum-line">{{summary}}</view>
           <view class="gcard" wx:for="{{groups}}" wx:key="i">
             <view class="row between">
               <view class="t-title-m">第 {{item.i}} 组</view>
@@ -120,15 +137,14 @@
                title-text="{{shareTitle}}" busy="{{shareBusy}}" hint="{{shareHint}}"
                bind:close="closeShare" bind:image="shareImage" />
 
+  <!-- —— 底部固定操作条（抽签与分组互相独立） —— -->
   <view class="actionbar">
     <view class="actionbar__inner" style="margin-bottom:16rpx">
-      <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="toDraw">上一步 · 抽签</touchable>
-      <view class="grow"></view>
       <touchable cls="m3-btn m3-btn--text m3-btn--sm" bindtap="copyText">复制</touchable>
+      <view class="grow"></view>
       <touchable cls="m3-btn m3-btn--outlined m3-btn--sm" bindtap="openShare">分享</touchable>
     </view>
-    <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="doGroup">开始分组</touchable>
-    <touchable cls="m3-btn m3-btn--text m3-btn--block" bindtap="toSum">下一步 · 结果单</touchable>
+    <touchable cls="m3-btn m3-btn--filled m3-btn--block" bindtap="doGroup">{{groups.length ? '重新分组' : '开始分组'}}</touchable>
   </view>
 
   <!-- —— 班级名单选择（只来自 class_members，液态气泡）—— -->

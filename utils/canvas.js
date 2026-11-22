@@ -74,7 +74,7 @@ function rr(g, x, y, w, h, r) {
 
 // opt = { title, sub, config:[[k,v]], blocks:[{label,lines:[string|runs],mono?}|{label,chips:[{n,nm}]}|{label,groups:[[{n,nm}]]}], foot, rec, qr, qrNote, qrTitle, qrCap }
 // 2026-11-12 抽签存证（契约 web/draw/CONTRACT.md §6）：qrTitle/qrCap 为可选覆盖（默认「剔除重抽记录」+ 原说明），
-// 仅传入 qr 时绘制二维码；其它导出（分组/课表/作业/体测/结果单）不传这两个字段，版式不变。
+// 仅传入 qr 时绘制二维码；其它导出（分组/课表/作业/体测）不传这两个字段，版式不变。
 // 返回画布逻辑高度 H（canvas.width/height 已在内部按 DPR 放大）。
 function drawCard(g, canvas, opt) {
   opt = opt || {};

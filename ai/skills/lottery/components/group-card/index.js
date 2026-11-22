@@ -12,7 +12,7 @@ Component({
       try {
         this._ctx = wx.modelContext.getContext(this);
         this._view = wx.modelContext.getViewContext(this);
-        this._view.setRelatedPage({ query: 'step=2' });
+        this._view.setRelatedPage({ query: '' });
         const NT = wx.modelContext.NotificationType;
         this._ctx.on(NT.Result, (data) => this._render(data));
       } catch (e) { /* 卡片环境异常时保持初始态 */ }
@@ -40,7 +40,7 @@ Component({
         more: Math.max(0, groups.length - 8),
         empty: !groups.length
       });
-      try { this._view.setRelatedPage({ query: 'step=2' }); } catch (e) { /* ignore */ }
+      try { this._view.setRelatedPage({ query: '' }); } catch (e) { /* ignore */ }
     }
   }
 });

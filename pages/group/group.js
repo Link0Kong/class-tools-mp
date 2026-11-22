@@ -1,6 +1,10 @@
-// pages/group/group.js —— 第 2 步：分组（三步向导）
-// 算法与原站 gMembers / doGroup 一致：成员来自上一步抽签序号，或班级名单（按座号选择）。
-// 1.3.4 名单改造：不再支持粘贴/自定义名单，成员来源「班级名单」= class_members 里的已选座号。
+// pages/group/group.js —— 分组（独立工具；不再依赖抽签页「下一步」，也没有「结果单」）
+// 2026-11-22 分组拆分（契约 web/group/CONTRACT.md §1.2/§2.2/§3）：
+//   · 成员来源三选一：全班 / 最近抽签 / 自选名单；
+//   · 数据口径不变：group.source 仍只有 'prev' | 'pick'，全班 = pick + group.sel = 全班座号；
+//   · 最近抽签读 flow.lastDraw()（zq_flow.drawLast，旧数据回退 zq_flow.draw），冷启动/重置后仍可读；
+//   · 名称优先级：名称映射 > 班级名单派生名 > 空（与抽签页 nameOf 同口径）。
+// 分组算法与原站一致：按组数 / 按每组人数，轮流分配，可选打乱。
 const store = require('../../utils/store.js');
 const util = require('../../utils/util.js');
 const flow = require('../../utils/flow.js');
@@ -10,22 +14,37 @@ const share = require('../../utils/share.js');
 const roster = require('../../utils/roster.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
+const drawproof = require('../../utils/drawproof.js');
 const sharecard = require('../../utils/sharecard.js');
 const shareflow = require('../../utils/shareflow.js');
+
+function pad(n) { return String(n).padStart(2, '0'); }
+// 最近抽签时间：11-22 21:05（只在本机展示，不参与同步）
+function shortTime(ms) {
+  const n = Number(ms);
+  if (!isFinite(n) || n <= 0) return '';
+  const d = new Date(n);
+  return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function sameSeats(a, b) {
+  const x = roster.normSeats(a), y = roster.normSeats(b);
+  if (x.length !== y.length) return false;
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+  return true;
+}
 
 Page(shareflow.install({
   data: {
     state: 'loading',
     errorText: '',
     source: 'prev', mode: 'groups', n: 4, shuffle: false,
-    groups: [], cfg: null, prevN: 0,
+    // src = 视图高亮来源：all（全班）| prev（最近抽签）| pick（自选名单）。
+    // 持久化仍只有 group.source = prev | pick（contract §4）；全班由「已选集合 = 全班集合」判定。
+    src: 'pick',
+    groups: [], cfg: null, groupN: 0, total: 0, summary: '',
+    allN: 0, prevN: 0, prevAt: 0, prevTime: '',
     groupSel: [], selChips: [], selMore: 0, selCount: 0, picker: false,
-    th: { primary: '#5E8F87', track: '#E6E9E8' },   // 原生 switch 配色（跟随系统主题）
-    steps: [
-      { id: 's1', label: '抽签', done: false },
-      { id: 's2', label: '分组', done: false },
-      { id: 's3', label: '结果单', done: false }
-    ]
+    th: { primary: '#5E8F87', track: '#E6E9E8' }   // 原生 switch 配色（跟随系统主题）
   },
 
   onLoad(options) {
@@ -65,7 +84,15 @@ Page(shareflow.install({
   },
   onPullDownRefresh() { this.load(); wx.stopPullDownRefresh(); },
 
-  // —— AI 页面接力（step=2）：分组结果本就在 zq_flow；payload 只做兜底落盘与参数预填，随后 load() 刷新 ——
+  // 视图来源：prev 优先；pick 下已选集合 = 全班集合 → all，否则 pick。
+  // 不做「新增 source 取值」：group.source 永远只有 prev | pick。
+  _srcOf(source, sel) {
+    if (source === 'prev') return 'prev';
+    const all = roster.members().map(function (m) { return m.seat; });
+    return (all.length && sameSeats(sel, all)) ? 'all' : 'pick';
+  },
+
+  // —— AI 页面接力：分组结果本就在 zq_flow；payload 只做兜底落盘与参数预填，随后 load() 刷新 ——
   applyAgentHandoff() {
     if (this._agentApplied) return false;
     this._agentApplied = true;
@@ -73,10 +100,10 @@ Page(shareflow.install({
     const p = (h && h.payload) || {};
     const q = Object.assign({}, this._agentQ || {}, (h && h.query) || {});
     if (!h && !this._agentQ) return false;
-    this._hoStep = parseInt(q.step, 10) || 2;
     // 参数预填（不阻塞、不自动分组）
     const src = String(p.source || q.source || '');
-    if (src === 'prev' || src === 'pick' || src === 'roster') this.setData({ source: src === 'prev' ? 'prev' : 'pick' });
+    if (src === 'prev') this.setData({ source: 'prev', src: 'prev' });
+    else if (src === 'pick' || src === 'roster' || src === 'all') this.setData({ source: 'pick', src: 'pick' });
     const mode = String(p.mode || q.mode || '');
     if (mode === 'groups' || mode === 'size') this.setData({ mode: mode === 'size' ? 'per' : 'groups' });
     const value = parseInt(p.value || q.value, 10);
@@ -104,7 +131,7 @@ Page(shareflow.install({
           flow.patch('group', {
             result: result,
             cfg: {
-              source: String(p.source === 'roster' ? '班级名单' : (p.source || '上一步抽签序号')),
+              source: String(p.source === 'roster' ? '自选名单' : (p.source === 'prev' ? '最近抽签' : (p.source || '自选名单'))) + '（' + total + ' 人）',
               mode: p.mode === 'size' ? ('按每组人数(' + (isFinite(v) ? v : '') + ' 人)') : ('按组数(' + result.length + ' 组)'),
               total: String(total),
               groups: String(result.length),
@@ -123,15 +150,18 @@ Page(shareflow.install({
       const g = store.get().group || {};
       const src = (g.source === 'pick' || g.source === 'paste') ? 'pick' : 'prev';
       const info = roster.summary('group', 8);
+      const sel = roster.selOf('group');
       this.setData({
         source: src,
+        src: this._srcOf(src, sel),
         mode: g.mode === 'per' ? 'per' : 'groups',
         n: g.n == null ? 4 : g.n,
         shuffle: !!g.shuffle,
-        groupSel: roster.selOf('group'),
+        groupSel: sel,
         selChips: info.chips,
         selMore: info.more,
-        selCount: info.count
+        selCount: info.count,
+        allN: roster.members().length
       });
     } catch (e) { /* 重绘失败不影响当前结果 */ }
   },
@@ -142,68 +172,133 @@ Page(shareflow.install({
       const d = store.get();
       const g = d.group || {};
       const fl = flow.getFlow();
+      // 未知 source（历史数据/别的端写入）归一为 prev（契约 §4）
       const src = (g.source === 'pick' || g.source === 'paste') ? 'pick' : 'prev';
       const info = roster.summary('group', 8);
+      const sel = roster.selOf('group');
+      // 旧数据迁移：只有 zq_flow.draw、没有 drawLast 时，把当前结果补成「最近抽签」快照，
+      // 这样之后抽签页重置也不会让分组丢掉可沿用的最近结果。
+      const fl0 = flow.getFlow();
+      if (fl0.draw && !fl0.drawLast && fl0.draw.result && fl0.draw.result.length) flow.saveLastDraw(fl0.draw);
+      const last = flow.lastDraw();
+      const prevN = (last && Array.isArray(last.result)) ? last.result.length : 0;
+      const prevAt = (last && Number(last.at)) || 0;
       this.setData({
         source: src,
+        src: this._srcOf(src, sel),
         mode: g.mode === 'per' ? 'per' : 'groups',
         n: g.n == null ? 4 : g.n,
         shuffle: !!g.shuffle,
-        prevN: (fl.draw && fl.draw.result) ? fl.draw.result.length : 0,
-        groupSel: roster.selOf('group'),
+        allN: roster.members().length,
+        prevN: prevN,
+        prevAt: prevAt,
+        prevTime: shortTime(prevAt),
+        groupSel: sel,
         selChips: info.chips,
         selMore: info.more,
         selCount: info.count,
         errorText: ''
       });
       if (fl.group && fl.group.result) this.apply(fl.group);
-      else { this.setData({ groups: [], cfg: null, state: 'empty' }); this.syncSteps(); }
+      else { this.setData({ groups: [], cfg: null, state: 'empty', groupN: 0, total: 0, summary: '' }); }
     } catch (e) {
       this.setData({ state: 'error', errorText: '读取失败：' + ((e && e.message) || e) });
     }
+  },
+
+  /* ---------------- 成员来源（三段） ---------------- */
+  useAll() {
+    const seats = roster.quickSeats('all');
+    if (!seats.length) { util.toast('班级名单未同步，请下拉刷新或到「名单」页同步'); return; }
+    roster.setSel('group', seats);
+    this.setData({ source: 'pick', src: 'all' });
+    this.saveCfg();
+    this.syncSel();
+    util.toast('已选全班 ' + seats.length + ' 人');
+  },
+  useRecent() {
+    if (!this.data.prevN) { util.toast('还没有抽签结果，先去抽一次签'); return; }
+    this.setData({ source: 'prev', src: 'prev' });
+    this.saveCfg();
+  },
+  useManual() {
+    // 明确点「自选名单」时高亮自选，即使当前碰巧全选（刷新后仍按集合是否等于全班回推）
+    this.setData({ source: 'pick', src: 'pick' });
+    this.saveCfg();
+  },
+  selectAll() {
+    const seats = roster.quickSeats('all');
+    if (!seats.length) { util.toast('班级名单未同步'); return; }
+    roster.setSel('group', seats);
+    this.setData({ source: 'pick' });
+    this.saveCfg();
+    this.syncSel();
+  },
+  clearAll() {
+    roster.setSel('group', []);
+    this.setData({ source: 'pick', src: 'pick' });
+    this.saveCfg();
+    this.syncSel();
+    util.toast('已清空自选名单');
   },
 
   onNum(e) {
     const v = String(e.detail.value || '').replace(/[^\d]/g, '').slice(0, 3);
     this.setData({ n: v === '' ? '' : +v });
   },
+  nMinus() { this.stepN(-1); },
+  nPlus() { this.stepN(1); },
+  stepN(d) {
+    const min = this.data.mode === 'per' ? 1 : 2;
+    const cur = +this.data.n || min;
+    this.setData({ n: Math.max(min, Math.min(999, cur + d)) });
+  },
   onSwitch(e) { this.setData({ shuffle: e.detail.value }); },
-  setSource(e) { this.setData({ source: e.currentTarget.dataset.v }); },
-  setMode(e) { this.setData({ mode: e.currentTarget.dataset.v }); },
+  setMode(e) {
+    const mode = e.currentTarget.dataset.v === 'per' ? 'per' : 'groups';
+    const n = Math.max(mode === 'per' ? 1 : 2, +this.data.n || 2);
+    this.setData({ mode: mode, n: n });
+  },
 
-  // —— 班级名单（唯一来源 class_members，按座号选择；不支持粘贴/自定义）——
+  // —— 班级名单选择（唯一来源 class_members，按座号选择）——
   openPicker() { this.setData({ picker: true }); },
   closePicker() { this.setData({ picker: false }); },
   syncSel() {
     const info = roster.summary('group', 8);
-    this.setData({ groupSel: roster.selOf('group'), selChips: info.chips, selMore: info.more, selCount: info.count });
+    const sel = roster.selOf('group');
+    this.setData({
+      groupSel: sel, selChips: info.chips, selMore: info.more, selCount: info.count,
+      src: this.data.source === 'prev' ? 'prev' : this._srcOf('pick', sel)
+    });
   },
   onRosterConfirm(e) {
     const seats = (e.detail && e.detail.seats) || [];
     roster.setSel('group', seats);
+    this.setData({ picker: false, source: 'pick' });
+    this.saveCfg();
     this.syncSel();
-    this.setData({ picker: false });
     util.toast(seats.length ? ('已选 ' + seats.length + ' 人') : '已清空班级名单');
   },
 
   saveCfg() {
     const d = store.get();
     d.group = d.group || {};
-    d.group.source = this.data.source;
-    d.group.mode = this.data.mode;
+    // 契约 §4：只写 prev | pick；未知值一律 prev
+    d.group.source = this.data.source === 'pick' ? 'pick' : 'prev';
+    d.group.mode = this.data.mode === 'per' ? 'per' : 'groups';
     d.group.n = +this.data.n || 2;
     d.group.shuffle = !!this.data.shuffle;
     store.save();
   },
 
-  // 与原站 gMembers 等价：上一步抽签序号 / 班级名单已选成员
+  // 成员：最近抽签（名称映射 > 班级名单派生名）或班级名单已选座号
   members() {
-    const fl = flow.getFlow();
     if (this.data.source === 'prev') {
-      if (!fl.draw || !fl.draw.result || !fl.draw.result.length) { util.toast('请先在第 1 步抽签'); return null; }
-      // 姓名只取派生名单文本（与网页端 nameOf 同源）：未选参与名单时序号不带姓名
-      const rm = util.rosterMap(store.get().roster).m;
-      return fl.draw.result.map(function (x) { return { n: x, nm: rm[x] || '' }; });
+      const last = flow.lastDraw();
+      if (!last || !last.result || !last.result.length) { util.toast('还没有抽签结果，可选「全班」或「自选名单」'); return null; }
+      const names = String((store.get().draw || {}).names || '');
+      const rows = drawproof.rowsOf(last.result, names, store.get().roster || '', 'draw');
+      return rows.map(function (r) { return { n: r.n, nm: r.nm || '' }; });
     }
     const seats = roster.selOf('group');
     if (!seats.length) { util.toast('请先选择名单'); return null; }
@@ -212,15 +307,20 @@ Page(shareflow.install({
     return picked.map(function (m) { return { n: m.seat, nm: m.name }; });
   },
 
+  _sourceLabel(n) {
+    if (this.data.source === 'prev') return '最近抽签（' + n + ' 人）';
+    return (this.data.src === 'all' ? '全班（' : '自选名单（') + n + ' 人）';
+  },
+
   doGroup() {
     this.saveCfg();
     const g = this.data;
     const mem = this.members();
     if (!mem) return;
-    const n = +g.n || 2;
+    const n = Math.max(1, +g.n || 2);
     const groups = g.mode === 'groups'
       ? Math.min(Math.max(2, n), mem.length)
-      : Math.max(1, Math.ceil(mem.length / Math.max(1, n)));
+      : Math.max(1, Math.ceil(mem.length / n));
     const list = mem.slice();
     if (g.shuffle) {
       for (let j = list.length - 1; j > 0; j--) {
@@ -234,7 +334,7 @@ Page(shareflow.install({
     const st = {
       result: out,
       cfg: {
-        source: g.source === 'prev' ? '上一步抽签序号' : ('班级名单（' + mem.length + ' 人）'),
+        source: this._sourceLabel(mem.length),
         mode: g.mode === 'groups' ? ('按组数(' + groups + ' 组)') : ('按每组人数(' + n + ' 人)'),
         total: String(mem.length), groups: String(groups),
         inner: g.shuffle ? '打乱后随机分配' : '按原顺序轮流分配'
@@ -249,42 +349,28 @@ Page(shareflow.install({
     const groups = (st.result || []).map(function (gp, i) {
       return { i: i + 1, size: gp.length, members: gp.map(function (m, j) { return Object.assign({}, m, { key: i + '_' + j }); }) };
     });
-    this.setData({ groups: groups, cfg: st.cfg || null, state: groups.length ? 'data' : 'empty' });
-    this.syncSteps();
+    const total = groups.reduce(function (a, g) { return a + g.size; }, 0);
+    const sizes = groups.map(function (g) { return g.size; });
+    const lo = sizes.length ? Math.min.apply(null, sizes) : 0;
+    const hi = sizes.length ? Math.max.apply(null, sizes) : 0;
+    const summary = groups.length
+      ? ('共 ' + total + ' 人 · ' + groups.length + ' 组 · 每组 ' + (lo === hi ? lo : (lo + '–' + hi)) + ' 人')
+      : '';
+    this.setData({
+      groups: groups, cfg: st.cfg || null, state: groups.length ? 'data' : 'empty',
+      groupN: groups.length, total: total, summary: summary
+    });
   },
 
   copyText() {
     if (!this.data.groups.length) { util.toast('先分组再复制'); return; }
     const t = this.data.groups.map(function (g) {
-      return '第 ' + g.i + ' 组：' + g.members.map(function (m) { return m.nm || String(m.n); }).join('、');
+      return '第 ' + g.i + ' 组（' + g.size + ' 人）：' + g.members.map(function (m) {
+        if (m.nm && m.n != null) return m.n + ' ' + m.nm;
+        return m.nm || String(m.n);
+      }).join('、');
     }).join('\n');
     util.copyText(t);
-  },
-
-  // 步骤条完成态（只读 flow，不改动任何业务数据）
-  syncSteps() {
-    const fl = flow.getFlow();
-    const drawN = (fl.draw && fl.draw.result) ? fl.draw.result.length : 0;
-    const grpN = (fl.group && fl.group.result) ? fl.group.result.length : 0;
-    this.setData({
-      steps: [
-        { id: 's1', label: '抽签', done: drawN > 0 },
-        { id: 's2', label: '分组', done: grpN > 0 },
-        { id: 's3', label: '结果单', done: !!(drawN && grpN) }
-      ]
-    });
-  },
-
-
-  onStep(e) {
-    const i = e.detail.index;
-    if (i === 1) this.toDraw();
-    else if (i === 3) this.toSum();
-  },
-  toDraw() { util.backTo('pages/draw/draw'); },
-  toSum() {
-    if (!this.data.groups.length) { util.toast('先分组再往下走'); return; }
-    wx.navigateTo({ url: '/pages/sum/sum' });
   },
 
   _sharePosterOpt() {
@@ -331,7 +417,7 @@ Page(shareflow.install({
   _shareTitle() {
     const n = (this.data.groups || []).length;
     const cfg = this.data.cfg || {};
-    if (!n) return '班级分组｜按组数或人数一键分组';
+    if (!n) return '班级分组｜全班 / 最近抽签 / 自选名单一键分组';
     return '分组结果 · ' + n + ' 组' + (cfg.total ? (' / ' + cfg.total + ' 人') : '');
   },
   onShareAppMessage() {

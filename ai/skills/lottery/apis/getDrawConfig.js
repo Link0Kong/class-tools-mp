@@ -39,5 +39,5 @@ module.exports = guard.run(async function getDrawConfig() {
     '下一步：直接调用 runDraw 抽签；想调整参数可打开抽签页。'
   ].join('');
 
-  return result.ok(content, data, { handoff: handoff.handoffTo('draw', 'step=1') });
+  return result.ok(content, data, { handoff: handoff.handoffTo('draw') });
 }, '抽签配置');

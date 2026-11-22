@@ -13,10 +13,10 @@ module.exports = guard.run(async function getDrawResult() {
 
   if (!st || !st.result || !st.result.length) {
     const data = Object.assign({
-      exists: false, items: [], removed: [], cfg: null, steps: algo.steps()
+      exists: false, items: [], removed: [], cfg: null
     }, base);
     return result.ok('还没有抽签结果。可以调用 runDraw 立即抽签，或打开抽签页设置参数后再抽。', data,
-      { handoff: handoff.handoffTo('draw', 'step=1') });
+      { handoff: handoff.handoffTo('draw') });
   }
 
   const sort = algo.loadDraw().sort;
@@ -26,10 +26,9 @@ module.exports = guard.run(async function getDrawResult() {
     exists: true,
     items: algo.itemsOf(rows),
     removed: removed,
-    cfg: st.cfg || null,
-    steps: algo.steps()
+    cfg: st.cfg || null
   }, base);
   const content = '当前抽签结果共 ' + rows.length + ' 个' + (removed.length ? ('，已剔除 ' + removed.length + ' 个') : '') +
-    '。下一步：需要分组时调用 runGroup，或打开抽签页查看 / 补抽 / 剔除。';
-  return result.ok(content, data, { handoff: handoff.handoffTo('draw', 'step=1') });
+    '。需要分组时调用 runGroup（可沿用最近抽签），或打开抽签页查看 / 补抽 / 剔除。';
+  return result.ok(content, data, { handoff: handoff.handoffTo('draw') });
 }, '抽签结果');

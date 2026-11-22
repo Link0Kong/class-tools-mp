@@ -47,7 +47,6 @@
           "items": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
           "poolSize": { "type": "number" },
           "cfg": { "type": "object", "properties": { "range": { "type": "string" }, "rangeF": { "type": "string" }, "count": { "type": "string" }, "dup": { "type": "string" }, "excl": { "type": "string" }, "sort": { "type": "string" }, "pool": { "type": "string" }, "sel": { "type": "string" }, "selF": { "type": "string" } } },
-          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
           "drawnAt": { "type": "number" },
           "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
           "pageTitle": { "type": "string" }
@@ -103,7 +102,7 @@
     },
     {
       "name": "getDrawResult",
-      "description": "读取当前抽签结果：是否存在、结果序号与姓名、已剔除序号、结果配置与三步进度。用户想看抽签结果时用本接口，不要重新抽签。",
+      "description": "读取当前抽签结果：是否存在、结果序号与姓名、已剔除序号与结果配置。用户想看抽签结果时用本接口，不要重新抽签。",
       "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/draw/draw" } },
       "inputSchema": { "type": "object", "properties": {}, "required": [] },
       "outputSchema": {
@@ -113,7 +112,6 @@
           "items": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": "number" }, "name": { "type": "string" } } } },
           "removed": { "type": "array", "items": { "type": "number" } },
           "cfg": { "type": "object", "properties": { "range": { "type": "string" }, "rangeF": { "type": "string" }, "count": { "type": "string" }, "dup": { "type": "string" }, "excl": { "type": "string" }, "sort": { "type": "string" }, "pool": { "type": "string" }, "sel": { "type": "string" }, "selF": { "type": "string" } } },
-          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
           "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
           "pageTitle": { "type": "string" }
         }
@@ -135,7 +133,6 @@
         "properties": {
           "ok": { "type": "boolean" },
           "cleared": { "type": "object", "properties": { "draw": { "type": "boolean" }, "group": { "type": "boolean" } } },
-          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
           "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
           "pageTitle": { "type": "string" }
         }
@@ -143,14 +140,14 @@
     },
     {
       "name": "runGroup",
-      "description": "把上一步抽签序号或班级名单已选座号分成若干组。按组数或按每组人数两种方式，可打乱后随机分配。结果立即写入本机工作流，页面可直接看到。",
+      "description": "把最近一次抽签序号或班级名单已选座号分成若干组。按组数或按每组人数两种方式，可打乱后随机分配。分组不依赖抽签，结果立即写入本机，页面可直接看到。",
       "_meta": { "ui": { "componentPath": "components/group-card/index", "pagePath": "/pages/group/group" } },
       "inputSchema": {
         "type": "object",
         "properties": {
           "mode": { "type": "string", "enum": ["groups", "size"], "description": "分组方式：groups=按组数（value 为组数），size=按每组人数（value 为每组人数）。" },
           "value": { "type": "number", "description": "组数或每组人数，正整数。按组数时不少于 2 且不超过人数；按每组人数时至少 1。" },
-          "source": { "type": "string", "enum": ["prev", "roster"], "description": "成员来源：prev=上一步抽签序号（默认），roster=班级名单已选座号。" },
+          "source": { "type": "string", "enum": ["prev", "roster"], "description": "成员来源：prev=最近抽签序号（默认），roster=班级名单已选座号（全班可全选）。" },
           "shuffle": { "type": "boolean", "description": "是否打乱后随机分配，默认 false（按原顺序轮流分配）。" },
           "rosterSeats": { "type": ["array", "string"], "items": { "type": "number" }, "description": "source=roster 时的参与座号数组；传 \"current\" 或省略 = 沿用本机已选分组名单。" },
           "confirmed": { "type": "boolean", "description": "只在本机已有分组结果、需要覆盖旧结果时使用：用户明确同意后传 true。" }
@@ -167,7 +164,6 @@
           "total": { "type": "number" },
           "shuffle": { "type": "boolean" },
           "cfg": { "type": "object" },
-          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
           "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
           "pageTitle": { "type": "string" }
         }
@@ -188,7 +184,6 @@
           "value": { "type": "number" },
           "shuffle": { "type": "boolean" },
           "cfg": { "type": "object" },
-          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
           "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
           "pageTitle": { "type": "string" }
         }
@@ -209,7 +204,6 @@
         "type": "object",
         "properties": {
           "ok": { "type": "boolean" },
-          "steps": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "done": { "type": "boolean" } } } },
           "pagePath": { "type": "string", "format": "page-link", "x-link-text-field": "pageTitle" },
           "pageTitle": { "type": "string" }
         }
@@ -217,8 +211,8 @@
     },
     {
       "name": "getResultSummary",
-      "description": "生成抽签+分组结果单的纯文本与结构化摘要，可直接读给用户或复制。抽签与分组都为空时返回空结果说明，不要编造内容。",
-      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/sum/sum" } },
+      "description": "生成抽签与分组的纯文本摘要（可直接读给用户或复制）。抽签与分组都为空时返回空结果说明，不要编造内容。",
+      "_meta": { "ui": { "componentPath": "components/lottery-card/index", "pagePath": "/pages/group/group" } },
       "inputSchema": { "type": "object", "properties": {}, "required": [] },
       "outputSchema": {
         "type": "object",

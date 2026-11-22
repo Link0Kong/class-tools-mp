@@ -380,8 +380,8 @@ async function run(outerTest) {
     assert.ok(/<button[^>]*open-type="share"/.test(src('pages/drawrec/drawrec.wxml')), '抽签记录缺少分享按钮');
   });
 
-  await T('分享 D8：六个「导出图片」入口全部替换为分享弹层（抽签/分组/结果单/作业/体测/课表）', async function () {
-    const pages = ['draw', 'group', 'sum', 'hw', 'ft', 'tt'];
+  await T('分享 D8：五个「导出图片」入口全部替换为分享弹层（抽签/分组/作业/体测/课表；结果单已删除）', async function () {
+    const pages = ['draw', 'group', 'hw', 'ft', 'tt'];
     pages.forEach(function (p) {
       const wxml = src('pages/' + p + '/' + p + '.wxml');
       const js = src('pages/' + p + '/' + p + '.js');

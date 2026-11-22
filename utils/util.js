@@ -138,7 +138,7 @@ function showBadge(badge, role) {
   return b;
 }
 
-// 回到页面栈中的某个页面（三步流程页共用）；栈里没有则 navigateTo 过去
+// 回到页面栈中的某个页面（抽签/分组等入口页共用）；栈里没有则 navigateTo 过去
 function backTo(route, url) {
   try {
     const ps = getCurrentPages() || [];
