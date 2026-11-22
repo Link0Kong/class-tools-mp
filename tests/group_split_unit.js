@@ -257,6 +257,15 @@ async function run(test) {
     assert.deepStrictEqual(f.flow.lastDraw().result, [2, 3], '重置保留最近抽签，供分组沿用');
     assert.strictEqual(ctx.data.state, 'empty');
     assert.strictEqual(ctx.data.steps, undefined);
+    // 旧数据兼容：只有 zq_flow.draw、没有 drawLast → 重置前补快照，分组仍可沿用
+    wx.setStorageSync('zq_flow', JSON.stringify({
+      draw: { result: [9], pool: [9], removed: [], log: [], cfg: null, proof: { status: 'failed' } },
+      group: null, updatedAt: 1
+    }));
+    ctx.load();
+    ctx.reset();
+    assert.deepStrictEqual(f.flow.lastDraw().result, [9], '旧 flow 重置前补 drawLast');
+    assert.strictEqual(f.flow.getFlow().draw, null);
   });
 
   await test('抽签页 WXML：无 segmented / 第 1 步 / 下一步；分组页 WXML：无上一步 / 下一步 / 结果单', function () {

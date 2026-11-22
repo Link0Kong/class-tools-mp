@@ -523,6 +523,10 @@ Page(shareflow.install({
       confirmColor: '#A2543E',
       success: (r) => {
         if (!r.confirm) return;
+        // 旧数据（只有 zq_flow.draw、没有 drawLast）在重置前补一次「最近抽签」快照，
+        // 避免升级后首次重置让分组页丢掉最近结果。
+        const cur = flow.getFlow();
+        if (cur.draw && !cur.drawLast && cur.draw.result && cur.draw.result.length) flow.saveLastDraw(cur.draw);
         // 契约 §3.2：清空结果前先追加 kind:'reset'（在途事件随创建成功后补发；未存证则跳过）
         this._appendEvent('reset', {});
         flow.patch('draw', null);        // 只清当前抽签；flow.drawLast 保留给分组页
