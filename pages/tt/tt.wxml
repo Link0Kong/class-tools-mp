@@ -49,7 +49,7 @@
           <text class="nv">{{next.name}}</text>
           <text class="nt">{{next.dayName}} 第{{next.start}}-{{next.end}}节<text wx:if="{{next.room}}"> · {{next.room}}</text><text wx:if="{{cdText}}"> · 还有 {{cdText}}</text></text>
         </view>
-        <view class="nmap" bindtap="openMap">在地图看这栋楼</view>
+          <button wx:if="{{next.room}}" class="nmap" bindtap="openMap">在地图查看教室</button>
       </view>
 
       <!-- 空课表 -->
@@ -158,6 +158,7 @@
     <view class="ttc-row"><text class="ttc-k">时间</text><text class="ttc-v">{{detail.time}}</text></view>
     <view class="ttc-row"><text class="ttc-k">教室</text><text class="ttc-v">{{detail.room}}</text></view>
     <view class="ttc-row"><text class="ttc-k">下次</text><text class="ttc-v">{{detail.next}}</text></view>
+      <button wx:if="{{detail.mapRoom}}" class="nmap" data-room="{{detail.mapRoom}}" bindtap="openMap">在地图查看教室</button>
   </bottom-sheet>
 
   <!-- 课表登录（个人教务课表）：学号默认当前班级身份（只读；云端 job.sid 由 token 决定）+ 教务密码（提交后立即清除） -->

@@ -737,7 +737,8 @@ Page(shareflow.install({
       next = fmtDate(nx.date) + ' ' + (DAYS[nx.c.day] || '') + ' 第' + nx.c.start + '-' + nx.c.end + '节';
       if (np1[0]) next += '（' + np1[0] + '–' + np2[1] + '）';
     }
-    return { name: c.name, teacher: c.teacher || '—', room: c.room || '—', time: time, next: next, ci: colorOf(c.name) };
+    const mapRoom = String(c.room || '').trim();
+    return { name: c.name, teacher: c.teacher || '—', room: mapRoom || '—', mapRoom, time: time, next: next, ci: colorOf(c.name) };
   },
   findNext(name, after) {
     const all = this._courses || [];
@@ -958,9 +959,10 @@ Page(shareflow.install({
       imageUrl: this.data.shareImg || sharecard.FALLBACK.tt
     });
   },
-  openMap() {
-    const n = this.data.next || {};
-    const room = n.room || '';
+  openMap(e) {
+    const target = e && e.currentTarget && e.currentTarget.dataset;
+    const room = (target && target.room) || (this.data.next && this.data.next.room) || '';
+    if (target && target.room) this.closeDetail();
     wx.navigateTo({ url: '/pages/map/map' + (room ? '?room=' + encodeURIComponent(room) : '') });
   }
 }));

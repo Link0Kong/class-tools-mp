@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "校内地图",
+  "pageOrientation": "auto",
   "disableScroll": true,
   "usingComponents": {}
 }
