@@ -142,7 +142,7 @@ function sizeText(bytes) {
 }
 // 附件外置（2026-11-10 迁移第 2 步，三端同步）：云端通知 body 里的附件由 base64 data URI
 // 改为签名 HTTPS URL，形如 https://tool.furina.fun/att/<id>?exp=<unix>&sig=<hex64>
-// （备案期调试可能是 http://<ip>/att/...）。代码只按协议判断，不写死域名；
+// （本机调试可能是 http://<host>/att/...）。代码只按协议判断，不写死域名；
 // GET 直出原文件字节、无需任何鉴权头；旧 data URI 数据必须继续可用（向后兼容）。
 function isHttpUrl(src) { return /^https?:\/\//i.test(String(src || '')); }
 // 文件大小文案：URL 形态没有 base64 可估字节（dataUriBytes(url) 只会得到 0），不能显示「0 B」——

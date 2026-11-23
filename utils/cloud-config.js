@@ -14,16 +14,19 @@
 //     不发任何网络请求、不报错；但身份验证依赖云端，离线时无法进入工作台。
 //   * v19 起「所有用户改动的内容」（勾选 / 抽签 / 分组 / 点名 / 隐藏 / 偏好等）也走 userdata v6
 //     与 marks 同步；用户可在「我的 → 数据与隐私」关闭云同步（cloudOff，仅本机）。
+//   * 2026-11-23 网站域名 tool.furina.fun 的 ICP 备案已通过（网站备案号 闽ICP备2026042939号-2）；
+//     小程序自身备案号见 utils/compliance.js（闽ICP备2026042939号，保持不变、不带 -2）。
+//     域名相关配置（dropBase / ttLegacy）已按正式域名恢复；REST 切流仍等 P4 数据迁移窗口。
 
 // ================================================================
-// REST base 两档（2026-11-18 自建后端切流）
+// REST base 两档（2026-11-18 自建后端切流；2026-11-23 备案已通过）
 // ----------------------------------------------------------------
 // 后端从腾讯云 CloudBase 迁到自建（PostgreSQL + PostgREST），
 // API 路径/语义与 CloudBase 完全一致，客户端切流只改「档位」一个常量；
-// 未切流前必须保持 cloudbase（发布前检查这一行）。
+// REST 切流（selfhosted）等 P4 数据迁移窗口，默认仍 cloudbase（发布前检查这一行）。
 //
 //   cloudbase  ：现状（腾讯云 CloudBase 网关）；默认档，CloudBase 到期前有效
-//   selfhosted ：正式域名 https://tool.furina.fun/v1/rdb/rest/（备案/HTTPS 就绪后的切流目标）
+//   selfhosted ：正式域名 https://tool.furina.fun/v1/rdb/rest/（备案已通过，域名/HTTPS 就绪；切流另行安排）
 //
 // 两档使用同一份 publishableKey（自建网关剥离 Authorization 头时，
 // RLS 仍按 X-Class-Token 校验，客户端鉴权逻辑无需改动）。
@@ -32,7 +35,7 @@ const REST_PROFILES = {
   cloudbase: 'https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com/v1/rdb/rest/',
   selfhosted: 'https://tool.furina.fun/v1/rdb/rest/'
 };
-// 当前档位：'cloudbase' | 'selfhosted'（发布前保持 cloudbase）
+// 当前档位：'cloudbase' | 'selfhosted'（发布前保持 cloudbase；切流等 P4 数据迁移窗口）
 const ACTIVE_REST_PROFILE = 'cloudbase';
 
 // 档位 → REST 根（未知档位回退到当前档位，避免配置写错时整个站点离线）
@@ -73,27 +76,28 @@ module.exports = {
   // 小程序后台 → 开发管理 → 服务器域名 → request 合法域名（不添加则 legacy 兜底不可用，只显示本机缓存）。
   // 留空则 CloudBase 失败后直接 reject（只用本机缓存 / 旧课表数据）。
   ttUrl: 'https://tool.furina.fun/tt.json',
-  // 2026-11-17（DNS 暂停期性能优化）：legacy 地址仍保留，但默认关闭。
-  // tool.furina.fun 尚未恢复解析，开启会让每次 CloudBase 抖动都多打一次必失败的请求（拉高请求错误率）；
-  // 域名恢复后把 ttLegacy 改回 true 即恢复旧链路，CloudBase 主链路与本机缓存不受影响。
-  ttLegacy: false,
+  // 2026-11-17 因域名未备案曾默认关闭；2026-11-23 ICP 备案通过、域名恢复，legacy 兜底重新开启：
+  // 只有 CloudBase 主链路失败（网络 / 404 / 格式错）才回退到上面的 ttUrl，平时不发请求。
+  // 需在微信后台 request 合法域名里保留 https://tool.furina.fun，否则 legacy 兜底不可用（只显示本机缓存）。
+  ttLegacy: true,
 
   // 网页版站点基址（只用于生成「抽签存证核验链接」= webBase + '/#verify=<recordId>'，
   // 小程序不向该域名发请求，因此不需要配到 request 合法域名；用户扫码后在浏览器打开核验页）。
   // 2026-11-14 撤销临时域名：固定用 `https://tool.furina.fun`（契约 web/draw/CONTRACT.md §4）；
-  // 该域名 DNS/备案恢复前，二维码核验链接暂不可用，等 furina 恢复后自动生效。
+  // 2026-11-23 备案通过、域名恢复，核验链接正式可用。
   webBase: 'https://tool.furina.fun',
 
-  // 文件传输（临时云空间）后端：drop 服务（契约见 web/drop/CONTRACT.md）。
-  // 留空 = 未配置：云空间/大屏互联返回「等待配置」，不猜测地址、不发必失败请求。
-  // 正式发布请填 https://tool.furina.fun/drop（需 HTTPS + 已加入微信后台
-  // 「request 合法域名」与「downloadFile 合法域名」）；换域名时同样填 HTTPS 地址。
-  dropBase: '',
+  // 文件传输（临时云空间）/ 大屏互联后端：drop 服务（契约见 web/drop/CONTRACT.md）。
+  // 正式地址（2026-11-23 ICP 备案通过后启用）；必须 HTTPS，并已在微信后台
+  // 「request 合法域名」与「downloadFile 合法域名」同时加入 https://tool.furina.fun
+  // （只加 request 会导致列表可见但文件下载失败）。
+  // 留空 = 未配置服务地址：云空间/大屏互联提示「未配置服务地址」，不猜测地址、不发必失败请求。
+  dropBase: 'https://tool.furina.fun/drop',
 
   // PPT 在线媒体缓存（三端与网页同口径，契约见 web/ppt/CONTRACT.md）：
   //   OSS 香港（tool-furina-fun.oss-cn-hongkong.aliyuncs.com）的 /ppt/** 媒体（分步图 WebP、缩略图、
   //   原样播放 MP4、media_files 单独下载音视频、下载包）→ https://tool.furina.fun/pptfiles/<path> 缓存。
-  //   * base 留空 = webBase + '/pptfiles'（正式：https://tool.furina.fun/pptfiles，需备案 + HTTPS）；
+  //   * base 留空 = webBase + '/pptfiles'（正式：https://tool.furina.fun/pptfiles，备案已通过 + HTTPS）；
   //   * 调试需要时填自有 HTTPS 地址（不要用 IP/http），尾斜杠会被归一；
   //   * enabled:false = 回滚为 OSS 直链（旧行为，无需改其它代码）；
   //   * 只映射本 OSS 桶的 /ppt/**；data:/file:/本地临时路径/其它域名原样返回。
@@ -116,7 +120,7 @@ module.exports = {
   // 网络层参数（utils/cloud.js 读取；一般不用改，2026-11-18 网络体验优化）
   net: {
     // https 域名请求开启 HTTP/2（微信基础库 2.10.4+ 支持；旧基础库忽略该选项，自动回退 HTTP/1.1）。
-    // 自建后端备案后走 Caddy HTTPS(HTTP/2)；CloudBase 网关本身支持 HTTP/2，无副作用。
+    // 自建后端已备案，走 Caddy HTTPS(HTTP/2)；CloudBase 网关本身支持 HTTP/2，无副作用。
     enableHttp2: true,
     // 并发上限（超过排队；弱网连续失败时降为 weakMaxConcurrent，避免把本来就拥堵的链路打爆）
     maxConcurrent: 8,

@@ -1,7 +1,7 @@
 /* nt_attach_url_tests.js —— 小程序通知附件「签名 URL / data URI 双形态」专项单测（2026-11-10 迁移第 2 步）
  *
  * 背景（三端共用改造）：云端通知 body 里的附件由 base64 `data:` URI 改为签名 HTTPS URL
- *   https://tool.furina.fun/att/<id>?exp=<unix>&sig=<hex64>（GET 直出字节，无鉴权头；备案期可能是 http://...）。
+ *   https://tool.furina.fun/att/<id>?exp=<unix>&sig=<hex64>（GET 直出字节，无鉴权头；本机调试可能是 http://...）。
  *   小程序通知页必须同时支持两种形态：data URI 全流程不变，URL 新增分支。
  *
  * 运行：

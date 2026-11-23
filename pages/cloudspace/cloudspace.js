@@ -9,7 +9,7 @@
 //     的 position/length）→ ArrayBuffer 原始 POST，避免整文件读入内存；
 //   * 下载：wx.downloadFile → openDocument（文档）→ 失败则 shareFileMessage（发回聊天）→ 再失败提示；
 //   * 后端地址只从 utils/cloud-config.js 的 dropBase 读取（HTTPS，需加入微信后台
-//     request + downloadFile 合法域名）；未配置时不发请求，页面提示等待配置。
+//     request + downloadFile 合法域名）；未配置服务地址时不发请求，页面提示「未配置服务地址」。
 const identity = require('../../utils/identity.js');
 const cloudspace = require('../../utils/cloudspace.js');
 const share = require('../../utils/share.js');

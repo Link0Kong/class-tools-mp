@@ -477,7 +477,7 @@ const fakeCanvas = (() => {
       restBase: 'https://mock.test/v1/rdb/rest/',
       publishableKey: 'pub',
       ttUrl: 'https://static.test/tt.json',
-      ttLegacy: true,          // 单测显式开启 legacy（生产 cloud-config.js 在 DNS 暂停期设为 false）
+      ttLegacy: true,          // 单测显式开启 legacy（生产 cloud-config.js 默认开启，CloudBase 失败才回退）
       timeout: 1000,
       rpc: { verify: 'rpc/class_verify', members: 'rpc/class_members' }
     });

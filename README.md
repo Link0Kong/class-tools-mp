@@ -36,6 +36,7 @@
 ## 在线体验与发布
 
 - 线上入口：微信搜索小程序「班级工具」（以微信公众平台实际发布版本为准）。
+- 网站：<https://tool.furina.fun>（网站备案号 **闽ICP备2026042939号-2**，工信部查询 <https://beian.miit.gov.cn/>）。
 - 小程序需要在[微信公众平台](https://mp.weixin.qq.com/)上传代码、提交审核并发布。
 - **本仓库只包含源码**，不包含已构建的发布包；体验版 / 正式版由开发者工具上传后生成。
 - 首次部署需要在云端导入班级名单，并配置身份核验 RPC（见 `utils/cloud-config.js`）。
@@ -55,7 +56,22 @@
    python tests/staticcheck.py       # 静态检查（页面四件套、事件、分享、包体等）
    ```
 
-5. 真机预览：开发者工具「预览」扫码；发布前在微信后台配置 request / downloadFile 合法域名。
+5. 真机预览：开发者工具「预览」扫码；发布前按下一节配置微信后台合法域名。
+
+### 微信后台合法域名（发布前必配）
+
+微信公众平台 → 开发管理 → 开发设置 → 服务器域名（2026-11-23 起 `tool.furina.fun` ICP 备案已通过，网站备案号 **闽ICP备2026042939号-2**）：
+
+| 类型 | 域名 | 用途 |
+| --- | --- | --- |
+| request 合法域名 | `https://tool.furina.fun` | 文件传输 / 大屏互联（`/drop`）、课表 legacy 兜底（`/tt.json`）、PPT 媒体缓存（`/pptfiles`）；REST 切到 selfhosted 后同一域名的 `/v1/rdb/rest/` |
+| request 合法域名 | `https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com` | 当前 REST 档位 `cloudbase` 的 CloudBase 网关（`utils/cloud-config.js` 的 `ACTIVE_REST_PROFILE` 仍为 `cloudbase`） |
+| downloadFile 合法域名 | `https://tool.furina.fun` | drop 文件下载、`/pptfiles` 媒体（图片 / 视频 / 缩略图） |
+| downloadFile 合法域名 | `https://tool-furina-fun.oss-cn-hongkong.aliyuncs.com` | 仅在 `pptEcs.enabled=false` 或非 `/ppt/**` 直链回退 OSS 香港默认域名时需要；香港默认域名能否通过微信校验未查证，发布前用真机正式版验一张图 + 一段视频 |
+
+- `webBase`（`https://tool.furina.fun`）只用于生成抽签存证核验链接，小程序不向它发请求，**不需要**加入合法域名（用户扫码后在浏览器打开）。
+- 小程序自身备案号是 `utils/compliance.js` 的 **闽ICP备2026042939号**（「我的」页底部展示），与**网站**备案号 `-2` 不是同一个，不要混用。
+- 域名校验只在体验版 / 正式版生效；开发者工具可勾选「不校验合法域名」调试，但上传发布前必须配好上表。
 
 ## 项目结构
 
@@ -74,6 +90,7 @@ ai/                            微信「小程序 AI」原子接口（独立分�
 
 - 原生 WXML / WXSS / JavaScript（CommonJS），无前端框架、无构建依赖
 - 微信云开发 CloudBase（PostgreSQL + PostgREST）作为数据与身份后端
+- 自建 ECS（`https://tool.furina.fun`）承载文件传输 / 大屏互联、PPT 媒体缓存与抽签核验页
 - 订阅消息云函数（Node.js）
 - 测试：Node.js `assert` + wx mock；Python 静态检查
 

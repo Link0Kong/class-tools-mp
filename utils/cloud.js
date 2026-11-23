@@ -31,7 +31,7 @@ const CONFIG = {
   restProfiles: null,
   publishableKey: '',
   ttUrl: '',
-  // 2026-11-17：DNS 暂停期默认关闭 legacy 回退；cloud-config.js 可显式设 false/true。
+  // legacy 回退默认开启（CloudBase 主链路失败才回退 tt.json）；cloud-config.js 可显式设 false 关闭。
   ttLegacy: true,
   timeout: 15000,
   // 2026-11-18 网络体验优化：超时分级 + 网络层参数（cloud-config.js 可覆盖）

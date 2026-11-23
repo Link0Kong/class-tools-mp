@@ -1,5 +1,32 @@
 # 版本记录
 
+## ICP 备案通过后恢复小程序域名配置（2026-11-23，源码就绪；待用户上传发布；VERSION 仍 2.1.0）
+
+> 用户确认：网站域名 `tool.furina.fun` 的 ICP 备案已通过，**网站备案号 闽ICP备2026042939号-2**
+> （工信部查询 <https://beian.miit.gov.cn/>）；正式域名 `https://tool.furina.fun`（阿里云杭州 ECS + Caddy
+> 自动 HTTPS，同源 `/v1/rdb/rest/`、`/v1/rdb/rest-next/`、`/pptfiles/`、`/drop/`、`/account/`、`/legal/`、`/map/`、
+> `/android/latest.json`）启用。IP 入口只保留本机调试，不写入客户端配置。
+
+- **`utils/cloud-config.js`**：`dropBase` 由 `''` 恢复为 `https://tool.furina.fun/drop`（文件传输 / 大屏互联正式可用；
+  微信后台需同时加入 `request` 与 `downloadFile` 合法域名）；`ttLegacy` 由 `false` 恢复为 `true`
+  （CloudBase 主链路失败时重新允许 `/tt.json` legacy 兜底）；注释去掉「留空 = 未配置」「等待配置」「备案前 / DNS 暂停期」
+  等临时口径，并注明网站备案号 `-2` 与小程序备案号的区别。
+- **REST 档位不变**：`ACTIVE_REST_PROFILE` 仍为 `cloudbase`。`selfhosted`（`https://tool.furina.fun/v1/rdb/rest/`）
+  等 P4 数据迁移窗口再切，本次不改后端、不改数据。
+- **`utils/cloudspace.js`**：未配置服务地址时文案统一为「云空间暂不可用（未配置服务地址）」
+  （不再与备案状态挂钩），同步更新注释；行为逻辑不变（仍然不发请求、不猜地址）。
+- **文案清理**：产品代码去掉与「备案未通过 / 域名暂停 / 等待配置」相关的临时说法（云层 legacy 注释、PPT 缓存注释、
+  通知附件注释、文件传输页注释同步更新）。
+- **备案号区分**：小程序备案号 `utils/compliance.js` 仍为 **闽ICP备2026042939号**（「我的」页底部展示，不变、不加 `-2`）；
+  本次的 `-2` 是**网站**备案号，两者不要混用。
+- **文档**：README 新增「微信后台合法域名（发布前必配）」表（`https://tool.furina.fun` 的 request + downloadFile、
+  当前 CloudBase 网关 request、OSS 香港默认域名在 PPT 直链回退时的 downloadFile 说明），并补充网站备案号。
+- **测试**：`tests/cloudspace_unit_tests.js` C 组改为「默认配置 = `https://tool.furina.fun/drop`（真实发请求）」
+  + 「显式空 dropBase = 未配置服务地址（不发请求）」两段；相关 DNS 暂停期注释与其他套件的过期口径同步更新。
+- **验证**：`cd tests && node unit.js` **644 passed / 0 failed**；产品代码 grep IP 入口 = 0、旧临时备案文案 = 0。
+- **仍需用户操作**：微信公众平台配置上述合法域名 → 开发者工具重新上传 → 提交审核并发布；否则线上仍是旧配置
+  （域名配置在客户端源码里，不重新发布不生效）。
+
 ## 抽签与分组拆分 + 删除结果单（2026-11-22，源码就绪；待用户上传发布；VERSION 仍 2.1.0）
 
 > 用户要求：「将分组功能与抽签功能独立，优化两者的使用逻辑和界面，对所有端生效」；确认**直接删除结果单**。

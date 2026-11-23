@@ -10,7 +10,7 @@
 //
 // 认证：请求头 X-Device-Id = 班级身份 token（与网页同口径）。
 // 域名：只从 cloud-config.js 的 dropBase 读取（HTTPS，需加入微信后台 request + downloadFile 合法域名）；
-//       留空 = 未配置，页面提示「等待配置」，不猜测地址、不发必失败请求。
+//       留空 = 未配置服务地址，页面提示「未配置服务地址」，不猜测地址、不发必失败请求。
 //
 // 纯逻辑（分片规划/大小/剩余时间/事件合并）放本文件，页面只做交互与渲染。
 'use strict';
@@ -29,15 +29,15 @@ function envVersion() {
   } catch (e) { return 'release'; }
 }
 
-// 云空间基址（结尾无 /）：只认 cloud-config.js 的 dropBase；未配置时返回空串
-// （页面据此提示「云空间暂不可用」，不猜测地址、不向未配置域名发请求）。
+// 云空间基址（结尾无 /）：只认 cloud-config.js 的 dropBase；未配置服务地址时返回空串
+// （页面据此提示「云空间暂不可用（未配置服务地址）」，不猜测地址、不向未配置域名发请求）。
 function base() {
   const cfg = config();
   const raw = cfg && cfg.dropBase ? String(cfg.dropBase).trim() : '';
   return raw.replace(/\/+$/, '');
 }
 function unavailable() {
-  return Promise.resolve({ ok: false, reason: '云空间暂不可用（等待域名备案）' });
+  return Promise.resolve({ ok: false, reason: '云空间暂不可用（未配置服务地址）' });
 }
 
 function token() {

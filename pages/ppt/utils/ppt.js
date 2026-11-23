@@ -93,7 +93,7 @@ function resolveUrl(base, p) { return joinUrl(base, p); }
  * OSS 香港 bucket 的 /ppt/** 媒体 → ECS /pptfiles 缓存（网页实测命中 6-11MB/s，OSS 首访 35s）。
  * - 仅映射 host = tool-furina-fun.oss-cn-hongkong.aliyuncs.com 且 pathname 以 /ppt/ 开头的 http(s) 地址；
  *   data:/file:/本地临时路径/其它域名/非 /ppt 路径 → 原样返回（避免误伤外链）；
- * - base 缺省 = cloud-config.webBase + '/pptfiles'；devtools/备案前可设 cloud-config.pptEcs.base 覆盖；
+ * - base 缺省 = cloud-config.webBase + '/pptfiles'；调试时可设 cloud-config.pptEcs.base 覆盖；
  * - enabled:false → 全部原样（回滚 OSS 直链）。
  * 纯函数（可单测）；编码路径与 ?query 原样保留（Caddy 解码后由缓存服务按 OSS pathname 命中）。 */
 const PPT_OSS_HOST = 'tool-furina-fun.oss-cn-hongkong.aliyuncs.com';

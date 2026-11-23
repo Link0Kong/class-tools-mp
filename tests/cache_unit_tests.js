@@ -63,7 +63,7 @@ function createCtx() {
       restBase: 'https://mock.test/v1/rdb/rest/',
       publishableKey: 'pub',
       ttUrl: 'https://static.test/tt.json',
-      ttLegacy: true,          // 单测显式开启 legacy（生产 cloud-config.js 在 DNS 暂停期设为 false）
+      ttLegacy: true,          // 单测显式开启 legacy（生产 cloud-config.js 默认开启，CloudBase 失败才回退）
       timeout: 1000,
       rpc: { verify: 'rpc/class_verify', members: 'rpc/class_members' }
     });
@@ -459,7 +459,7 @@ function run(test) {
     });
 
     /* ============ utils/cloud.js：小表 TTL 门控 ============ */
-    await test('课表 2026-11-17：ttLegacy=false（DNS 暂停期）→ site_assets 失败也不再打旧域名', async function () {
+    await test('课表：ttLegacy=false（显式关闭 legacy）→ site_assets 失败也不再打旧域名', async function () {
       const { cloud } = C.cloudFresh();
       C.setIdentity(ID);
       cloud.configure({ ttLegacy: false });
@@ -472,7 +472,7 @@ function run(test) {
       let err = null;
       try { await cloud.ttFetch(true); } catch (e) { err = e; }
       assert.ok(err, 'site_assets 失败且 legacy 关闭时应 reject（页面保留本机缓存）');
-      assert.strictEqual(C.reqsOf('/tt.json').length, 0, '不得再请求已暂停解析的 tool.furina.fun');
+      assert.strictEqual(C.reqsOf('/tt.json').length, 0, 'legacy 关闭时不得再请求 tt.json');
     });
 
     await test('云：cloudPull 连续 3 次只有第 1 次打网络（TTL 门控）', async function () {

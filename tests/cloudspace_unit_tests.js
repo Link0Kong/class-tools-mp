@@ -5,7 +5,8 @@
  *      文件视图（图标/大小/时间/剩余）/ 空间统计 / 文件名清洗；
  *   B. 请求契约：X-Device-Id = 班级 token、JSON 与原始分片头、/mine /open /state /upload/* /file DELETE /close 的
  *      URL/method/body（wx.request 内存 mock，绝不访问真实云端）；
- *   C. 环境基址：开发/体验版直连 ECS http、正式版 https://tool.furina.fun/drop、cloud-config.dropBase 可覆盖；
+ *   C. 环境基址：默认 dropBase = https://tool.furina.fun/drop（2026-11-23 ICP 备案通过）；
+ *      显式空 dropBase = 未配置服务地址（不发请求、提示未配置）；cloud-config.dropBase 可覆盖；
  *   D. 工程接线：app.json 注册 / tools.js 入口（key='file'，与网页对齐）/ 4 个页面文件 / share 三件套 /
  *      WXML handler / 无房间码/链接/配对 UI / 只读取测试身份。
  *
@@ -49,10 +50,10 @@ function run(outerTest) {
   const cs = require(path.join(MP, 'utils', 'cloudspace.js'));
   const cfg = require(path.join(MP, 'utils', 'cloud-config.js'));
   const savedDropBase = cfg.dropBase;
-  // 2026-11-17：生产 dropBase 为空 + DNS 暂停期正式版不再请求 tool.furina.fun；
-  // 请求契约用例显式配置测试基址，环境默认值用例用 withDefaultBase 验证「不可用」。
+  // 2026-11-23：ICP 备案通过，生产 dropBase 已恢复为 https://tool.furina.fun/drop；
+  // 请求契约用例显式配置测试基址，环境默认值用例用 savedDropBase / withDefaultBase 验证正式配置与「未配置」分支。
   cfg.dropBase = 'https://drop.test';
-  // C1–C3 验证「未配置 dropBase 时」的环境默认值；临时环境当前显式配置了 ko-link.cn，测前清空、测后恢复
+  // C 组显式清空 dropBase 验证「未配置服务地址」分支（测前清空、测后恢复）
   function withDefaultBase(fn) {
     const old = cfg.dropBase;
     cfg.dropBase = '';
@@ -235,9 +236,8 @@ function run(outerTest) {
     return pending;
   }
   async function b7() {
-    /* 请求契约一律走测试基址；C 组用例可能把 wx.getAccountInfoSync 换成「正式版」，
-       正式版 + 未配置 dropBase 时 request() 直接返回「等待域名备案」而不发请求。
-       注意：本套件直接调用时以「正式版 + 空 dropBase」环境结束，后续用例需重新安装 wx.request。 */
+    /* 请求契约一律走测试基址；C 组用例会临时清空 dropBase 测「未配置服务地址」分支，
+       因此这里重新安装测试基址与 wx.request 包装器。 */
     cfg.dropBase = 'https://drop.test';
     if (!global.wx) global.wx = {};
     global.wx.request = function (o) { mockRequest.log.push(o); if (mockRequest.impl) mockRequest.impl(o); };
@@ -265,28 +265,40 @@ function run(outerTest) {
   TAsync('B7 X-Drop-Reason 透传为 dropReason；failText 区分身份失效/服务故障', b7);
 
   // C. 基址环境 -------------------------------------------------------------
-  T('C1 正式版未配置 dropBase → 空基址（不发请求，等待域名备案）', function () {
-    withDefaultBase(function () {
+  T('C1 默认配置 dropBase = https://tool.furina.fun/drop（2026-11-23 备案通过，正式可用）', function () {
+    const old = cfg.dropBase;
+    cfg.dropBase = savedDropBase;
+    try {
       global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: 'release' } }; };
-      assert.strictEqual(cs.base(), '');
+      assert.strictEqual(cs.base(), 'https://tool.furina.fun/drop');
       mockRequest.log = [];
+      mockRequest.impl = function (o) { o.success({ statusCode: 200, data: { ok: true, session: null } }); };
       cs.mine();
-      assert.strictEqual(mockRequest.log.length, 0, '不得向已暂停域名发请求');
-    });
+      assert.strictEqual(mockRequest.log.length, 1, '默认配置必须真的发请求');
+      assert.strictEqual(mockRequest.log[0].url, 'https://tool.furina.fun/drop/mine');
+    } finally {
+      cfg.dropBase = old;
+    }
   });
-  T('C2 未配置 dropBase：各环境都返回空基址（不猜地址）', function () {
+  T('C2 显式空 dropBase（未配置服务地址）：各环境都返回空基址且不发请求', function () {
     withDefaultBase(function () {
       ['develop', 'trial', 'release'].forEach(function (env) {
         global.wx.getAccountInfoSync = function () { return { miniProgram: { envVersion: env } }; };
         assert.strictEqual(cs.base(), '', env + ' 版未配置 dropBase 时不得猜地址');
       });
+      assert.ok(src('utils/cloudspace.js').indexOf('云空间暂不可用（未配置服务地址）') >= 0,
+        '未配置时文案需说明「未配置服务地址」');
+      mockRequest.log = [];
+      cs.mine();
+      assert.strictEqual(mockRequest.log.length, 0, '未配置服务地址时不得发请求');
     });
   });
-  T('C3 无 getAccountInfoSync 时保守回退正式版（空基址不可用）', function () {
-    withDefaultBase(function () {
-      delete global.wx.getAccountInfoSync;
-      assert.strictEqual(cs.base(), '');
-    });
+  T('C3 无 getAccountInfoSync 不崩溃：基址只由 dropBase 决定', function () {
+    delete global.wx.getAccountInfoSync;
+    withDefaultBase(function () { assert.strictEqual(cs.base(), ''); });
+    const old = cfg.dropBase;
+    cfg.dropBase = savedDropBase;
+    try { assert.strictEqual(cs.base(), 'https://tool.furina.fun/drop'); } finally { cfg.dropBase = old; }
   });
 
   // D. 工程接线 -------------------------------------------------------------
