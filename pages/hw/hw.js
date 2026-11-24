@@ -56,11 +56,7 @@ function compressImage(path, quality) {
   });
 }
 function emptyForm() { return { subject: '', content: '', due: '', date: '', time: '', author: '' }; }
-const PERIODS = [
-  ['08:10', '08:55'], ['08:55', '09:40'], ['09:50', '10:30'], ['10:40', '11:25'],
-  ['11:25', '12:10'], ['14:30', '15:15'], ['15:15', '16:00'], ['16:10', '16:55'],
-  ['16:55', '17:40'], ['19:00', '19:45'], ['19:45', '20:30'], ['20:30', '21:20']
-];
+const PERIODS = require('../../utils/ttplan.js').PERIODS;
 function pad2(n) { return ('0' + n).slice(-2); }
 function ymd(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 function hhmm(d) { return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }

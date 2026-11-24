@@ -13,11 +13,7 @@ const sharecard = require('../../utils/sharecard.js');
 const shareflow = require('../../utils/shareflow.js');
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-const PERIODS = [
-  ['08:10', '08:55'], ['08:55', '09:40'], ['09:50', '10:30'], ['10:40', '11:25'],
-  ['11:25', '12:10'], ['14:30', '15:15'], ['15:15', '16:00'], ['16:10', '16:55'],
-  ['16:55', '17:40'], ['19:00', '19:45'], ['19:45', '20:30'], ['20:30', '21:20']
-];
+const PERIODS = ttplan.PERIODS;
 // 课表内容左右滑动切周：与网页端（web/tools/index.html §左右滑动）同一套参数。
 const SW_LOCK = 12;           // 横向锁定阈值（px）
 const SW_LOCK_RATIO = 1.35;   // |dx| > |dy| * 1.35 才判定为横向滑动
@@ -489,19 +485,17 @@ Page(shareflow.install({
   nextClass(list, wk, ti) {
     if (!list.length) return null;
     const now = new Date();
-    const mins = now.getHours() * 60 + now.getMinutes();
+    const clock = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
     const arr = list.slice().sort(function (a, b) { return a.start - b.start; });
     for (let i = 0; i < arr.length; i++) {
       const c = arr[i];
       if (c.day !== ti) continue;
-      const p = PERIODS[c.end - 1];
-      const st = PERIODS[c.start - 1];
-      if (!p || !st) continue;
-      const ee = p[1].split(':');
-      if ((+ee[0] * 60 + +ee[1]) < mins) continue;
+      const period = ttplan.focusPeriod(c, clock);
+      if (!period) continue;
+      const time = PERIODS[period - 1][0];
       return {
         name: c.name, start: c.start, end: c.end, day: c.day, room: c.room || '',
-        dayName: DAYS[c.day] || '', time: st[0],
+        dayName: DAYS[c.day] || '', time: time, live: clock >= time,
         soon: true
       };
     }
@@ -525,7 +519,7 @@ Page(shareflow.install({
     const ti = (now.getDay() === 0 ? 6 : now.getDay() - 1);
     if (nx.day !== ti) return '';
     const mins = now.getHours() * 60 + now.getMinutes();
-    const ss = String(p[0]).split(':');
+    const ss = String(nx.time || p[0]).split(':');
     const target = (+ss[0]) * 60 + (+ss[1]);
     if (target <= mins) return '';
     const d = target - mins;
@@ -535,6 +529,12 @@ Page(shareflow.install({
   startTick() {
     this.stopTick();
     this._tick = setInterval(() => {
+      const minute = Math.floor(Date.now() / 60000);
+      if (this._clockMinute !== minute) {
+        this._clockMinute = minute;
+        this.refresh();
+        return;
+      }
       const t = this.cdOf(this.data.next);
       if (t !== this.data.cdText) this.setData({ cdText: t });
     }, 30000);

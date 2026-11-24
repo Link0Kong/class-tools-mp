@@ -5,12 +5,19 @@
 const util = require('./util.js');
 
 const PERIODS = [
-  ['08:10', '08:55'], ['08:55', '09:40'], ['09:50', '10:30'], ['10:40', '11:25'],
-  ['11:25', '12:10'], ['14:30', '15:15'], ['15:15', '16:00'], ['16:10', '16:55'],
-  ['16:55', '17:40'], ['19:00', '19:45'], ['19:45', '20:30'], ['20:30', '21:20']
+  ['08:10', '08:50'], ['09:00', '09:40'], ['09:50', '10:30'], ['10:40', '11:20'],
+  ['11:30', '12:10'], ['14:30', '15:10'], ['15:20', '16:00'], ['16:10', '16:50'],
+  ['17:00', '17:40'], ['19:00', '19:40'], ['19:50', '20:30'], ['20:40', '21:20']
 ];
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
+// 连堂课保留一个课程块，课间倒计时指向下一小节。
+function focusPeriod(c, clock) {
+  for (let p = c.start; p <= c.end && p <= PERIODS.length; p++) {
+    if (PERIODS[p - 1] && clock < PERIODS[p - 1][1]) return p;
+  }
+  return null;
+}
 function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function dayDiff(a, b) { return Math.round((startOfDay(a) - startOfDay(b)) / 86400000); }
 function weekdayIndex(d) { const g = d.getDay(); return g === 0 ? 6 : g - 1; }
@@ -74,7 +81,11 @@ function sessionsOn(courses, term, date, now) {
     const e = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const pe = String(p2[1]).split(':');
     e.setHours(+pe[0] || 0, +pe[1] || 0, 0, 0);
-    const state = now >= e ? 'done' : (now >= s ? 'ongoing' : 'next');
+    const period = now >= s && now < e ? focusPeriod(c, pad2(now.getHours()) + ':' + pad2(now.getMinutes())) : null;
+    const focus = period ? PERIODS[period - 1] : null;
+    const bell = new Date(s);
+    if (focus) bell.setHours(...focus[0].split(':').map(Number), 0, 0);
+    const state = now >= e ? 'done' : (now >= bell ? 'ongoing' : 'next');
     list.push({
       key: di + '-' + index,
       name: c.name || '课程',
@@ -85,6 +96,8 @@ function sessionsOn(courses, term, date, now) {
       endText: p2[1],
       span: c.end > c.start ? ('第' + c.start + '-' + c.end + '节') : ('第' + c.start + '节'),
       startAt: s.getTime(),
+      bellAt: bell.getTime(),
+      bellText: focus ? focus[0] : p1[0],
       endAt: e.getTime(),
       state: state
     });
@@ -99,9 +112,11 @@ function nextSession(courses, term, now) {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + off);
     const wk = weekOf(term, date);
     if (!wk) continue;
-    const list = sessionsOn(courses, term, date, now).filter(function (s) { return s.startAt > now.getTime(); });
+    const list = sessionsOn(courses, term, date, now).filter(function (s) { return s.bellAt > now.getTime(); });
     if (list.length) {
-      const item = list[0];
+      const item = list.sort((a, b) => a.bellAt - b.bellAt)[0];
+      item.startAt = item.bellAt;
+      item.startText = item.bellText;
       item.dayOffset = off;
       item.dayText = off === 0 ? '今天' : (off === 1 ? '明天' : DAYS[weekdayIndex(date)]);
       item.dateText = (date.getMonth() + 1) + '/' + date.getDate();
@@ -128,7 +143,7 @@ function plan(courses, term, now) {
 }
 
 module.exports = {
-  PERIODS: PERIODS, DAYS: DAYS,
+  focusPeriod: focusPeriod, PERIODS: PERIODS, DAYS: DAYS,
   localSource: localSource, active: active, weekOf: weekOf, roomShort: roomShort,
   sessionsOn: sessionsOn, nextSession: nextSession, plan: plan
 };

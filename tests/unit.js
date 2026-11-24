@@ -2532,7 +2532,17 @@ const fakeCanvas = (() => {
     const d = { ttCache: publicData, ttLocal: { c: [second, course, nextWeek], t: publicData.t } };
     const src = tt.localSource(d);
     assert.strictEqual(src.kind, 'mine');
-    const bell = tt.plan(src.courses, src.term, new Date(2026, 7, 31, 8, 55));
+    const minute = clock => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3));
+    tt.PERIODS.forEach(([start, end], index) => {
+      assert.strictEqual(minute(end) - minute(start), 40);
+      if (index !== 0 && index !== 5 && index !== 9) {
+        assert.strictEqual(minute(start) - minute(tt.PERIODS[index - 1][1]), 10);
+      }
+    });
+    const rest = tt.plan(src.courses, src.term, new Date(2026, 7, 31, 8, 50));
+    assert.deepStrictEqual(rest.today.map(s => s.state), ['done', 'next']);
+    assert.strictEqual(rest.next.startText, '09:00');
+    const bell = tt.plan(src.courses, src.term, new Date(2026, 7, 31, 9, 0));
     assert.deepStrictEqual(bell.today.map(s => [s.name, s.state]), [['数学', 'done'], ['英语', 'ongoing']]);
     assert.strictEqual(bell.next.name, '实践');
     assert.strictEqual(tt.plan(src.courses, src.term, new Date(2026, 7, 24, 8)).today.length, 0);

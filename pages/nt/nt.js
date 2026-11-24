@@ -1345,22 +1345,19 @@ Page({
   },
 
   // 快捷提醒项（契约 §1.3 + 2026-11-18）：活动有报名开始 → 以报名开始为基准
-  // （报名开始前 1 天 / 2 小时 / 30 分钟 / 报名开始时）；否则有截止 → 截止前 1 天 / 2 小时 / 30 分钟；
+  // （报名开始前 1 天 / 2 小时 / 30 分钟 / 1 分钟 / 报名开始时）；否则有截止 → 截止前 1 天 / 2 小时 / 30 分钟 / 1 分钟；
   // 都没有 → 今天 20:00 / 明天 20:00（已过的项被过滤即顺延）。
   remindOptionsFor(raw) {
     const min = Date.now() + MIN_AHEAD;
     const base = this.remindBaseOf(raw);
     const opts = [];
-    if (base && base.kind === 'signup') {
-      [['报名开始前 1 天', 86400000], ['报名开始前 2 小时', 7200000], ['报名开始前 30 分钟', 1800000], ['报名开始时', 0]].forEach(function (d) {
-        const at = base.ts - d[1];
-        if (at > min) opts.push({ label: d[0], at: at });
+    if (base) {
+      const choices = [[1440, '1 天'], [120, '2 小时'], [30, '30 分钟'], [1, '1 分钟']];
+      choices.forEach(function (choice) {
+        const at = base.ts - choice[0] * 60000;
+        if (at > min) opts.push({ label: base.action + '前 ' + choice[1], at: at });
       });
-    } else if (base) {
-      [['截止前 1 天', 86400000], ['截止前 2 小时', 7200000], ['截止前 30 分钟', 1800000]].forEach(function (d) {
-        const at = base.ts - d[1];
-        if (at > min) opts.push({ label: d[0], at: at });
-      });
+      if (base.kind === 'signup' && base.ts > min) opts.push({ label: '报名开始时', at: base.ts });
     } else {
       // 今天 20:00 / 明天 20:00；已过则顺延到下一个 20:00（始终给 2 个未来项：今天→明天→后天）
       const midnight = new Date();
@@ -1459,15 +1456,15 @@ Page({
     const base = this.remindBaseOf(raw);
     let suggest;
     if (base && base.kind === 'signup') {
-      // 默认提前 2 小时；报名开始太近时退到最近可用时间
-      suggest = base.ts - 7200000;
+      // 默认提前 1 分钟；报名开始太近时退到最近可用时间
+      suggest = base.ts - 60000;
       if (suggest <= min) suggest = min + 60000;
       if (due != null && suggest > due - 60000) suggest = due - 60000;
       if (suggest > base.ts) suggest = base.ts - 60000;
       if (suggest <= min) { util.toast('距离报名开始太近，无法设置'); return; }
     } else if (base) {
       if (base.ts <= min) { util.toast('距离截止太近，无法设置'); return; }
-      suggest = base.ts - 7200000;                   // 默认提前 2 小时
+      suggest = base.ts - 60000;                   // 默认提前 1 分钟
       if (suggest <= min) suggest = min + 60000;
       if (suggest > base.ts) suggest = base.ts - 60000;
       if (suggest <= min) { util.toast('距离截止太近，无法设置'); return; }

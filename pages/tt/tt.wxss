@@ -249,8 +249,8 @@
   display: flex; flex-direction: column; justify-content: center;
   box-shadow: 0 2rpx 10rpx var(--tt-shadow-3);
 }
-.crs.abs .cname { font-size: 22rpx; line-height: 1.26; }
-.crs.abs .croom { font-size: 18rpx; margin-top: 3rpx; }
+.crs.abs .cname { font-size: 22rpx; font-size: clamp(11px,22rpx,16px); line-height: 1.26; }
+.crs.abs .croom { font-size: 18rpx; font-size: clamp(9px,18rpx,13px); margin-top: 3rpx; }
 .crs.abs .cspan { font-size: 17rpx; margin-top: 2rpx; }
 
 /* ===================== 6/7 天窄列 dense（2026-11-06 用户反馈） =====================
@@ -265,15 +265,15 @@
 .tt-dense .tdd { font-size: 18rpx; gap: 2rpx; flex-wrap: wrap; }
 .tt-dense .th-today { font-size: 15rpx; padding: 0 5rpx; }
 .tt-dense .crs.abs { padding: 4rpx 3rpx; border-radius: 12rpx; }
-.tt-dense .crs.abs .cname { font-size: 21rpx; line-height: 1.2; }
-.tt-dense .crs.abs .croom { font-size: 17rpx; margin-top: 2rpx; }
+.tt-dense .crs.abs .cname { font-size: 21rpx; font-size: clamp(10px,21rpx,15px); line-height: 1.2; }
+.tt-dense .crs.abs .croom { font-size: 17rpx; font-size: clamp(9px,17rpx,12px); margin-top: 2rpx; }
 .tt-dense .crs.abs .cspan { font-size: 15rpx; margin-top: 1rpx; }
-.tt-dense .crs.abs.crs-one .cname {
+.crs.abs.crs-one .cname {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
 }
 .tt-dense7 .crs.abs { padding: 3rpx 2rpx; }
-.tt-dense7 .crs.abs .cname { font-size: 19rpx; line-height: 1.16; }
-.tt-dense7 .crs.abs .croom { font-size: 15rpx; margin-top: 1rpx; }
+.tt-dense7 .crs.abs .cname { font-size: 19rpx; font-size: clamp(10px,19rpx,14px); line-height: 1.16; }
+.tt-dense7 .crs.abs .croom { font-size: 15rpx; font-size: clamp(9px,15rpx,12px); margin-top: 1rpx; }
 .tt-dense7 .crs.abs.crs-one .cname { -webkit-line-clamp: 2; }
 
 /* ===================== 课程色板（浅色 / 暗色） =====================
@@ -332,5 +332,9 @@
 .tbtn--dis { opacity: .55; pointer-events: none; }
 .tbtn--clear { color: var(--md-error); border-color: var(--md-error); }
 
-.nmap{margin:12rpx 0 0;min-height:42px;line-height:40px;text-align:center;border:1rpx solid var(--md-outline-variant);border-radius:12rpx;background:var(--md-surface-container-lowest);color:var(--md-on-primary-container);font-size:24rpx;font-weight:600}
+.nmap{flex:none;align-self:center;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:40px;margin:0;padding:8px;line-height:1;border:0;border-radius:50%;background:var(--md-surface-container-lowest)}
+.nmap image{display:block;width:24px;height:24px}
 .nmap::after{border:0}
+
+.crs.abs.crs-tall .cname { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
+.crs.abs .croom,.crs.abs .cspan { flex:none; }

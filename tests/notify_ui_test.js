@@ -348,17 +348,18 @@ function run(test) {
       // 3 天后截止 → 3 项全在
       const due3d = now + 3 * 86400000;
       let opts = def.remindOptionsFor.call(ctx, groupOf('g1', 'T', iso(due3d)));
-      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 1 天', '截止前 2 小时', '截止前 30 分钟']);
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 1 天', '截止前 2 小时', '截止前 30 分钟', '截止前 1 分钟']);
       assert.strictEqual(opts[0].at, due3d - 86400000);
       assert.strictEqual(opts[1].at, due3d - 7200000);
       assert.strictEqual(opts[2].at, due3d - 1800000);
+      assert.strictEqual(opts[3].at, due3d - MIN);
       assert.ok(opts.every(function (o) { return o.at > now + MIN; }), '不能给出 <= now+60s 的项');
       // 1 小时后截止 → 只剩「截止前 30 分钟」
       opts = def.remindOptionsFor.call(ctx, groupOf('g2', 'T', iso(now + 3600000)));
-      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 30 分钟']);
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 30 分钟', '截止前 1 分钟']);
       // 距截止 40 分钟 → 30 分钟项 = now+10min，仍有效
       opts = def.remindOptionsFor.call(ctx, groupOf('g3', 'T', iso(now + 40 * MIN)));
-      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 30 分钟']);
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 30 分钟', '截止前 1 分钟']);
       // 距截止 1 分钟 → 全部过滤，只剩自定义
       opts = def.remindOptionsFor.call(ctx, groupOf('g4', 'T', iso(now + 61000)));
       assert.deepStrictEqual(opts, []);
@@ -366,7 +367,7 @@ function run(test) {
       const extGroup = groupOf('g5', 'T', iso(now + 61000));
       extGroup.extensions = [{ deadline: iso(now + 5 * 86400000) }, { deadline: iso(now + 6 * 86400000) }];
       opts = def.remindOptionsFor.call(ctx, extGroup);
-      assert.strictEqual(opts.length, 3, '应按最后一次延期时间生成快捷项');
+      assert.strictEqual(opts.length, 4, '应按最后一次延期时间生成快捷项');
       assert.strictEqual(opts[0].at, now + 6 * 86400000 - 86400000);
     });
 
@@ -378,17 +379,19 @@ function run(test) {
       const due = now + 5 * 86400000;
       let opts = def.remindOptionsFor.call(ctx, groupOf('s1', 'T', iso(due), { signupStart: iso(start), signupEnd: iso(due) }));
       assert.deepStrictEqual(opts.map(function (o) { return o.label; }),
-        ['报名开始前 1 天', '报名开始前 2 小时', '报名开始前 30 分钟', '报名开始时']);
+        ['报名开始前 1 天', '报名开始前 2 小时', '报名开始前 30 分钟', '报名开始前 1 分钟', '报名开始时']);
       assert.strictEqual(opts[0].at, start - 86400000);
       assert.strictEqual(opts[1].at, start - 7200000);
       assert.strictEqual(opts[2].at, start - 1800000);
-      assert.strictEqual(opts[3].at, start);
+      assert.strictEqual(opts[3].at, start - MIN);
+      assert.strictEqual(opts[4].at, start);
+      assert.ok(opts.length + 1 <= 6);
       // 报名开始 1 小时后：只剩「前 30 分钟」「开始时」
       opts = def.remindOptionsFor.call(ctx, groupOf('s2', 'T', iso(now + 5 * 86400000), { signupStart: iso(now + 3600000) }));
-      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['报名开始前 30 分钟', '报名开始时']);
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['报名开始前 30 分钟', '报名开始前 1 分钟', '报名开始时']);
       // 报名开始已过 → 回退截止
       opts = def.remindOptionsFor.call(ctx, groupOf('s3', 'T', iso(now + 3 * 86400000), { signupStart: iso(now - 86400000) }));
-      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 1 天', '截止前 2 小时', '截止前 30 分钟']);
+      assert.deepStrictEqual(opts.map(function (o) { return o.label; }), ['截止前 1 天', '截止前 2 小时', '截止前 30 分钟', '截止前 1 分钟']);
     });
 
     await test('提醒：快捷项生成（无截止 → 今天/明天 20:00，已过顺延，始终 2 个未来项）', () => {
@@ -419,7 +422,7 @@ function run(test) {
       def.onRemindTap.call(ctx, { currentTarget: { dataset: { gid: 'auto_g1' } } });
       assert.strictEqual(env.sheets.length, 1);
       const list1 = env.sheets[0].itemList;
-      assert.ok(['截止前 1 天', '截止前 2 小时', '截止前 30 分钟'].every(function (l) { return list1.indexOf(l) >= 0; }), 'itemList: ' + list1.join(','));
+      assert.ok(['截止前 1 天', '截止前 2 小时', '截止前 30 分钟', '截止前 1 分钟'].every(function (l) { return list1.indexOf(l) >= 0; }), 'itemList: ' + list1.join(','));
       assert.strictEqual(list1[list1.length - 1], '自定义…');
       // 已设提醒 → 修改/取消面板；点「修改提醒」→ 再出快捷面板
       env.sheets.length = 0;
@@ -528,7 +531,7 @@ function run(test) {
       assert.ok(ctx._filtered >= 1, '设置成功后应重绘列表');
     });
 
-    await test('提醒：自定义默认时间按报名开始提前 2 小时，提示报名开始而不是截止', () => {
+    await test('提醒：自定义默认时间按报名开始提前 1 分钟，提示报名开始而不是截止', () => {
       createEnv();
       const M = loadUtils(); const def = loadPage();
       const now = Date.now();
@@ -538,7 +541,7 @@ function run(test) {
       const ctx = makeCtx(def, [raw]);
       def.openCustomRemind.call(ctx, 'auto_s1');
       assert.strictEqual(ctx.data.remindSheet, true);
-      const expect = new Date(start - 7200000);
+      const expect = new Date(start - MIN);
       assert.strictEqual(ctx.data.remindDate, ymd(expect));
       assert.strictEqual(ctx.data.remindClock, hhmm(expect));
       assert.ok(/报名开始/.test(ctx.data.remindHint), '提示应以报名开始为基准：' + ctx.data.remindHint);

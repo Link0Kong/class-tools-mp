@@ -5,11 +5,7 @@
 // 课程字段：{ name, teacher, room, day(0=周一), start(1 起), end, weeks:'1-16', parity:'all|odd|even' }
 const fmt = require('../../../common/fmt.js');
 
-const PERIODS = [
-  ['08:10', '08:55'], ['08:55', '09:40'], ['09:50', '10:30'], ['10:40', '11:25'],
-  ['11:25', '12:10'], ['14:30', '15:15'], ['15:15', '16:00'], ['16:10', '16:55'],
-  ['16:55', '17:40'], ['19:00', '19:45'], ['19:45', '20:30'], ['20:30', '21:20']
-];
+const { PERIODS, focusPeriod } = require('../../../common/periods.js');
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -59,7 +55,11 @@ function sessionsOn(courses, term, date, now) {
     const e = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const pe = String(p2[1]).split(':');
     e.setHours(+pe[0] || 0, +pe[1] || 0, 0, 0);
-    const state = now >= e ? 'done' : (now >= s ? 'ongoing' : 'next');
+    const period = now >= s && now < e ? focusPeriod(c, ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2)) : null;
+    const focus = period ? PERIODS[period - 1] : null;
+    const bell = new Date(s);
+    if (focus) bell.setHours(...focus[0].split(':').map(Number), 0, 0);
+    const state = now >= e ? 'done' : (now >= bell ? 'ongoing' : 'next');
     list.push({
       name: c.name || '课程',
       teacher: c.teacher || '',
@@ -70,6 +70,8 @@ function sessionsOn(courses, term, date, now) {
       endText: p2[1],
       span: c.end > c.start ? ('第' + c.start + '-' + c.end + '节') : ('第' + c.start + '节'),
       startAt: s.getTime(),
+      bellAt: bell.getTime(),
+      bellText: focus ? focus[0] : PERIODS[c.start - 1][0],
       endAt: e.getTime(),
       state: state
     });
@@ -83,9 +85,11 @@ function nextSession(courses, term, now) {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + off);
     const wk = weekOf(term, date);
     if (!wk) continue;
-    const list = sessionsOn(courses, term, date, now).filter(function (s) { return s.startAt > now.getTime(); });
+    const list = sessionsOn(courses, term, date, now).filter(function (s) { return s.bellAt > now.getTime(); });
     if (list.length) {
-      const item = list[0];
+      const item = list.sort((a, b) => a.bellAt - b.bellAt)[0];
+      item.startAt = item.bellAt;
+      item.startText = item.bellText;
       item.dayOffset = off;
       item.dayText = off === 0 ? '今天' : (off === 1 ? '明天' : DAYS[weekdayIndex(date)]);
       item.dateText = (date.getMonth() + 1) + '/' + date.getDate();
