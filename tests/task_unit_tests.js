@@ -187,6 +187,28 @@ T('taskdata 视图：附件清空、分组/步骤/视图顺序保留', function 
   assert.deepStrictEqual(v.prefs.sidebarOrder, ['done', 'all']);
 });
 
+T('分组视图、明天标签和无截止日期的自定义提醒', function () {
+  const t = fresh().task, group = t.addGroup('实验', 'cy');
+  t.writeUi({ view: 'list', list: group.id });
+  assert.strictEqual(t.readUi().view, 'list');
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const ymd = [tomorrow.getFullYear(), String(tomorrow.getMonth() + 1).padStart(2, '0'), String(tomorrow.getDate()).padStart(2, '0')].join('-');
+  assert.strictEqual(t.dueText({ due: ymd }), '明天');
+  assert.strictEqual(t.calcRemindAt('', '', 'custom', 12345), 12345);
+  assert.strictEqual(t.dateOk('2026-02-30'), false);
+});
+
+T('长期逾期任务顺延到未来，撤销保留已编辑的下一次', function () {
+  const t = fresh().task, parent = t.emptyItem({ title: '练习', due: '2020-01-01', repeat: 'weekly' });
+  t.items().push(parent);
+  const child = t.setDone(parent.id, true).next;
+  assert.ok(t.dueMs(child) > Date.now());
+  assert.strictEqual(new Date(child.due + 'T12:00:00').getDay(), 3);
+  child.updatedAt = child.createdAt + 1;
+  t.setDone(parent.id, false);
+  assert.ok(t.findTask(child.id));
+});
+
 T('分享卡：任务视图包含标题/截止/步骤', function () {
   const v = sharecard.buildTaskView({
     focus: { title: '复习高数', subtitle: '学习 · 今天 20:00', lines: [{ label: '步骤 1', text: '看例题 · 先看 3.2' }], note: '提醒：提前 30 分钟' },

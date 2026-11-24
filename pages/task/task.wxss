@@ -122,6 +122,15 @@
 .tk-step-body { flex: 1; min-width: 0; padding-top: 5rpx; }
 .tk-step-text { font-size: 26rpx; line-height: 1.45; color: var(--md-on-surface-variant); word-break: break-word; }
 .tk-step.done .tk-step-text { color: var(--md-outline); text-decoration: line-through; }
+@media (prefers-reduced-motion: no-preference) {
+  .tk-steps { animation: tk-steps-in 150ms ease-out; }
+  .tk-check, .tk-step-check, .tk-icon { transition: transform 110ms ease-out, background-color 140ms; }
+  .tk-check:active, .tk-icon:active { transform: scale(.94); }
+}
+@keyframes tk-steps-in {
+  from { opacity: 0; transform: translateY(-6rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .tk-step-note { margin-top: 3rpx; font-size: 24rpx; line-height: 1.5; color: var(--md-outline); white-space: pre-wrap; word-break: break-word; }
 .tk-acts { display: flex; align-items: center; gap: 0; flex: none; }
 .tk-icon { width: 56rpx; height: 60rpx; display: flex; align-items: center; justify-content: center;

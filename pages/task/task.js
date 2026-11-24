@@ -144,6 +144,7 @@ Page(shareflow.install({
   },
   onUnload() {
     this._dead = true;
+    clearTimeout(this._searchTimer);
     this.stopReminderTimer();
     task.flush();
   },
@@ -183,8 +184,14 @@ Page(shareflow.install({
       task.lists().forEach(function (l) { listNames.push(l.name); listIds.push(l.id); });
       let qIdx = listIds.indexOf(ui.quickList);
       if (qIdx < 0) qIdx = ui.view === 'list' ? Math.max(0, listIds.indexOf(ui.list)) : 0;
-      const raw = ui.view === 'done' ? [] : task.viewItems(ui.view, ui.list, ui.search, ui.sort);
-      const done = task.viewItems('done', '', ui.search, ui.sort).slice(0, 60);
+      const raw = task.viewItems(ui.view, ui.list, ui.search, ui.sort);
+      const done = ui.view === 'done' ? [] : task.viewItems('done', '', ui.search, ui.sort).filter(function (t) {
+        if (ui.view === 'list') return t.list === ui.list;
+        if (ui.view === 'important') return t.starred;
+        if (ui.view === 'planned') return !!(t.due || t.remindAt);
+        if (ui.view === 'myday') return t.myDay === task.today();
+        return true;
+      });
       const hw = (store.get().homework || []).filter(function (h) {
         const doneMap = store.get().hwDone || {}, hide = store.get().hwHide || {};
         return !(h.id ? doneMap[h.id] : h.done) && !(h.id && hide[h.id]);
@@ -207,7 +214,7 @@ Page(shareflow.install({
         doneTasks: done.map((t) => this.taskVM(t, true)), doneOpen: !!ui.doneOpen,
         listNames: listNames, listIds: listIds, quickListIdx: qIdx,
         quickListLabel: listNames[qIdx] || '未分组',
-        searchOpen: !!ui.search, classOpen: classOpen, classCount: classOpen.length,
+        searchOpen: this.data.searchOpen || !!ui.search, classOpen: classOpen, classCount: classOpen.length,
         syncText: task.syncText(), cloudEnabled: cloud.isEnabled(),
         sortLabel: ({ default: '默认排序', due: '按截止时间', created: '按创建时间', important: '按重要性' })[ui.sort] || '默认排序'
       }, () => {
@@ -271,6 +278,7 @@ Page(shareflow.install({
     const open = !this.data.searchOpen;
     this.setData({ searchOpen: open });
     if (!open) {
+      clearTimeout(this._searchTimer);
       const ui = task.readUi(); ui.search = ''; task.writeUi(ui); this.refresh();
     }
   },
@@ -670,15 +678,11 @@ Page(shareflow.install({
       updatedAt: Date.now()
     });
     if (e.isNew) base.createdAt = Date.now();
-    base.done = false; base.doneAt = 0;
     task.upsert(base);
-    if (e.done) task.setDone(base.id, true);
+    if (!!base.done !== !!e.done) task.setDone(base.id, !!e.done);
     const saved = task.findTask(base.id);
     if (saved && !saved.done) this._syncTaskReminder(saved, this._editOriginal);
-    else if (saved) { try { notify.cancelTask(saved.id).catch(function () {}); } catch (err) {} }    if (!e.isNew) {
-      const old = this._editOriginal;
-      if (old && old.title && old.title !== base.title) { /* 保留来源字段 */ }
-    }
+    else if (saved) { try { notify.cancelTask(saved.id).catch(function () {}); } catch (err) {} }
     this.setData({ 'editor.show': false });
     this.refresh();
     util.toast(e.isNew ? '已添加' : '已保存');

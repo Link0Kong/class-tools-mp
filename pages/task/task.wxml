@@ -107,7 +107,7 @@
     </block>
 
     <view wx:if="{{doneTasks.length}}" class="tk-done">
-      <view class="tk-done-hd" bindtap="toggleDoneOpen"><text>已完成</text><text class="tk-done-n">{{counts.done}}</text><view class="tk-chev tk-ico tk-ico--chevron {{doneOpen ? 'on' : ''}}"></view></view>
+      <view class="tk-done-hd" bindtap="toggleDoneOpen"><text>已完成</text><text class="tk-done-n">{{doneTasks.length}}</text><view class="tk-chev tk-ico tk-ico--chevron {{doneOpen ? 'on' : ''}}"></view></view>
       <block wx:if="{{doneOpen}}">
         <template is="taskCard" wx:for="{{doneTasks}}" wx:key="id" data="{{item: item}}" />
       </block>

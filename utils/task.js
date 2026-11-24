@@ -37,7 +37,11 @@ function today() { return ymd(new Date()); }
 function idOk(s) { return /^[A-Za-z0-9_-]{1,48}$/.test(String(s == null ? '' : s)); }
 function newId(p) { return String(p || 't') + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function oneLine(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); }
-function dateOk(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s == null ? '' : s)); }
+function dateOk(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s))) return false;
+  const d = util.toDate(s);
+  return !!d && ymd(d) === s;
+}
 function timeOk(s) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s == null ? '' : s)); }
 function colorOk(c) { return COLORS.indexOf(String(c)) >= 0 ? String(c) : 'cy'; }
 
@@ -297,7 +301,7 @@ function readUi() {
   let o = {};
   try { o = JSON.parse(wx.getStorageSync(UI_KEY) || '{}') || {}; } catch (e) { o = {}; }
   return {
-    view: ['myday', 'important', 'planned', 'all', 'done'].indexOf(o.view) >= 0 ? o.view : 'all',
+    view: ['myday', 'important', 'planned', 'all', 'done', 'list'].indexOf(o.view) >= 0 ? o.view : 'all',
     list: String(o.list || ''),
     sort: ['default', 'due', 'created', 'important'].indexOf(o.sort) >= 0 ? o.sort : 'default',
     quickStar: !!o.quickStar,
@@ -374,16 +378,19 @@ function advanceDate(v, repeat) {
 function makeNext(t) {
   if (!t || !t.repeat) return null;
   if (items().some(function (x) { return x.fromId === t.id && !x.done; })) return null;
-  let nextDue = advanceDate(t.due || today(), t.repeat);
-  let guard = 0;
-  while (guard++ < 12) {
-    const ms = dueMs({ due: nextDue, dueTime: t.dueTime });
-    if (ms && ms > now()) break;
+  const stamp = now();
+  const base = util.toDate(t.due) || new Date(stamp);
+  if (['daily', 'weekly', 'weekday'].indexOf(t.repeat) >= 0) {
+    const weeks = Math.max(0, Math.floor((stamp - base.getTime()) / 604800000) - 1);
+    base.setDate(base.getDate() + weeks * 7);
+  }
+  let nextDue = advanceDate(ymd(base), t.repeat);
+  while (dateOk(nextDue) && dueMs({ due: nextDue, dueTime: t.dueTime }) <= stamp) {
     nextDue = advanceDate(nextDue, t.repeat);
   }
   const n = JSON.parse(JSON.stringify(t));
   n.id = newId('t'); n.fromId = t.id; n.done = false; n.doneAt = 0;
-  n.createdAt = now(); n.updatedAt = now(); n.order = (Number(t.order) || 0) + 0.5;
+  n.createdAt = stamp; n.updatedAt = stamp; n.order = (Number(t.order) || 0) + 0.5;
   n.myDay = ''; n.lastNotifyAt = 0; n.snoozeUntil = 0;
   n.steps = (t.steps || []).map(function (s) { return { text: s.text, done: false, note: s.note || '' }; });
   n.due = nextDue;
@@ -406,7 +413,7 @@ function setDone(id, val) {
   if (!val) {
     const arr = items();
     for (let i = arr.length - 1; i >= 0; i--) {
-      if (arr[i].fromId === t.id && !arr[i].done) arr.splice(i, 1);
+      if (arr[i].fromId === t.id && !arr[i].done && arr[i].updatedAt === arr[i].createdAt) arr.splice(i, 1);
     }
   }
   save();
@@ -466,7 +473,8 @@ function dueMs(t) {
 function dueText(t) {
   if (!t || !t.due) return '';
   const d = util.toDate(t.due); if (!d) return t.due;
-  const td = today(), tm = ymd(new Date(d.getTime() + 86400000));
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const td = today(), tm = ymd(tomorrow);
   let day = '';
   if (t.due === td) day = '今天';
   else if (t.due === tm) day = '明天';
@@ -474,8 +482,8 @@ function dueText(t) {
   return day + (t.dueTime ? ' ' + t.dueTime : '');
 }
 function calcRemindAt(due, dueTime, mode, custom) {
-  if (!due || mode === 'none') return 0;
   if (mode === 'custom') return Number(custom) || 0;
+  if (!due || mode === 'none') return 0;
   const d = util.toDate(due);
   if (!d) return 0;
   const m = String(dueTime || '').match(/^(\d{1,2}):(\d{2})$/);
