@@ -23,7 +23,8 @@
 // ----------------------------------------------------------------
 // 后端从腾讯云 CloudBase 迁到自建（PostgreSQL + PostgREST），
 // API 路径/语义与 CloudBase 完全一致，客户端切流只改「档位」一个常量；
-// REST 切流（selfhosted）等 P4 数据迁移窗口，默认仍 cloudbase（发布前检查这一行）。
+// 2026-11-24 切流：默认档改为 selfhosted（域名/HTTPS/自建库均已就绪）。
+// 切流前该域名由 Caddy 同源反代到 CloudBase，因此新版先发布也不会坏；Caddy 一切即指向自建库。
 //
 //   cloudbase  ：现状（腾讯云 CloudBase 网关）；默认档，CloudBase 到期前有效
 //   selfhosted ：正式域名 https://tool.furina.fun/v1/rdb/rest/（备案已通过，域名/HTTPS 就绪；切流另行安排）
@@ -35,8 +36,8 @@ const REST_PROFILES = {
   cloudbase: 'https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com/v1/rdb/rest/',
   selfhosted: 'https://tool.furina.fun/v1/rdb/rest/'
 };
-// 当前档位：'cloudbase' | 'selfhosted'（发布前保持 cloudbase；切流等 P4 数据迁移窗口）
-const ACTIVE_REST_PROFILE = 'cloudbase';
+// 当前档位：'cloudbase' | 'selfhosted'（2026-11-24 起 = selfhosted；回滚改回 'cloudbase' 重新上传）
+const ACTIVE_REST_PROFILE = 'selfhosted';
 
 // 档位 → REST 根（未知档位回退到当前档位，避免配置写错时整个站点离线）
 function resolveRestBase(profile) {

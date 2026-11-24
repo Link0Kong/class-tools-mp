@@ -92,11 +92,12 @@ function run(test) {
   return (async () => {
     try {
       // ============================================================ N1 三档配置
-      await test('N1 两档 base：cloudbase 默认不变 / selfhosted=备案后域名（切换只改档位）', () => {
+      await test('N1 两档 base：selfhosted 为当前档（自建后端）/ cloudbase 保留可回滚', () => {
         const cfg = require(path.join(UTILS, 'cloud-config.js'));
-        assert.strictEqual(cfg.restProfile, 'cloudbase', '发布前默认档位必须仍是 cloudbase（默认行为不变）');
-        assert.ok(/^https:\/\/tool-d4gosudok46e0e081\.api\.tcloudbasegateway\.com\/v1\/rdb\/rest\/$/.test(cfg.restBase),
-          'cloudbase 档应指向现有 CloudBase 网关：' + cfg.restBase);
+        assert.strictEqual(cfg.restProfile, 'selfhosted', '2026-11-24 切流后默认档位必须是 selfhosted');
+        assert.strictEqual(cfg.restBase, 'https://tool.furina.fun/v1/rdb/rest/', 'selfhosted 档 = 正式域名：' + cfg.restBase);
+        assert.ok(/^https:\/\/tool-d4gosudok46e0e081\.api\.tcloudbasegateway\.com\/v1\/rdb\/rest\/$/.test(cfg.restProfiles.cloudbase),
+          'cloudbase 档应保留现有 CloudBase 网关（回滚用）：' + cfg.restProfiles.cloudbase);
         assert.strictEqual(cfg.resolveRestBase('selfhosted'), 'https://tool.furina.fun/v1/rdb/rest/', 'selfhosted 档 = 备案后正式域名');
         // 未知/空档位 → 回退当前档位（配置写错不会把站点打成「无后端」）
         assert.strictEqual(cfg.resolveRestBase(''), cfg.restBase);
