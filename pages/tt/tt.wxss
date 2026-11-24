@@ -332,9 +332,9 @@
 .tbtn--dis { opacity: .55; pointer-events: none; }
 .tbtn--clear { color: var(--md-error); border-color: var(--md-error); }
 
-.nmap{flex:none;align-self:center;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:40px;margin:0;padding:8px;line-height:1;border:0;border-radius:50%;background:var(--md-surface-container-lowest)}
+.nmap{flex:none;align-self:center;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:40px;height:40px;margin:0;padding:8px;line-height:1;border:0;border-radius:50%;background:transparent}
 .nmap image{display:block;width:24px;height:24px}
-.nmap::after{border:0}
+.nmap-pressed{background:var(--md-surface-container-lowest)}
 
 .crs.abs.crs-tall .cname { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
 .crs.abs .croom,.crs.abs .cspan { flex:none; }

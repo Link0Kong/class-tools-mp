@@ -49,7 +49,7 @@
           <text class="nv">{{next.name}}</text>
           <text class="nt">{{next.dayName}} 第{{next.start}}-{{next.end}}节<text wx:if="{{next.room}}"> · {{next.room}}</text><text wx:if="{{cdText}}"> · 还有 {{cdText}}</text></text>
         </view>
-          <button wx:if="{{next.room}}" class="nmap" aria-label="在地图查看教室" bindtap="openMap"><image src="/images/tool-map.png" mode="aspectFit"/></button>
+          <view aria-role="button" hover-class="nmap-pressed" wx:if="{{next.room}}" class="nmap" aria-label="在地图查看教室" bindtap="openMap"><image src="/images/tool-map.png" mode="aspectFit"/></view>
       </view>
 
       <!-- 空课表 -->
@@ -156,7 +156,7 @@
     <view class="ttc-name"><view class="ttc-dot tt-c{{detail.ci}}"></view><text>{{detail.name}}</text></view>
     <view class="ttc-row"><text class="ttc-k">教师</text><text class="ttc-v">{{detail.teacher}}</text></view>
     <view class="ttc-row"><text class="ttc-k">时间</text><text class="ttc-v">{{detail.time}}</text></view>
-    <view class="ttc-row"><text class="ttc-k">教室</text><text class="ttc-v">{{detail.room}}</text><button wx:if="{{detail.mapRoom}}" class="nmap" aria-label="在地图查看教室" data-room="{{detail.mapRoom}}" bindtap="openMap"><image src="/images/tool-map.png" mode="aspectFit"/></button></view>
+    <view class="ttc-row"><text class="ttc-k">教室</text><text class="ttc-v">{{detail.room}}</text><view aria-role="button" hover-class="nmap-pressed" wx:if="{{detail.mapRoom}}" class="nmap" aria-label="在地图查看教室" data-room="{{detail.mapRoom}}" bindtap="openMap"><image src="/images/tool-map.png" mode="aspectFit"/></view></view>
     <view class="ttc-row"><text class="ttc-k">下次</text><text class="ttc-v">{{detail.next}}</text></view>
   </bottom-sheet>
 
