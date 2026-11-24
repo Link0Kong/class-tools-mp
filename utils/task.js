@@ -231,7 +231,7 @@ function saveQuiet() {
 }
 function save() {
   const d = load();
-  d.updatedAt = now();
+  d.updatedAt = Math.max(now(), (Number(d.updatedAt) || 0) + 1);
   store.get().task = d;
   try { store.saveQuiet(); } catch (e) { try { store.save(); } catch (e2) {} }
   touch();
@@ -750,10 +750,10 @@ function push(force) {
   if (pushP) return pushP;
   const sid = identity.sid();
   if (!sid) return Promise.resolve(false);
-  const local = load();
-  const lts = Number(local.updatedAt) || 0;
   setStatus('同步中…');
   pushP = fetchRow().then(function (row) {
+    if (identity.sid() !== sid) return false;
+    const local = load(), lts = Number(local.updatedAt) || 0;
     if (!hasData(local) && !row) { setStatus('已同步'); return true; }
     const rts = row ? (Number(row.ts) || 0) : 0;
     if (row && rts > lts && !force) {
@@ -762,17 +762,23 @@ function push(force) {
     }
     const body = [{ id: sid, blob: JSON.stringify(taskView(local)), ts: lts }];
     return cloud.cbUpsert('taskdata', body[0]).then(function () {
-      writeBase(lts); syncState.dirty = false; setStatus('已同步'); return true;
+      if (identity.sid() !== sid) return false;
+      writeBase(lts);
+      if (load().updatedAt > lts) { touch(); return true; }
+      syncState.dirty = false; setStatus('已同步'); return true;
     });
-  }).catch(function () { setStatus('仅本机'); return false; }).then(function (x) { pushP = null; return x; });
+  }).catch(function () { if (identity.sid() === sid) setStatus('仅本机'); return false; }).then(function (x) { if (pushP === request) pushP = null; return x; });
+  const request = pushP;
   return pushP;
 }
 function pull(force) {
+  const sid = identity.sid();
   if (pullP) return pullP;
   if (!identity.sid() || !cloud.isEnabled()) { setStatus(identity.sid() ? '仅本机' : '登录后同步'); return Promise.resolve(false); }
   if (!force && syncState.lastPull && Date.now() - syncState.lastPull < TTL) return Promise.resolve(false);
   setStatus('同步中…');
   pullP = fetchRow().then(function (row) {
+    if (identity.sid() !== sid) return false;
     syncState.lastPull = now();
     const local = load(), lts = Number(local.updatedAt) || 0;
     if (!row) {
@@ -796,7 +802,8 @@ function pull(force) {
     if (rts > lts) { applySnapshot(remote, rts); return true; }
     if (lts > rts) return push(true);
     writeBase(rts); setStatus('已同步'); return true;
-  }).catch(function () { setStatus('仅本机'); return false; }).then(function (x) { pullP = null; return x; });
+  }).catch(function () { if (identity.sid() === sid) setStatus('仅本机'); return false; }).then(function (x) { if (pullP === request) pullP = null; return x; });
+  const request = pullP;
   return pullP;
 }
 function touch() {
@@ -812,6 +819,7 @@ function boot() {
   const sid = identity.sid();
   if (!sid) { setStatus('登录后同步'); return; }
   if (syncState.booted && syncState.sid === sid) return;
+  clearTimeout(syncTimer); pullP = null; pushP = null; syncState.dirty = false;
   syncState.sid = sid; syncState.booted = true; syncState.lastPull = 0;
   pull(true);
 }
