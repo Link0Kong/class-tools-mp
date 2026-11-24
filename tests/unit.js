@@ -2523,6 +2523,23 @@ const fakeCanvas = (() => {
   /* ---------------- 2026-11-19 鸿蒙间隔参数（16/24/32vp 边距、12vp 卡片、16/8vp 元素、2/8vp 文本） ---------------- */
   await require('./interval_unit.js').run(test);
 
+  await test('工作台课表：个人优先、下课交接、跨周和开学前', () => {
+    const tt = require('../utils/ttplan.js');
+    const course = { name: '数学', day: 0, start: 1, end: 1, weeks: '1', parity: 'all' };
+    const second = { ...course, name: '英语', start: 2, end: 2 };
+    const nextWeek = { ...course, name: '实践', weeks: '2', parity: 'even' };
+    const publicData = { c: [nextWeek], t: '2026-08-31' };
+    const d = { ttCache: publicData, ttLocal: { c: [second, course, nextWeek], t: publicData.t } };
+    const src = tt.localSource(d);
+    assert.strictEqual(src.kind, 'mine');
+    const bell = tt.plan(src.courses, src.term, new Date(2026, 7, 31, 8, 55));
+    assert.deepStrictEqual(bell.today.map(s => [s.name, s.state]), [['数学', 'done'], ['英语', 'ongoing']]);
+    assert.strictEqual(bell.next.name, '实践');
+    assert.strictEqual(tt.plan(src.courses, src.term, new Date(2026, 7, 24, 8)).today.length, 0);
+    d.ttLocal = null;
+    assert.strictEqual(tt.localSource(d).courses, publicData.c);
+  });
+
   /* ---------------- 汇总 ---------------- */
   const summary = { total: passN + failN, pass: passN, fail: failN, results, at: new Date().toISOString() };
   fs.writeFileSync(path.join(__dirname, 'unit-result.json'), JSON.stringify(summary, null, 2), 'utf8');

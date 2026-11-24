@@ -254,10 +254,13 @@ function run(test) {
       const ctx2 = ctxOf(def);
       ctx2.onLoad({});
       ctx2._first = true;
-      ctx2.onShow();
-      assert.strictEqual(ctx2.data.state, 'data', '工作台 onShow 首帧即有缓存 → 立即 data');
-      const loadingCalls = (ctx2.__log || []).filter(function (keys2) { return keys2.indexOf('state') >= 0; });
-      assert.ok(!ctx2.__log.some(function (k) { return k.length === 1 && k[0] === 'state'; }), '有缓存首帧不应 setData({state:"loading"})');
+      try {
+        ctx2.onShow();
+        assert.strictEqual(ctx2.data.state, 'data', '工作台 onShow 首帧即有缓存 → 立即 data');
+        assert.ok(!ctx2.__log.some(function (k) { return k.length === 1 && k[0] === 'state'; }), '有缓存首帧不应 setData({state:"loading"})');
+      } finally {
+        ctx2.onUnload();
+      }
     });
 
     await test('A5 高频页 TTL：waterList 60s 内重复进入 0 重复 GET（force 才重新拉）；notices 签名/分块缓存仍在', async function () {

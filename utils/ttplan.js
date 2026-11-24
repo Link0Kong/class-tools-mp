@@ -16,6 +16,18 @@ function dayDiff(a, b) { return Math.round((startOfDay(a) - startOfDay(b)) / 864
 function weekdayIndex(d) { const g = d.getDay(); return g === 0 ? 6 : g - 1; }
 function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
+// 个人课表、教务缓存和旧版本机数据按完整课表页的顺序选取。
+function localSource(d) {
+  if (d.ttLocal && Array.isArray(d.ttLocal.c) && d.ttLocal.c.length) {
+    return { kind: 'mine', courses: d.ttLocal.c, term: d.ttLocal.t || d.termStart || '',
+      meta: { mine: true, fetchedAt: Number(d.ttLocalAt) || 0 } };
+  }
+  if (d.ttCache && Array.isArray(d.ttCache.c)) {
+    return { kind: 'cache', courses: d.ttCache.c, term: d.ttCache.t || '', meta: d.ttCache.meta || null };
+  }
+  return { kind: 'local', courses: Array.isArray(d.course) ? d.course : [], term: d.termStart || '', meta: null };
+}
+
 // 某门课在某周是否上课（weeks 为空视为全学期；parity 兜底 all）
 function active(c, wk) {
   if (!wk) return true;
@@ -51,7 +63,7 @@ function sessionsOn(courses, term, date, now) {
   const wk = weekOf(term, date);
   const di = weekdayIndex(date);
   const list = [];
-  (courses || []).forEach(function (c) {
+  (courses || []).forEach(function (c, index) {
     if (!c || c.day !== di) return;
     if (!active(c, wk)) return;
     const p1 = PERIODS[c.start - 1], p2 = PERIODS[c.end - 1];
@@ -64,6 +76,7 @@ function sessionsOn(courses, term, date, now) {
     e.setHours(+pe[0] || 0, +pe[1] || 0, 0, 0);
     const state = now >= e ? 'done' : (now >= s ? 'ongoing' : 'next');
     list.push({
+      key: di + '-' + index,
       name: c.name || '课程',
       room: roomShort(c.room),
       start: c.start,
@@ -104,9 +117,9 @@ function nextSession(courses, term, now) {
 function plan(courses, term, now) {
   now = now || new Date();
   const list = Array.isArray(courses) ? courses : [];
-  const out = { hasData: !!(list.length && term), week: weekOf(term, now), today: [], todayState: 'nodata', next: null };
+  const out = { hasData: !!(list.length && util.toDate(term)), week: weekOf(term, now), today: [], todayState: 'nodata', next: null };
   if (!out.hasData) return out;
-  out.today = sessionsOn(list, term, now, now);
+  out.today = out.week ? sessionsOn(list, term, now, now) : [];
   if (!out.today.length) out.todayState = 'none';
   else if (out.today.some(function (s) { return s.state !== 'done'; })) out.todayState = 'has';
   else out.todayState = 'done';
@@ -116,6 +129,6 @@ function plan(courses, term, now) {
 
 module.exports = {
   PERIODS: PERIODS, DAYS: DAYS,
-  active: active, weekOf: weekOf, roomShort: roomShort,
+  localSource: localSource, active: active, weekOf: weekOf, roomShort: roomShort,
   sessionsOn: sessionsOn, nextSession: nextSession, plan: plan
 };

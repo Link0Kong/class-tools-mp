@@ -1,6 +1,7 @@
 // pages/tt/tt.js —— 课表（与网页版同步：只读 / 教务 tt.json / 按周切换 / 本节详情）
 // v12：请求统一走 utils/cloud.js 的 ttFetch（要求已通过班级身份验证）。
 const store = require('../../utils/store.js');
+const ttplan = require('../../utils/ttplan.js');
 const util = require('../../utils/util.js');
 const canvas = require('../../utils/canvas.js');
 const identity = require('../../utils/identity.js');
@@ -252,27 +253,12 @@ Page(shareflow.install({
   // 返回 'shared' | 'mine' | 'cache' | 'local'。
   _pickSource() {
     if (this._shared) { this._mine = false; return 'shared'; }
-    const d = store.get();
-    const tl = (d.ttLocal && Array.isArray(d.ttLocal.c) && d.ttLocal.c.length) ? d.ttLocal : null;
-    if (tl) {
-      this._mine = true;
-      this._courses = tl.c;
-      this._term = tl.t || d.termStart || '';
-      this._meta = { mine: true, fetchedAt: Number(d.ttLocalAt) || 0 };
-      return 'mine';
-    }
-    this._mine = false;
-    const cache = d.ttCache && Array.isArray(d.ttCache.c) ? d.ttCache : null;
-    if (cache) {
-      this._courses = cache.c;
-      this._term = cache.t || '';
-      this._meta = cache.meta || null;
-      return 'cache';
-    }
-    this._courses = Array.isArray(d.course) ? d.course : [];
-    this._term = d.termStart || '';
-    this._meta = null;
-    return 'local';
+    const source = ttplan.localSource(store.get());
+    this._courses = source.courses;
+    this._term = source.term;
+    this._meta = source.meta;
+    this._mine = source.kind === 'mine';
+    return source.kind;
   },
 
   // 本机是否有可渲染的课表数据（决定进入时是否显示「课表加载中…」骨架）：

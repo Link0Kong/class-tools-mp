@@ -32,6 +32,17 @@ let _ntAt = 0;
 let _ntPulling = false;
 let _ttTried = false;
 
+function courseCardState(source, now) {
+  const today = ttplan.plan(source.courses, source.term, now);
+  const hr = now.getHours();
+  return {
+    today: today,
+    weekText: today.week ? ('第 ' + today.week + ' 周') : '',
+    dateText: now.getFullYear() + '-' + util.pad(now.getMonth() + 1) + '-' + util.pad(now.getDate()),
+    hello: hr < 6 ? '夜深了' : (hr < 11 ? '早上好' : (hr < 14 ? '中午好' : (hr < 18 ? '下午好' : '晚上好')))
+  };
+}
+
 function hwOpenItems(d) {
   const done = d.hwDone || {}, hide = d.hwHide || {};
   const list = (d.homework || []).filter(function (h) {
@@ -137,6 +148,7 @@ Page({
     scrollmem.restore(this);
     if (!identity.ensure()) return;
     this._hidden = false;
+    this.scheduleCourseClock();
     try { store.reload(); } catch (e) { /* ignore */ }
     try { task.resetCache(); task.boot(); task.pull().then(() => { if (!this._hidden) this.refresh(); }).catch(function () {}); } catch (e) { /* ignore */ }
     this.applyAgentHandoff();
@@ -164,7 +176,7 @@ Page({
     try {
       const d = store.get();
       if (Array.isArray(d.homework) && d.homework.length) return true;
-      if (d.ttCache && Array.isArray(d.ttCache.c) && d.ttCache.c.length) return true;
+      if (ttplan.localSource(d).courses.length) return true;
       if (d.ntDone && Object.keys(d.ntDone).length) return true;
       if (d.classMembers && d.classMembers.length) return true;
       if (d.task && ((d.task.items && d.task.items.length) || (d.task.lists && d.task.lists.length))) return true;
@@ -181,7 +193,22 @@ Page({
     this._rotStop();
     try { task.flush(); } catch (e) { /* ignore */ }
     scrollmem.save(this); this.clearTimer(); },
-  clearTimer() { if (this._t) { clearTimeout(this._t); this._t = null; } },
+  clearTimer() {
+    clearTimeout(this._t);
+    clearTimeout(this._courseTimer);
+    this._t = null;
+  },
+
+  scheduleCourseClock() {
+    clearTimeout(this._courseTimer);
+    this._courseTimer = setTimeout(() => {
+      if (this._hidden) return;
+      const fields = courseCardState(ttplan.localSource(store.get()), new Date());
+      const patch = util.diffPatch(this.data, fields);
+      if (patch) this.setData(patch);
+      this.scheduleCourseClock();
+    }, 60000 - Date.now() % 60000);
+  },
 
   onPullDownRefresh() {
     this.pullTT(true);
@@ -224,20 +251,12 @@ Page({
       const hwView = cardViewOf(hwItems);
 
       // —— 今日课程 / 下一次课 ——
-      const cache = (d.ttCache && Array.isArray(d.ttCache.c)) ? d.ttCache : null;
-      const courses = cache ? cache.c : (Array.isArray(d.course) ? d.course : []);
-      const term = cache ? (cache.t || d.termStart || '') : (d.termStart || '');
-      const plan = ttplan.plan(courses, term, now);
-
-      const hr = now.getHours();
-      const wk = util.weekNum(term);
+      const source = ttplan.localSource(d);
+      const courseFields = courseCardState(source, now);
       const quick = tools.quickList(QUICK_N);   // 用户勾选的首页工具（≤4；无勾选时为空 → 引导空态；投票仅班委可见）
       const state = {
         state: 'data',
         errorText: '',
-        hello: hr < 6 ? '夜深了' : (hr < 11 ? '早上好' : (hr < 14 ? '中午好' : (hr < 18 ? '下午好' : '晚上好'))),
-        dateText: now.getFullYear() + '-' + util.pad(now.getMonth() + 1) + '-' + util.pad(now.getDate()),
-        weekText: wk ? ('第 ' + wk + ' 周') : '',
         identity: id ? {
           name: id.name,
           role: id.role || '',
@@ -245,7 +264,7 @@ Page({
         } : null,
         quick: quick,
         quickEmpty: quick.length === 0,
-        today: plan,
+        ...courseFields,
         hw: Object.assign({ open: merged.length }, hwView),
         task: { open: tc.all, hwOpen: open.length, myday: tc.myday, important: tc.important }
       };
@@ -255,7 +274,7 @@ Page({
       else this._restartRotate();
 
       // —— 异步补数据（不阻塞首屏）——
-      if (!cache && !courses.length) this.pullTT(false);
+      if (source.kind === 'local' && !source.courses.length) this.pullTT(false);
       this.pullNotices(false);
     } catch (e) {
       this.setData({ state: 'error', errorText: '读取本机数据失败：' + ((e && e.message) || e) });
