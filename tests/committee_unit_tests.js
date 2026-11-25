@@ -88,7 +88,8 @@ function makePage(def) {
   return inst;
 }
 
-module.exports.run = async function (test) {  test('名单：班委分类只显示 role/badge 且按职务权重排序', function () {
+module.exports.run = async function (test) {
+  test('名单：班委分类只显示 role/badge 且按职务权重排序', function () {
     purge();
     global.wx = createCtx().wxMock;
     const roster = R('utils/roster.js');
@@ -143,6 +144,34 @@ module.exports.run = async function (test) {  test('名单：班委分类只显�
     assert.deepStrictEqual(v.rows.map(function (r) { return r.seat; }), [2, 3, 5, 7]);
     assert.ok(v.note.indexOf('全班 4 人') >= 0 && v.note.indexOf('姓名与座号') >= 0);
     assert.strictEqual(v.emptyText, '暂无名单');
+  });
+
+  await test('名单搜索只在提交后请求座号，旧查询不能覆盖新输入', async function () {
+    purge();
+    const C = createCtx(); global.wx = C.wxMock;
+    const cloud = R('utils/cloud.js'), identity = R('utils/identity.js');
+    identity.save({ sid: '3260799999', name: '测试账号', token: 'roster-test' });
+    cloud.configure({ enabled: true, restBase: 'https://rest.test/v1/rdb/rest/', publishableKey: 'pk-test' });
+    let respond, component;
+    C.setReq(function (o) { respond = () => o.success({ statusCode: 200, data: [2, 2, 0, '3'] }); });
+    global.Component = def => { component = def; };
+    try { R('components/roster-search/index.js'); } finally { delete global.Component; }
+    const events = [], ctx = Object.assign({}, component.methods, { data: { query: '' },
+      triggerEvent(_, data) { this.data.query = data.value; events.push(data); } });
+    ctx.input({ detail: { value: 'Night' } });
+    assert.strictEqual(C.reqLog().length, 0);
+    const stale = ctx.search({ detail: {} });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepStrictEqual(C.reqLog()[0].data, { p_query: 'Night' });
+    ctx.input({ detail: { value: 'Night Owl' } });
+    respond(); await stale;
+    assert.deepStrictEqual(events[events.length - 1], { value: 'Night Owl', seats: [] });
+    const exact = ctx.search({ detail: {} });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    respond(); await exact;
+    assert.deepStrictEqual(events[events.length - 1], { value: 'Night Owl', seats: [2] });
+    ctx.clear();
+    assert.deepStrictEqual(events[events.length - 1], { value: '', seats: [] });
   });
 
   test('名单：classSetRole 管理员契约（p_sid/p_role/p_badge + 身份 token）', async function () {

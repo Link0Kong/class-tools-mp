@@ -38,6 +38,7 @@ function fmtSync(ts) {
 Page(shareflow.install({
   data: {
     tab: 'committee',
+    query: '',
     edit: false,
     canManage: false,
     syncing: false,
@@ -166,6 +167,8 @@ Page(shareflow.install({
       league: league,
       leagueLoaded: this._leagueLoaded,
       leagueErr: this._leagueErr,
+      query: this.data.query,
+      matchedSeats: this._matchedSeats,
       edit: this.data.edit
     });
     const list = view.rows.map(function (m) {
@@ -195,7 +198,14 @@ Page(shareflow.install({
     });
   },
 
-  // 切到某个分类：点击 tab 与滑动提交共用
+  setQuery(e) {
+    this._matchedSeats = e.detail.seats || [];
+    this.setData({ query: e.detail.value });
+    this.render();
+  },
+  clearQuery() { this.setQuery({ detail: { value: '' } }); },
+
+  // 点击和滑动共用分类切换。
   _applyTab(tab) {
     if (TABS.indexOf(tab) < 0) return;
     if (tab === 'league' && !this._leagueLoaded) {
@@ -372,7 +382,8 @@ Page(shareflow.install({
   _shareTitle() {
     const tab = this.data.tab;
     const label = TAB_LABEL[tab] || '名单';
-    const n = tab === 'league' ? this.data.counts.league : (tab === 'all' ? this.data.counts.all : this.data.counts.committee);
+    if (this.data.query.trim()) return '名单｜' + label + ' · 搜索结果 ' + this.data.list.length + ' 人';
+    const n = this.data.counts[tab];
     return n ? ('名单｜' + label + ' ' + n + ' 人') : ('名单｜' + label);
   },
   _shareOpenOpts() {

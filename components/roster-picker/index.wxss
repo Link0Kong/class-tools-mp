@@ -13,7 +13,7 @@
 .rp-tip__text { text-align: center; line-height: 1.5; }
 
 /* 快捷预设行（2026-11-11 需求 8：全班 / 班委 / 团员 / 清空；点击套基础集合后可继续逐个增删） */
-.rp-quick { display: flex; flex-direction: row; align-items: center; gap: 12rpx; margin: 0 0 16rpx; }
+.rp-quick { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10rpx; margin: 14rpx 0; }
 .rp-qbtn {
   flex: none; min-height: 64rpx; padding: 0 22rpx; border-radius: 999rpx; box-sizing: border-box;
   display: flex; align-items: center; justify-content: center;
@@ -24,8 +24,19 @@
 .rp-qbtn--ghost { background: transparent; border: 1rpx solid var(--md-outline-variant); }
 .rp-qbtn--busy { opacity: .6; }
 
-.rp-scroll { max-height: 55vh; }
-.rp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20rpx 16rpx; padding: 8rpx 4rpx 20rpx; }
+.rp-scroll { max-height: 47vh; }
+.rp-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10rpx; padding: 4rpx 0 16rpx; }
+.rp-person { display: flex; align-items: center; gap: 12rpx; min-height: 84rpx; padding: 6rpx 14rpx; box-sizing: border-box;
+  border: 1rpx solid var(--md-outline-variant); border-radius: 16rpx; color: var(--md-on-surface); background: var(--md-surface); }
+.rp-person--sel { border-color: var(--md-primary); background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.rp-person--press { opacity: .76; }
+.rp-seat { flex: none; font-size: 22rpx; font-variant-numeric: tabular-nums; opacity: .78; }
+.rp-person-copy { flex: 1; min-width: 0; }
+.rp-name, .rp-role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-name { font-size: 28rpx; font-weight: 600; }
+.rp-role { font-size: 22rpx; color: var(--md-on-surface-variant); }
+.rp-check { color: var(--md-primary); font-weight: 700; }
+@media (min-width: 600px) { .rp-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
 
 .rp-actions { padding-top: 18rpx; margin-top: 6rpx; border-top: 1rpx solid var(--md-outline-variant); }
 .rp-row { display: flex; flex-direction: row; align-items: center; gap: 16rpx; margin-top: 14rpx; }

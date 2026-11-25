@@ -122,6 +122,7 @@ Page(shareflow.install({
     quickMins: vote.QUICK_MINS,
     maxOpts: [],               // 多选「最多选几项」可选值 2..min(20,选项数)
     members: [],               // 指定成员可选项 [{seat,name,sel}]（只含姓名+座号，不含学号）
+    memberQuery: '', memberScope: 'all',
     memberCount: 0,
     selectedCount: 0,           // 已选可见成员数（= form.audSeats.length，供 WXML 直接显示）
     leagueBusy: false,          // 团员名单拉取中（快捷预设）
@@ -288,17 +289,20 @@ Page(shareflow.install({
 
   /* ---------------- 发起 / 编辑弹层 ---------------- */
   openCreate() {
+    this._matchedSeats = [];
+    this._selection = (this._selection || 0) + 1;
     this._editing = false;
     this._editId = '';
     // 先定 id：网络失败后用户重试复用同一 id（契约 §2.1：同 p_id 幂等，不产生重复投票）
     this._newId = vote.pollId();
-    this.setData({ formOpen: true, editing: false, form: emptyForm() }, () => {
+    this.setData({ formOpen: true, editing: false, form: emptyForm(), memberQuery: '', memberScope: 'all', leagueBusy: false }, () => {
       this._syncMaxOpts();
       this._syncMembers();
     });
   },
   closeCreate() {
     if (this.data.form.submitting) return;
+    this._selection = (this._selection || 0) + 1;
     this._newId = '';
     this.setData({ formOpen: false, editing: false, form: emptyForm() });
     this._editing = false;
@@ -328,8 +332,9 @@ Page(shareflow.install({
       });
       self._editing = true;
       self._editId = e.id || String(id);
+      self._matchedSeats = [];
       self._newId = '';
-      self.setData({ formOpen: true, editing: true, form: form }, function () {
+      self.setData({ formOpen: true, editing: true, form: form, memberQuery: '', memberScope: 'all', leagueBusy: false }, function () {
         self._syncMaxOpts();
         self._syncMembers();
       });
@@ -340,14 +345,25 @@ Page(shareflow.install({
     const seats = (this.data.form && Array.isArray(this.data.form.audSeats)) ? this.data.form.audSeats : [];
     const sel = {};
     seats.forEach(function (s) { sel[s] = 1; });
-    const list = roster.members().map(function (m) {
+    const all = roster.members();
+    const list = roster.filterMembers(all, this.data.memberScope, this.data.memberQuery, undefined, this._matchedSeats).map(function (m) {
       return { seat: m.seat, name: m.name, sel: !!sel[m.seat] };
     });
     this.setData({
       members: list,
-      memberCount: list.length,
+      memberCount: all.length,
       selectedCount: seats.length
     });
+  },
+  setMemberQuery(e) {
+    this._matchedSeats = e.detail.seats || [];
+    this.setData({ memberQuery: e.detail.value });
+    this._syncMembers();
+  },
+  setMemberScope(e) {
+    this.setData({ memberScope: e.detail.value });
+    this._syncMembers();
+    if (e.detail.value === 'league') cloud.leaguePull().then(() => this._syncMembers());
   },
   _syncMaxOpts() {
     const f = this.data.form;
@@ -517,6 +533,7 @@ Page(shareflow.install({
     const a = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.a) || '');
     if (vote.AUD.indexOf(a) < 0) return;
     if (a === this.data.form.aud) return;
+    this._selection = (this._selection || 0) + 1;
     // 切到非 custom 时清空座号（服务端对非 custom 恒 []）；切到 custom 保留已选，方便来回切换
     const patch = { 'form.aud': a };
     if (a !== 'custom') {
@@ -529,6 +546,7 @@ Page(shareflow.install({
   toggleMember(e) {
     const seat = parseInt(e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.seat, 10);
     if (!isFinite(seat)) return;
+    this._selection = (this._selection || 0) + 1;
     const cur = (this.data.form.audSeats || []).slice();
     const i = cur.indexOf(seat);
     if (i >= 0) cur.splice(i, 1);
@@ -540,6 +558,8 @@ Page(shareflow.install({
   quickAudience(e) {
     const kind = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.k) || '');
     if (['all', 'committee', 'league', 'none'].indexOf(kind) < 0) return;
+    if (kind === 'league' && this.data.leagueBusy) return;
+    const selection = this._selection = (this._selection || 0) + 1;
     if (kind === 'none') {
       this.setData({ 'form.audSeats': [] }, () => this._syncMembers());
       return;
@@ -550,7 +570,6 @@ Page(shareflow.install({
       this.setData({ 'form.audSeats': vote.normAudienceSeats(seats) }, () => this._syncMembers());
       return;
     }
-    if (this.data.leagueBusy) return;
     const cached = roster.quickSeats('league');
     if (cached.length) {
       this.setData({ 'form.audSeats': vote.normAudienceSeats(cached) }, () => this._syncMembers());
@@ -559,6 +578,7 @@ Page(shareflow.install({
     this.setData({ leagueBusy: true });
     cloud.leaguePull().then((list) => {
       this.setData({ leagueBusy: false });
+      if (this._selection !== selection || this.data.form.aud !== 'custom') return;
       const seats = roster.quickSeats('league');
       if (!seats.length) { util.toast(list && list.length ? '团员名单为空' : '团员名单暂不可用'); return; }
       this.setData({ 'form.audSeats': vote.normAudienceSeats(seats) }, () => this._syncMembers());

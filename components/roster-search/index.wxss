@@ -1,0 +1,11 @@
+.searchbar { display: flex; align-items: center; gap: 14rpx; min-height: 80rpx; padding: 0 18rpx;
+  background: var(--md-surface-container-low); color: var(--md-on-surface-variant);
+  border: 1rpx solid var(--md-outline-variant); border-radius: 20rpx; }
+.submit { min-width: 48rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; }
+.lens { width: 19rpx; height: 19rpx; border: 3rpx solid currentColor; border-radius: 50%; position: relative; flex: none; }
+.lens::after { content: ''; position: absolute; right: -7rpx; bottom: -5rpx; width: 10rpx; height: 3rpx; background: currentColor; transform: rotate(45deg); }
+.query { flex: 1; min-width: 0; height: 76rpx; color: var(--md-on-surface); font-size: 26rpx; }
+.clear, .scope { display: flex; align-items: center; justify-content: center; min-height: 76rpx; }
+.clear { min-width: 48rpx; font-size: 34rpx; }
+.scope { gap: 10rpx; padding-left: 14rpx; font-size: 25rpx; font-weight: 600; color: var(--md-primary); }
+.chev { width: 9rpx; height: 9rpx; border: solid currentColor; border-width: 0 2rpx 2rpx 0; transform: rotate(45deg); margin-bottom: 5rpx; }

@@ -220,9 +220,31 @@ function migrate(force) {
 const QUICK_KINDS = ['all', 'committee', 'league'];
 const QUICK_LABELS = { all: '全班', committee: '班委', league: '团员' };
 
-// 班委座号：role 或 badge 非空（与 committee 页/网页口径一致）
+function searchText(value) {
+  const s = String(value == null ? '' : value);
+  return (s.normalize ? s.normalize('NFKC') : s).toLowerCase().trim();
+}
+
+function isCommittee(m) { return !!String(m.role || '').trim() || String(m.badge || '').includes('班委'); }
+
+// 筛选只改变显示的成员。勾选座号和投票受众由使用方保存。
+function filterMembers(list, scope, query, league, matchedSeats) {
+  const terms = searchText(query).split(/\s+/).filter(Boolean);
+  const exactSeats = new Set(matchedSeats || []);
+  const leagueSet = new Set((league || store.get().classLeague || []).map(function (x) { return Number(x.seat); }));
+  return list.filter(function (m) {
+    const committee = isCommittee(m), isLeague = leagueSet.has(Number(m.seat));
+    if (scope === 'committee' && !committee || scope === 'league' && !isLeague) return false;
+    if (!terms.length || exactSeats.has(Number(m.seat))) return true;
+    const fields = [m.name, m.role, m.badge, m.seat, committee ? '班委' : '', isLeague ? '团员' : '',
+      m.is_admin || m.isAdmin ? '管理员' : ''].map(searchText);
+    return terms.every(function (term) { return fields.some(function (s) { return s.includes(term); }); });
+  });
+}
+
+// 班委座号由成员职务或班委徽章确定。
 function committeeSeats() {
-  return members().filter(function (m) { return !!(m.role || m.badge); }).map(function (m) { return m.seat; });
+  return members().filter(isCommittee).map(function (m) { return m.seat; });
 }
 // 团员座号：store.classLeague 缓存 ∩ 班级名单（座号升序）
 function leagueSeats() {
@@ -276,7 +298,7 @@ function listView(kind, opts) {
       return { key: m.sid || String(m.seat), seat: m.seat, name: m.name, role: m.role, badge: m.badge || '', isAdmin: !!m.is_admin, sid: m.sid || '', showLeague: false };
     });
   } else {
-    rows = (edit ? all.slice() : all.filter(function (m) { return !!(m.role || m.badge); }))
+    rows = (edit ? all.slice() : all.filter(isCommittee))
       .sort(function (a, b) {
         return ((ROLE_RANK[a.role] || 99) - (ROLE_RANK[b.role] || 99)) || ((+a.seat || 0) - (+b.seat || 0));
       })
@@ -284,7 +306,7 @@ function listView(kind, opts) {
         return { key: m.sid || String(m.seat), seat: m.seat, name: m.name, role: m.role, badge: m.badge || '', isAdmin: !!m.is_admin, sid: m.sid || '', showLeague: false };
       });
   }
-  const committeeCount = all.filter(function (m) { return !!(m.role || m.badge); }).length;
+  const committeeCount = all.filter(isCommittee).length;
   // 2026-11-19 用户反馈「团员名单在未打开时不显示数字」：三个 tab 的计数一律显示数字。
   // 团员计数在未加载（本次进页首次拉取中）时为 0，页面用 `countsLoading.league` 画脉冲占位，
   // 加载完成后自然变成真实人数——不再留空（留空会让 tab 宽度跳动、也看不出有这一项）。
@@ -301,6 +323,7 @@ function listView(kind, opts) {
   let emptyText = '暂无班委身份信息';
   if (kind === 'league') emptyText = loaded ? '暂无团员名单' : '团员名单加载中…';
   else if (kind === 'all') emptyText = '暂无名单';
+  if (o.query) rows = filterMembers(rows, 'all', o.query, league, o.matchedSeats);
   return { rows: rows, counts: counts, note: note, emptyText: emptyText };
 }
 
@@ -342,7 +365,7 @@ module.exports = {
   members, pickedOf, pickedSeats, selOf, selNamesOf,
   textOf, namesTextOf, summary,
   setSel, rollSet, poolFilter,
-  committeeSeats, leagueSeats, quickSeats,
+  committeeSeats, leagueSeats, quickSeats, filterMembers,
   ROLE_RANK, listView,
   TAB_KEYS, TAB_LABELS, tabIndex, tabKeyOf, tabNeighbor, tabIndicator,
   migrate, parseNames, parseGroupNames

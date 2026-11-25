@@ -734,6 +734,16 @@ function run(test) {
       ctx.methods.quickCommittee.call(ctx);
       assert.strictEqual(ctx.data.count, 2, '班委 = 2 人');
       assert.strictEqual(ctx.data.quick, 'committee');
+      ctx.setScope({ detail: { value: 'committee' } });
+      ctx.setQuery({ detail: { value: '学习' } });
+      assert.deepStrictEqual(ctx.data.items.map(m => m.seat), [3]);
+      assert.strictEqual(ctx.data.count, 2, '搜索只改变可见候选');
+      ctx.setQuery({ detail: { value: 'Night Owl', seats: [2, 3] } });
+      assert.deepStrictEqual(ctx.data.items.map(m => m.seat), [3], '服务端匹配仍须满足班委筛选');
+      ctx.setQuery({ detail: { value: 'Night Ow' } });
+      assert.strictEqual(ctx.data.items.length, 0);
+      ctx.setQuery({ detail: { value: '' } });
+      ctx.setScope({ detail: { value: 'all' } });
       ctx.methods.quickLeague.call(ctx);
       assert.strictEqual(ctx.data.count, 1, '团员 = 1 人（缓存 class_league）');
       assert.strictEqual(ctx.data.quick, 'league');

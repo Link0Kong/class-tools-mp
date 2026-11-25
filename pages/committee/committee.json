@@ -2,6 +2,7 @@
   "navigationBarTitleText": "名单",
   "enablePullDownRefresh": true,
   "usingComponents": {
+    "roster-search": "/components/roster-search/index",
     "touchable": "/components/touchable/index",
     "empty-state": "/components/empty-state/index",
     "share-sheet": "/components/share-sheet/index"

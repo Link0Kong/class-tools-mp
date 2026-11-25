@@ -3,7 +3,6 @@
 <view class="page pad-b {{themeClass}}">
   <view class="page-head">
     <view class="t-headline-m">名单</view>
-    <view class="t-body-m muted">班委 · 团员 · 全班 · 所有已认证同学可查看</view>
   </view>
 
   <view class="m3-card m3-card--filled enter enter-1 rd-head">
@@ -23,14 +22,11 @@
       </view>
       <view class="rd-ind" style="left:{{indicator.left}};width:{{indicator.width}}"></view>
     </view>
+    <roster-search query="{{query}}" bind:querychange="setQuery" />
     <view class="rd-meta">
-      <text class="rd-note">{{note}}</text>
+      <text class="rd-note">{{query ? '找到 ' + list.length + ' 人' : syncing ? '正在同步…' : '同步 ' + atText}}</text>
       <text wx:if="{{state === 'data'}}" class="rd-share" bindtap="openShare">分享</text>
       <text wx:if="{{canManage && tab === 'committee'}}" class="rd-manage" bindtap="toggleEdit">{{edit ? '完成' : '管理'}}</text>
-    </view>
-    <view class="rd-sync t-label-m muted">
-      <text wx:if="{{syncing}}">正在更新…</text>
-      <text wx:else>同步 {{atText}}</text>
     </view>
   </view>
 
@@ -57,11 +53,11 @@
             </view>
           </view>
         </view>
-        <view class="t-label-m muted bz-foot">名单由云端班级名单（class_members / class_league）下发 · 下拉可刷新</view>
       </block>
 
       <view wx:elif="{{state === 'empty'}}" class="m3-card m3-card--outlined enter enter-2">
-        <empty-state icon="🏅" title="{{emptyText}}"
+        <empty-state wx:if="{{query}}" title="当前分类没有匹配的成员" action-text="清除搜索" bind:action="clearQuery"></empty-state>
+        <empty-state wx:else icon="🏅" title="{{emptyText}}"
           text="{{err || (tab === 'league' ? '团员名单来自班级团员库；可下拉刷新重试' : (tab === 'all' ? '下拉刷新，或稍后重新进入本页' : '当前班级名单里还没有填写职务的成员'))}}"
           action-text="刷新" bind:action="refresh"></empty-state>
       </view>

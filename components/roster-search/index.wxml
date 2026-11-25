@@ -1,0 +1,10 @@
+<view class="searchbar">
+  <view bindtap="search" class="submit" aria-role="button" aria-label="搜索"><view class="lens"></view></view>
+  <input class="query" value="{{query}}" bindinput="input" bindconfirm="search" confirm-type="search"
+         placeholder="搜索姓名、座号或职务" aria-label="搜索名单" />
+  <view wx:if="{{query}}" class="clear" bindtap="clear" aria-role="button" aria-label="清除搜索">×</view>
+  <picker wx:if="{{hasScope}}" range="{{scopes}}" value="{{scope === 'league' ? 2 : scope === 'committee' ? 1 : 0}}"
+          bindchange="pickScope" aria-label="筛选名单范围">
+    <view class="scope">{{scope === 'league' ? '团员' : scope === 'committee' ? '班委' : '全班'}}<view class="chev"></view></view>
+  </picker>
+</view>

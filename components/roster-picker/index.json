@@ -1,6 +1,7 @@
 {
   "component": true,
   "usingComponents": {
+    "roster-search": "/components/roster-search/index",
     "bottom-sheet": "/components/bottom-sheet/index",
     "touchable": "/components/touchable/index"
   }

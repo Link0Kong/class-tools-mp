@@ -52,7 +52,7 @@ const CONFIG = {
     // 2026-11-11 名单快捷预设（需求 8）：团员名单（契约 web/AGENTS.md §33；返回 {ok,seats:[{seat,name}]}，无学号）
     league: 'rpc/class_league',
     // 2026-11-12 名单页「管理」：设置/清除班委职务（网页同名 RPC class_set_role，仅管理员）
-    setRole: 'rpc/class_set_role',
+    setRole: 'rpc/class_set_role', rosterSearch: 'rpc/class_roster_search',
     // 2026-11-08 诊断 v2 + 课表登录（契约 _diag_task/CONTRACT.md §1/§4）
     diagAgent: 'rpc/diag_agent_info', ttLoginEnqueue: 'rpc/tt_login_enqueue', ttLoginStatus: 'rpc/tt_login_status',
     // 2026-11-11 投票（契约 web/vote/CONTRACT.md §2：poll_create / poll_list / poll_detail / poll_submit / poll_manage）
@@ -539,8 +539,17 @@ function leaguePull(force) {
     .catch(function () { return league(); });   // 失败保留本机缓存（离线可用）
 }
 
-// 设置/清除班委职务（仅管理员；与网页「名单 → 管理」同一 RPC 口径，p_badge=班委/空）。
-// 成功后调用方需 classMembersPull(true) 刷新名单再重渲染。
+// 主动搜索时仅取完全匹配的座号，页面与本地姓名、职务匹配合并。
+function searchRosterSeats(value) {
+  const query = String(value || '').trim(), sid = identity.sid();
+  if (!query || !sid || !identity.has() || !isEnabled() || udOff()) return Promise.resolve([]);
+  return request('POST', CONFIG.restBase + CONFIG.rpc.rosterSearch, { p_query: query }, headers(false))
+    .then(function (raw) {
+      return sid === identity.sid() && Array.isArray(raw) ? store.normSeats(raw.filter(Number.isInteger)) : [];
+    }).catch(function () { return []; });
+}
+
+// 设置或清除班委职务。成功后由调用方强制刷新名单。
 function classSetRole(sidIn, role) {
   const sid = String(sidIn == null ? '' : sidIn).trim();
   const r = String(role == null ? '' : role).trim();
@@ -2466,7 +2475,7 @@ module.exports = {
   cbDelete: cbDelete, cbUpsertMany: cbUpsertMany,
   classVerify: classVerify, classMembersPull: classMembersPull,
   members: members, memberCount: memberCount, committee: committee, memberName: memberName,
-  league: league, leaguePull: leaguePull, classSetRole: classSetRole,
+  league: league, leaguePull: leaguePull, classSetRole: classSetRole, searchRosterSeats: searchRosterSeats,
   clearClassData: clearClassData, ensureMembers: ensureMembers,
   marksPull: marksPull, marksFresh: marksFresh, setMark: setMark, pendCount: pendCount, flushPending: flushPending,
   fitPush: fitPush, fitPull: fitPull, fitDelete: fitDelete,
