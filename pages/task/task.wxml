@@ -48,7 +48,7 @@
 <view class="page pad-b task-page {{themeClass}}">
   <top-app-bar title="任务" subtitle="未完成 {{counts.all}} 条 · 我的一天 {{counts.myday}} 条" collapsed="{{scrolled}}" />
 
-  <view class="task-seg">
+  <view wx:if="{{classCount}}" class="task-seg">
     <segmented items="{{segs}}" value="{{seg}}" bindchange="onSeg" />
   </view>
 
@@ -114,14 +114,11 @@
     </view>
   </block>
 
-  <block wx:else>
+  <block wx:elif="{{classCount}}">
     <view class="m3-card m3-card--outlined tk-classhd enter enter-1">
-      <view class="grow"><view class="tk-class-t">班级作业</view><view class="muted tk-class-s">自动同步 · {{classCount}} 项未完成</view></view>
+      <view class="grow"><view class="tk-class-t">班级作业</view><view class="muted tk-class-s">{{classCount}} 项可加入个人待办</view></view>
       <view class="m3-btn m3-btn--tonal m3-btn--sm" bindtap="classAllToTask">全部加入</view>
       <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="openHW">管理</view>
-    </view>
-    <view wx:if="{{!classOpen.length}}" class="m3-card m3-card--filled enter enter-2">
-      <empty-state icon="✅" title="没有未完成作业" text="班级作业同步后会自动出现在这里"></empty-state>
     </view>
     <view wx:for="{{classOpen}}" wx:key="id" class="m3-card m3-card--outlined tk-hwcard enter enter-2">
       <view class="tk-hw-subject" wx:if="{{item.subject}}">【{{item.subject}}】</view>
@@ -133,7 +130,7 @@
       </view>
       <view class="tk-hw-acts">
         <view class="m3-btn m3-btn--text m3-btn--sm" bindtap="openHW">详情</view>
-        <view class="m3-btn m3-btn--tonal m3-btn--sm" data-i="{{index}}" bindtap="classToTask">加入任务</view>
+        <view class="m3-btn m3-btn--tonal m3-btn--sm" data-id="{{item.id}}" bindtap="classToTask">加入任务</view>
       </view>
     </view>
   </block>
@@ -265,8 +262,9 @@
   </bottom-sheet>
 
   <!-- 管理：视图/分组顺序 -->
-  <bottom-sheet show="{{manage.show}}" title="自定义左侧栏" bind:close="closeManage">
+  <bottom-sheet show="{{manage.show}}" title="任务管理" bind:close="closeManage">
     <view wx:if="{{manage.show}}" class="tk-manage-panel">
+      <view class="m3-btn m3-btn--tonal tk-manage-add" bindtap="openHW">管理班级作业</view>
       <view class="tk-manage-label">视图顺序</view>
       <view wx:for="{{manage.views}}" wx:key="k" class="tk-manage-row">
         <text class="grow">{{item.n}}</text>

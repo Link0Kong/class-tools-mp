@@ -142,6 +142,7 @@ Page(shareflow.install({
     this.stopReminderTimer();
     task.flush();
   },
+  onCloudSync() { this.refresh(); },
   onUnload() {
     this._dead = true;
     clearTimeout(this._searchTimer);
@@ -192,16 +193,14 @@ Page(shareflow.install({
         if (ui.view === 'myday') return t.myDay === task.today();
         return true;
       });
-      const hw = (store.get().homework || []).filter(function (h) {
-        const doneMap = store.get().hwDone || {}, hide = store.get().hwHide || {};
-        return !(h.id ? doneMap[h.id] : h.done) && !(h.id && hide[h.id]);
-      });
+      const d = store.get();
+      const hw = task.pendingHomework(d);
       this._classRaw = hw;
       const classOpen = hw.map(function (h) {
         const info = util.dueInfo(h);
         const atts = task.parseAttachments(h.attachments);
         return {
-          id: h.id || ('ts' + h.ts), subject: h.subject || '', content: h.content || '',
+          id: h.id ? String(h.id) : ('local:' + d.homework.indexOf(h)), subject: h.subject || '', content: h.content || '',
           dueText: info && info.txt ? info.txt : '', cls: info && info.cls ? info.cls : 'muted',
           dateText: h.date ? (h.date + (h.time ? ' ' + h.time : '')) : '',
           attCount: atts.length
@@ -215,6 +214,7 @@ Page(shareflow.install({
         listNames: listNames, listIds: listIds, quickListIdx: qIdx,
         quickListLabel: listNames[qIdx] || '未分组',
         searchOpen: this.data.searchOpen || !!ui.search, classOpen: classOpen, classCount: classOpen.length,
+        seg: classOpen.length ? this.data.seg : 'my',
         syncText: task.syncText(), cloudEnabled: cloud.isEnabled(),
         sortLabel: ({ default: '默认排序', due: '按截止时间', created: '按创建时间', important: '按重要性' })[ui.sort] || '默认排序'
       }, () => {
@@ -247,7 +247,7 @@ Page(shareflow.install({
     };
   },
   onSeg(e) {
-    const seg = e.detail.value;
+    const seg = this.data.classCount ? e.detail.value : 'my';
     this.setData({ seg: seg });
     if (seg === 'my') this.refresh();
   },
@@ -809,7 +809,7 @@ Page(shareflow.install({
   // ------------------------------------------------------------ 班级作业段
   openHW() { wx.navigateTo({ url: '/pages/hw/hw' }); },
   classToTask(e) {
-    const i = Number(e.currentTarget.dataset.i);
+    const i = this.data.classOpen.findIndex(function (row) { return row.id === e.currentTarget.dataset.id; });
     const h = this._classRaw[i];
     if (!h) return;
     task.addFromHW(h);
@@ -817,16 +817,20 @@ Page(shareflow.install({
   },
   classAllToTask() {
     const self = this;
-    const todo = (this._classRaw || []).filter(function (h) {
-      return !task.items().some(function (t) { return t.sourceHwId && t.sourceHwId === h.id; });
-    });
+    const todo = task.pendingHomework(store.get());
     if (!todo.length) { util.toast('没有可加入的未完成作业'); return; }
     wx.showModal({
       title: '加入任务', content: '把 ' + todo.length + ' 项未完成作业加入任务？',
       success: function (r) {
         if (!r.confirm) return;
-        todo.forEach(function (h) { task.addFromHW(h, true); });
-        self.refresh(); util.toast('已加入 ' + todo.length + ' 项');
+        const remaining = task.pendingHomework(store.get());
+        const ids = new Set(todo.filter(function (h) { return h.id; }).map(function (h) { return String(h.id); }));
+        let added = 0;
+        remaining.forEach(function (h) {
+          const selected = h.id ? ids.has(String(h.id)) : todo.indexOf(h) >= 0;
+          if (selected && task.addFromHW(h, true)) added++;
+        });
+        self.refresh(); util.toast(added ? ('已加入 ' + added + ' 项') : '没有可加入的作业');
       }
     });
   },

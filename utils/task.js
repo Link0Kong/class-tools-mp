@@ -589,9 +589,31 @@ function counts() {
 }
 
 // 班级作业 / 通知 → 任务
+function pendingHomework(d) {
+  const linked = new Set(items().map(function (t) { return t.sourceHwId; }).filter(Boolean));
+  const done = d.hwDone || {}, hidden = d.hwHide || {};
+  return (d.homework || []).filter(function (h) {
+    if (!h || h.archived) return false;
+    return h.id ? !done[h.id] && !hidden[h.id] && !linked.has(String(h.id)) : !h.done;
+  });
+}
 function addFromHW(h, bulk) {
   if (!h) return null;
-  const sid = idOk(h.id) ? String(h.id) : '';
+  if (!h.id) {
+    h.id = cloud.cbId();
+    h._pending = true;
+    const reminders = store.get().hwRemind || {};
+    const oldKey = 'ts' + h.ts;
+    if (reminders[oldKey]) {
+      reminders[h.id] = reminders[oldKey];
+      delete reminders[oldKey];
+    }
+  }
+  const sid = String(h.id);
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(sid)) {
+    if (!bulk) util.toast('作业编号无效，请刷新后重试');
+    return null;
+  }
   if (sid && items().some(function (t) { return t.sourceHwId === sid; })) {
     if (!bulk) util.toast('这项作业已在任务中');
     return null;
@@ -844,7 +866,7 @@ module.exports = {
   sidebar: sidebar, smartList: smartList, reorderSidebar: reorderSidebar,
   readUi: readUi, writeUi: writeUi, viewItems: viewItems, counts: counts,
   dueMs: dueMs, dueText: dueText, reminderText: reminderText, repeatText: repeatText, calcRemindAt: calcRemindAt, icsText: icsText,
-  addFromHW: addFromHW, addFromNotice: addFromNotice,
+  pendingHomework: pendingHomework, addFromHW: addFromHW, addFromNotice: addFromNotice,
   taskView: taskView, boot: boot, pull: pull, push: push, touch: touch, flush: flush,
   status: status, syncText: syncText, state: state, onStatus: onStatus,
   newId: newId, today: today, dateOk: dateOk, timeOk: timeOk

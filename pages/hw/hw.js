@@ -209,11 +209,14 @@ Page(shareflow.install({
       cloud.pruneHomework();
       const d = store.get();
       const all = (d.homework || []).slice();
+      const available = new Set(task.pendingHomework(d));
       const open = [], done = [];
       let hiddenN = 0;
-      all.forEach(function (h) {
+      all.forEach(function (h, sourceIndex) {
         if (isHidden(d, h)) { hiddenN += 1; return; }
-        const item = Object.assign({}, h, { dueInfo: util.dueInfo(h), done: isDone(d, h) });
+        const item = Object.assign({}, h, {
+          sourceIndex: sourceIndex, canAddToTask: available.has(h), dueInfo: util.dueInfo(h), done: isDone(d, h)
+        });
         item.tagCls = TAG[item.dueInfo.cls] || 'muted';
         item.canDelete = cloud.canDelete(h);
         item.actions = [{ id: 'del', label: item.canDelete ? '删除' : '隐藏', type: 'error' }];
@@ -461,7 +464,10 @@ Page(shareflow.install({
   toTask(e) {
     const it = this.data.open[+e.currentTarget.dataset.index];
     if (!it) return;
-    task.addFromHW(it);
+    const rows = store.get().homework || [];
+    const source = it.id ? rows.find(function (h) { return h.id === it.id; }) : rows[it.sourceIndex];
+    if (source && source.ts === it.ts && source.content === it.content) task.addFromHW(source);
+    this.refresh();
   },
 
   remind(e) {

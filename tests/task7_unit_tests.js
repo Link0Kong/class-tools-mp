@@ -174,6 +174,47 @@ function run(test) {
   global.getApp = function () { return { notifyPages() {} }; };
 
   return (async function () {
+    await test('任务页与工作台同步移除已加入的班级作业，最后一项加入后回到个人任务', async function () {
+      purge(); C.clearMem(); C.setIdentity();
+      const d = R('utils/store.js').get(), task = R('utils/task.js');
+      d.homework = [{ id: 'h1', content: '同名' }, { id: 'h2', content: '同名' },
+        { content: '旧作业', ts: 12345 }, { id: 'marked', content: '已交' }, { id: 'hidden', content: '已隐藏' }];
+      d.hwDone = { marked: true };
+      d.hwHide = { hidden: true };
+      const page = ctxOf(loadPage('task/task'), { _expanded: {} });
+      const home = ctxOf(loadPage('index/index'), { _hidden: true });
+      page.refresh();
+      assert.strictEqual(page.data.classCount, 3);
+      page.onSeg({ detail: { value: 'class' } });
+      const tap = { currentTarget: { dataset: { id: 'h1' } } };
+      page.classToTask(tap);
+      page.classToTask(tap);
+      assert.strictEqual(page.data.classCount, 2);
+      assert.strictEqual(page.data.seg, 'class');
+      assert.strictEqual(task.items().length, 1);
+      home.refresh();
+      assert.strictEqual(home.data.task.hwOpen, 2);
+      assert.strictEqual(home.data.hw.open, 3);
+      page.classAllToTask();
+      assert.strictEqual(page.data.classCount, 0);
+      assert.strictEqual(page.data.seg, 'my');
+      assert.strictEqual(task.items().length, 3);
+      const oldId = d.homework[2].id;
+      assert.ok(oldId && task.items().some(t => t.sourceHwId === oldId));
+      const first = task.items().find(t => t.sourceHwId === 'h1');
+      task.setDone(first.id, true);
+      task.resetCache();
+      page.refresh(); home.refresh();
+      assert.strictEqual(page.data.classCount, 0);
+      assert.strictEqual(home.data.task.hwOpen, 0);
+      assert.strictEqual(home.data.hw.open, 2);
+      task.removeTask(first.id);
+      page.onCloudSync();
+      assert.deepStrictEqual(page.data.classOpen.map(h => h.id), ['h1']);
+      d.homework = [];
+      page.onCloudSync();
+      assert.strictEqual(page.data.classCount, 0);
+    });
     /* ============================================================
        A. 第 9 条 加载与缓存提速
        ============================================================ */

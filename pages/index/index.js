@@ -44,12 +44,7 @@ function courseCardState(source, now) {
 }
 
 function hwOpenItems(d) {
-  const done = d.hwDone || {}, hide = d.hwHide || {};
-  const list = (d.homework || []).filter(function (h) {
-    const isDone = h.id ? !!done[h.id] : !!h.done;
-    const isHidden = h.id ? !!hide[h.id] : false;
-    return !isDone && !isHidden;
-  });
+  const list = task.pendingHomework(d);
   list.sort(function (a, b) {
     const x = util.hwDue(a), y = util.hwDue(b);
     if (x == null && y == null) return 0;

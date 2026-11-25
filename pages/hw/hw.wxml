@@ -61,7 +61,7 @@
               </view>
             </view>
             <view class="m3-li__trail hw-acts">
-              <text class="m3-btn m3-btn--text m3-btn--sm" data-index="{{index}}" catchtap="toTask">任务</text>
+              <text wx:if="{{item.canAddToTask}}" class="m3-btn m3-btn--text m3-btn--sm" data-index="{{index}}" catchtap="toTask">加入任务</text>
               <text class="m3-btn m3-btn--tonal m3-btn--sm" data-index="{{index}}" catchtap="toggle">完成</text>
               <text wx:if="{{item.date}}" class="m3-btn m3-btn--text m3-btn--sm" data-index="{{index}}" catchtap="remind">提醒</text>
             </view>
