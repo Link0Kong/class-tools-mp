@@ -284,16 +284,18 @@ function fmtTime(v) {
 // proof = { status:'pending'|'ok'|'failed', id, at, hash, seq_day, today_count, today_mine, slow }
 function proofLine(proof) {
   if (!proof || !proof.status) return '';
+  if (proof.timeline === 'unknown') return '本地变更未确认 · 已确认 ' + (Number(proof.event_count) || 0) + ' 条事件';
+  if (proof.timeline === 'pending') return '本地变更待存证 · 已确认 ' + (Number(proof.event_count) || 0) + ' 条事件';
   if (proof.status === 'pending') return proof.slow ? '未存证（网络不可用）' : '存证中…';
   if (proof.status === 'ok') {
     return '已存证 · 今日第 ' + (Number(proof.seq_day) || 0) + ' 次（全班今日共 ' + (Number(proof.today_count) || 0) + ' 次）';
   }
   return '未存证（网络不可用）';
 }
-function proofReady(proof) { return !!(proof && proof.status === 'ok' && proof.id); }
+function proofReady(proof) { return !!(proof && proof.status === 'ok' && proof.id && (!proof.timeline || proof.timeline === 'ok')); }
 // 导出图「参数区」追加的存证行（契约 §3.3）；未存证 → [['存证','未存证（网络不可用）']]
 function proofConfigLines(proof) {
-  if (!proofReady(proof)) return [['存证', '未存证（网络不可用）']];
+  if (!proofReady(proof)) return [['存证', proofLine(proof) || '未存证（网络不可用）']];
   return [
     ['存证编号', String(proof.id)],
     ['存证时间', fmtAt(proof.at)],

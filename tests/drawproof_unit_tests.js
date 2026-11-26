@@ -626,7 +626,7 @@ async function run(test) {
       const u = String(o.url);
       if (u.indexOf('draw_record_create') >= 0) {
         createBody = JSON.parse(JSON.stringify(o.data));
-        o.success({ statusCode: 200, data: { ok: true, today_count: 7, today_mine: 2, record: OKREC } });
+        o.success({ statusCode: 200, data: { ok: true, today_count: 7, today_mine: 2, record: Object.assign({}, OKREC, {id:o.data.p_id}) } });
         return;
       }
       emptyRes(o);
@@ -690,7 +690,7 @@ async function run(test) {
     store.save();
     C.setReq(function (o) {
       if (String(o.url).indexOf('draw_record_create') >= 0) {
-        o.success({ statusCode: 200, data: { ok: true, today_count: 7, today_mine: 2, record: OKREC } });
+        o.success({ statusCode: 200, data: { ok: true, today_count: 7, today_mine: 2, record: Object.assign({}, OKREC, {id:o.data.p_id}) } });
         return;
       }
       emptyRes(o);
@@ -729,9 +729,10 @@ async function run(test) {
   await test('DRAW-G5 draw 页：剔除/补抽/重置追加 draw_event_append（remove 带 added；refill 逐个；reset 清空前）', async function () {
     const { C, store, def, flow } = drawPageSetup();
     const ctx = pageCtx(def);
+    let seq = 0;
     C.setReq(function (o) {
       if (String(o.url).indexOf('draw_event_append') >= 0) {
-        o.success({ statusCode: 200, data: { ok: true, event: { seq: 1 }, event_count: 1 } });
+        o.success({ statusCode: 200, data: { ok: true, event: { seq: ++seq }, event_count: seq } });
         return;
       }
       emptyRes(o);
@@ -747,15 +748,18 @@ async function run(test) {
     assert.deepStrictEqual(bodies[0], { p_id: 'dabc12345678', p_kind: 'remove', p_n: 1, p_added: null, p_note: '' });
     ctx.data.autoRe = true;
     ctx.removeAt(0);
+    await new Promise(resolve => setImmediate(resolve));
     bodies = C.reqsOf('draw_event_append').map(function (o) { return JSON.parse(JSON.stringify(o.data)); });
     const autoPick = flow.getFlow().draw.log.filter(function (x) { return x.act === '补抽'; }).pop();
     assert.strictEqual(bodies[bodies.length - 1].p_kind, 'remove');
     assert.strictEqual(bodies[bodies.length - 1].p_added, autoPick.n, '自动重抽的补抽号写进 remove 事件');
     ctx.refill();
+    await new Promise(resolve => setImmediate(resolve));
     bodies = C.reqsOf('draw_event_append').map(function (o) { return JSON.parse(JSON.stringify(o.data)); });
     assert.ok(bodies.some(function (b) { return b.p_kind === 'refill'; }), '补抽 → refill 事件');
     const before = bodies.length;
     ctx.reset();
+    await new Promise(resolve => setImmediate(resolve));
     bodies = C.reqsOf('draw_event_append').map(function (o) { return JSON.parse(JSON.stringify(o.data)); });
     assert.ok(bodies.some(function (b) { return b.p_kind === 'reset'; }), '重置 → reset 事件（清空结果前追加）');
     assert.ok(bodies.length > before);
@@ -773,10 +777,10 @@ async function run(test) {
   await test('DRAW-G6 draw 页：存证在途事件先入队、创建成功后补发；pending 显示「存证中…」', async function () {
     const { C, store, def, flow } = drawPageSetup();
     const ctx = pageCtx(def);
-    ctx._pendEvents = [];
+
     let release = null;
     C.setReq(function (o) {
-      if (String(o.url).indexOf('draw_record_create') >= 0) { release = function () { o.success({ statusCode: 200, data: { ok: true, today_count: 3, today_mine: 1, record: OKREC } }); }; return; }
+      if (String(o.url).indexOf('draw_record_create') >= 0) { release = function () { o.success({ statusCode: 200, data: { ok: true, today_count: 3, today_mine: 1, record: Object.assign({}, OKREC, {id:o.data.p_id}) } }); }; return; }
       if (String(o.url).indexOf('draw_event_append') >= 0) { o.success({ statusCode: 200, data: { ok: true, event: { seq: 1 }, event_count: 1 } }); return; }
       emptyRes(o);
     });
@@ -786,11 +790,11 @@ async function run(test) {
       ctx.data.autoRe = false;
       ctx.removeAt(0);
     });
-    assert.strictEqual(ctx.data.proofText, '存证中…', '在途显示「存证中…」');
+    assert.match(ctx.data.proofText, /待存证/);
     assert.strictEqual(C.reqsOf('draw_event_append').length, 0, '在途事件不直接发（先入队）');
-    assert.strictEqual(ctx._pendEvents.length, 1, '事件已入队');
+    assert.strictEqual(flow.getFlow().eventJobs.dabc12345678.queue.length, 1, '事件已入队');
     flow.patch('draw', Object.assign({}, flow.getFlow().draw, { proof: { status: 'ok', id: 'dabc12345678', hash: 'h', seq_day: 1, today_count: 1 } }));
-    ctx._flushProofEvents();
+    await require('../utils/draw-events.js').created('dabc12345678', flow.getFlow().draw.proof, () => {});
     await new Promise(function (r) { setTimeout(r, 10); });
     assert.strictEqual(C.reqsOf('draw_event_append').length, 1, '创建成功后补发队列事件');
     if (release) release();
@@ -984,7 +988,7 @@ async function run(test) {
     assert.ok(drawJs.indexOf("require('../../utils/drawproof.js')") >= 0, 'draw 页必须用 utils/drawproof.js');
     assert.ok(/drawproof\.drawV1\(seed, b\.pool, n, this\.data\.dup\)/.test(drawJs), 'doDraw 必须用 draw-v1(seed,pool,count,dup)');
     assert.ok(drawJs.indexOf('drawproof.recordCreate(') >= 0, '抽签后异步创建存证');
-    assert.ok(drawJs.indexOf('drawproof.eventAppend(') >= 0, '剔除/补抽/重置追加事件');
+    assert.ok(drawJs.indexOf('events.enqueue(') >= 0, '剔除/补抽/重置追加事件');
     assert.ok(/nameMap|rowsOf/.test(drawJs), '结果名称走映射优先级');
     assert.ok(drawXml.indexOf('bindtap="openNames"') >= 0 && /名称映射/.test(drawXml), '名称映射入口');
     assert.ok(drawXml.indexOf('bindtap="saveNames"') >= 0 && /已映射/.test(drawXml), '名称映射弹层（保存/计数）');

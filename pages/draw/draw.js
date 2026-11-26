@@ -5,7 +5,7 @@
 // 2026-11-12 抽签升级 v1（契约 web/draw/CONTRACT.md §2/§3.1/§4）：
 //   * 名称映射：store.draw.names（每行「序号 名称」），结果名称优先级 = 映射 > 班级名单派生名 > ''；
 //   * 每次「开始抽签」= 1 条云端存证（draw_record_create，异步不阻塞页面），结果区显示「今日第 N 次」；
-//   * 剔除 / 补抽 / 重置 → draw_event_append 追加时间线（失败静默）；
+//   * 剔除 / 补抽 / 重置 → draw_event_append 串行确认时间线，未知回执通过详情核对；
 //   * 导出图：编号 = 存证 id、参数区含存证信息、二维码 = webBase + '/#verify=<id>'；未存证不加二维码。
 // 2026-11-22 分组拆分（契约 web/group/CONTRACT.md §1.1/§3）：重置只清抽签结果；每次成功抽签
 //   额外写 flow.drawLast，分组页「最近抽签」跨重启可读，重置也不清空它。
@@ -19,8 +19,18 @@ const roster = require('../../utils/roster.js');
 const agent = require('../../utils/agent.js');
 const scrollmem = require('../../utils/scrollmem.js');
 const drawproof = require('../../utils/drawproof.js');
+const events = require('../../utils/draw-events.js');
 const sharecard = require('../../utils/sharecard.js');
 const shareflow = require('../../utils/shareflow.js');
+
+// Old snapshots kept local edits before receiving an append receipt.
+function proofFor(st) {
+  const proof = st && st.proof;
+  if (proof && proof.status === 'ok' && !proof.timeline && st.log && st.log.length) {
+    return Object.assign({}, proof, { timeline:'unknown' });
+  }
+  return proof;
+}
 
 const SORT_LABEL = { draw: '按抽取顺序', num: '按序号升序', desc: '从大到小', rand: '随机打乱' };
 const PROOF_SLOW_MS = 6000;   // 存证超过约 6s 未回包 → 按「未存证」展示（请求仍在，成功后会自愈）
@@ -46,7 +56,7 @@ Page(shareflow.install({
     this._dead = false;
     this._proofSeq = 0;          // 存证序号：新抽签会作废旧请求的回调
     this._proofRid = '';         // 在途存证记录 id（load 恢复时区分「本页在途」与「上次遗留」）
-    this._pendEvents = [];       // 存证在途期间的剔除/补抽事件（成功后补发）
+       // 存证在途期间的剔除/补抽事件（成功后补发）
     this._agent = agent.pick(this);            // AI 页面接力（wx.onAgentHandoff），只消费一次
     this._agentQ = agent.pickQuery(options);   // 备用：handoff query 随页面参数传入
     // 朋友圈从抽签页分享「存证」时只能带 query（当前页是 draw）：打开后转去存证详情页
@@ -173,6 +183,7 @@ Page(shareflow.install({
         namesSum: drawproof.namesSummary(dr.names || ''),
         errorText: ''
       });
+      events.recover(id => this._receiptChanged(id), this._proofRid).catch(() => {});
       if (fl.draw && fl.draw.result) {
         // 上次离开页面时存证还在途（本页实例已不在）→ 无法等回包，按未存证展示（记录仍可能已落云端）
         const pf = fl.draw.proof;
@@ -326,7 +337,7 @@ Page(shareflow.install({
       seed: seed, rid: rid,
       proof: { status: 'pending', slow: false }      // 契约 §3.2 状态：pending | ok | failed
     };
-    this._pendEvents = [];
+
     flow.patch('draw', st);
     flow.saveLastDraw(st);                         // 最近一次成功抽签（分组页「最近抽签」）
     this.apply(st);
@@ -348,54 +359,47 @@ Page(shareflow.install({
     if (this._proofSlowT) { clearTimeout(this._proofSlowT); this._proofSlowT = null; }
     this._proofSlowT = setTimeout(function () {
       self._proofSlowT = null;
-      if (self._dead || seq !== self._proofSeq) return;
+      if (self._dead || seq !== self._proofSeq || identity.revision() !== revision) return;
       const cur = flow.getFlow().draw;
       if (!cur || cur.rid !== rid || !cur.proof || cur.proof.status !== 'pending') return;
-      cur.proof = { status: 'pending', slow: true };   // 契约 §3.3：pending 超过约 6s → 未存证（不画二维码）
+      cur.proof.slow = true;   // 契约 §3.3：pending 超过约 6s → 未存证（不画二维码）
       flow.patch('draw', cur);
       self.applyProof(cur.proof);
     }, PROOF_SLOW_MS);
-    drawproof.recordCreate({
-      id: rid, params: params, pool: st.pool, result: st.result, labels: labels, seed: st.seed
-    }).then(function (r) {
-      if (self._dead || seq !== self._proofSeq) return;
-      if (self._proofSlowT) { clearTimeout(self._proofSlowT); self._proofSlowT = null; }
-      self._proofRid = '';
-      const cur = flow.getFlow().draw;
-      if (!cur || cur.rid !== rid) return;
-      if (r && r.ok) {
-        const rec = r.record || {};
-        cur.proof = {
-          status: 'ok',
-          id: rid,
-          at: drawproof.atMs(rec.at) || Date.now(),          // 服务端时间（存证时间）
-          hash: String(rec.hash || ''),
-          seq_day: Number(rec.seq_day) || 0,
-          today_count: Number(rec.today_count != null ? rec.today_count : r.today_count) || 0,
-          today_mine: Number(rec.today_mine != null ? rec.today_mine : r.today_mine) || 0,
-          day: String(rec.day || '')
-        };
-        if (rec.event_count) cur.proof.event_count = Number(rec.event_count) || 0;
-        flow.patch('draw', cur);
-        self.applyProof(cur.proof);
-        self._flushProofEvents();
-      } else {
-        cur.proof = { status: 'failed' };
-        flow.patch('draw', cur);
-        self.applyProof(cur.proof);
-        self._pendEvents = [];
+    const revision = identity.revision();
+    const changed = id => self._receiptChanged(id);
+    return drawproof.recordCreate({
+      id: rid, params, pool: st.pool, result: st.result, labels, seed: st.seed
+    }).catch(() => ({ok:false})).then(r => {
+      if (revision !== identity.revision()) return;
+      const rec = r.record;
+      const proof = r.ok && rec && rec.id === rid ? {
+        status:'ok', id:rid, at:drawproof.atMs(rec.at) || Date.now(), hash:String(rec.hash || ''),
+        seq_day:Number(rec.seq_day) || 0, today_count:Number(rec.today_count || r.today_count) || 0,
+        today_mine:Number(rec.today_mine || r.today_mine) || 0, day:String(rec.day || ''),
+        event_count:Number(rec.event_count) || 0, timeline:'ok'
+      } : { status:'failed' };
+      const current = flow.getFlow().draw;
+      if (current && current.rid === rid) {
+        if (self._proofSlowT) { clearTimeout(self._proofSlowT); self._proofSlowT = null; }
+        self._proofRid = '';
+        current.proof = proof;
+        flow.patch('draw',current);
       }
-    }).catch(function () {
-      if (self._dead || seq !== self._proofSeq) return;
-      if (self._proofSlowT) { clearTimeout(self._proofSlowT); self._proofSlowT = null; }
-      self._proofRid = '';
-      const cur = flow.getFlow().draw;
-      if (!cur || cur.rid !== rid) return;
-      cur.proof = { status: 'failed' };
-      flow.patch('draw', cur);
-      self.applyProof(cur.proof);
-      self._pendEvents = [];
+      const drained = events.created(rid, proof, changed);
+      changed(rid);
+      return drained;
     });
+  },
+
+  _receiptChanged(id) {
+    const current = flow.getFlow().draw;
+    if (!this._dead && current && current.rid === id) {
+      this._shareImg = this._shareSig = '';
+      this.setData({shareImg:''});
+      this.applyProof(current.proof);
+      this._scheduleShareCard();
+    }
   },
 
   // 存证状态 → data（结果区一行状态；导出图/记录入口都用同一份 proof）
@@ -412,24 +416,8 @@ Page(shareflow.install({
     });
   },
 
-  // 事件追加（契约 §3.2）：存证在途时先入队，创建成功后补发；未存证/失败直接跳过（失败静默，不阻塞）
   _appendEvent(kind, extra) {
-    const st = flow.getFlow().draw || {};
-    const proof = st.proof || null;
-    const body = Object.assign({ kind: kind }, extra || {});
-    if (!st.rid) return;
-    if (proof && proof.status === 'pending') { this._pendEvents.push(body); return; }
-    if (!proof || proof.status !== 'ok') return;
-    drawproof.eventAppend(Object.assign({ id: st.rid }, body)).catch(function () { /* 静默 */ });
-  },
-  _flushProofEvents() {
-    const st = flow.getFlow().draw || {};
-    const queued = this._pendEvents || [];
-    this._pendEvents = [];
-    if (!st.rid || !drawproof.proofReady(st.proof)) return;
-    queued.forEach(function (body) {
-      drawproof.eventAppend(Object.assign({ id: st.rid }, body)).catch(function () { /* 静默 */ });
-    });
+    return events.enqueue(flow.getFlow().draw, Object.assign({kind}, extra), id => this._receiptChanged(id));
   },
 
   apply(st) {
@@ -444,7 +432,7 @@ Page(shareflow.install({
       cfg: st.cfg || null,
       state: rows.length ? 'data' : 'empty'
     });
-    this.applyProof(st.proof || null);
+    this.applyProof(proofFor(st) || null);
     this._scheduleShareCard();
   },
 
@@ -475,7 +463,7 @@ Page(shareflow.install({
     flow.patch('draw', st);
     this.apply(st);
     if (st.result.length) flow.saveLastDraw(st);   // 剔除/补抽后的可用结果同步给分组页
-    // 契约 §3.2：剔除 → kind:'remove', n:剔除号, added:补抽号（无自动重抽则 null）；失败静默
+    // 契约 §3.2：剔除 → kind:'remove', n:剔除号, added:补抽号（无自动重抽则 null）；核对回执
     this._appendEvent('remove', { n: n, added: pick });
   },
   remove(e) { this.removeAt(+e.detail.index); },
@@ -511,7 +499,7 @@ Page(shareflow.install({
     flow.patch('draw', st);
     this.apply(st);
     if (st.result.length) flow.saveLastDraw(st);
-    // 契约 §3.2：补抽 → kind:'refill', added:补抽号（逐个追加；失败静默只影响时间线）
+    // 契约 §3.2：补抽 → kind:'refill', added:补抽号（逐个确认）
     addedList.forEach((n) => this._appendEvent('refill', { added: n }));
   },
 
@@ -528,14 +516,20 @@ Page(shareflow.install({
         const cur = flow.getFlow();
         if (cur.draw && !cur.drawLast && cur.draw.result && cur.draw.result.length) flow.saveLastDraw(cur.draw);
         // 契约 §3.2：清空结果前先追加 kind:'reset'（在途事件随创建成功后补发；未存证则跳过）
-        this._appendEvent('reset', {});
+        const wasProven = cur.draw && cur.draw.proof && cur.draw.proof.status !== 'failed';
+        const id = cur.draw && cur.draw.rid;
+        const revision = identity.revision();
+        const receipt = this._appendEvent('reset', {});
+        if (receipt) receipt.then(() => {
+          if (revision === identity.revision() && (flow.getFlow().eventJobs || {})[id]) util.toast('本轮已在本机重置，云端回执待核对');
+        });
         flow.patch('draw', null);        // 只清当前抽签；flow.drawLast 保留给分组页
-        this._pendEvents = [];
+
         this.setData({
           rows: [], removed: [], cfg: null, poolLen: 0, state: 'empty',
           proofStatus: '', proofCls: '', proofText: '', proofId: ''
         });
-        util.toast('已重置本轮抽签');
+        util.toast(wasProven ? '本机已重置，正在核对时间线' : '已重置本轮抽签');
       }
     });
   },
@@ -552,7 +546,7 @@ Page(shareflow.install({
   buildExportOpt() {
     const cfg = this.data.cfg || {};
     const st = flow.getFlow().draw || {};
-    const proof = st.proof || null;
+    const proof = proofFor(st) || null;
     const ready = drawproof.proofReady(proof);
     const lines = drawproof.removeLogLines(st.log || [], 8);
     const blocks = [{
@@ -594,7 +588,7 @@ Page(shareflow.install({
   exportImg() {
     if (!this.data.rows.length) { util.toast('先抽签再分享'); return; }
     const st = flow.getFlow().draw || {};
-    if (!drawproof.proofReady(st.proof)) util.toast('本次未存证，图片无法核验');
+    if (!drawproof.proofReady(proofFor(st))) util.toast('本次未存证，图片无法核验');
     canvas.exportAndSave(this, '#card', this.buildExportOpt());
   },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
@@ -606,7 +600,7 @@ Page(shareflow.install({
    */
   _shareInfo() {
     const st = flow.getFlow().draw || {};
-    const ready = drawproof.proofReady(st.proof);
+    const ready = drawproof.proofReady(proofFor(st));
     const n = (this.data.rows || []).length;
     const cfg = this.data.cfg || {};
     let title = n ? ('抽签结果 · ' + n + ' 个') : '抽签｜抽号 · 存证 · 分享';
@@ -625,7 +619,7 @@ Page(shareflow.install({
       view: sharecard.buildDrawView({
         rows: this.data.rows,
         cfg: this.data.cfg,
-        proofReady: drawproof.proofReady(st.proof),
+        proofReady: drawproof.proofReady(proofFor(st)),
         proofId: st.proof && st.proof.id,
         time: util.timeStr()
       }),
@@ -650,7 +644,7 @@ Page(shareflow.install({
     const view = sharecard.buildDrawView({
       rows: this.data.rows,
       cfg: this.data.cfg,
-      proofReady: drawproof.proofReady(st.proof),
+      proofReady: drawproof.proofReady(proofFor(st)),
       proofId: st.proof && st.proof.id,
       time: util.timeStr()
     });
@@ -659,7 +653,7 @@ Page(shareflow.install({
     this._shareSig = sig;
     const self = this;
     sharecard.render(this, 'shareCanvas', view).then(function (p) {
-      if (!self._dead && p) self._shareImg = p;
+      if (!self._dead && self._shareSig === sig && p) self._shareImg = p;
     }).catch(function () { /* 画图失败：分享继续用静态封面 */ });
   },
   onShareAppMessage() {
