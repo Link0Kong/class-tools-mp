@@ -1078,7 +1078,7 @@ async function run(test) {
       assert.ok(fs.statSync(path.join(ROOT, 'images/tool-ppt.png')).size <= 2048, '图标 ≤2KB（与其它工具图标一致）');
       const media = (function walk(d) { let n = 0; fs.readdirSync(d).forEach(function (x) { const p = path.join(d, x); if (fs.statSync(p).isDirectory()) n += walk(p); else n += fs.statSync(p).size; }); return n; })(path.join(ROOT, 'images'));
       assert.ok(media <= 200 * 1024, '媒体预算硬线 200KB，实际 ' + media + 'B');
-      assert.ok(/VERSION = '2\.1\.0'/.test(src('utils/version.js')), '版本号为 2.1.0');
+      assert.ok(/VERSION = '2\.1\.1'/.test(src('utils/version.js')), '版本号为 2.1.1');
     });
 
     await test('PPT-H2 工程：两页 4 文件 + 分享 handler；列表封面 webp + 空态唯一小字；播放器 custom/auto/disableScroll', function () {

@@ -3160,7 +3160,7 @@ function run(test) {
         assert.ok(ctx._diagTimer, '应启动 10s 诊断轮询定时器');
         assert.ok(C.urlsOf('/service_health').length >= 1, '非管理员也应请求 service_health');
         assert.ok(C.urlsOf('rpc/diag_agent_info').length >= 1);
-        assert.ok(/diag_analysis\?select=\*&order=ts\.desc&limit=20/.test(C.urlsOf('/diag_analysis')[0].url));
+        assert.ok(/diag_analysis\?select=\*&status=neq\.ignored&order=ts\.desc&limit=20/.test(C.urlsOf('/diag_analysis')[0].url));
       } finally { diagStop(def, ctx); }
       assert.strictEqual(ctx._timer, null, 'onHide 应停止 60s 定时器');
       assert.strictEqual(ctx._diagTimer, null, 'onHide 应停止 10s 轮询定时器');
@@ -3227,7 +3227,7 @@ function run(test) {
         post.data.forEach(function (row) {
           assert.ok(/^mp_/.test(row.id));
           assert.strictEqual(row.platform, 'mp');
-          assert.strictEqual(row.app_ver, '2.1.0');
+          assert.strictEqual(row.app_ver, '2.1.1');
           assert.strictEqual(row.sid, ID2.sid, 'client_diag RLS 要求 sid = auth_sid()（由 cloud.diagReport 补）');
           assert.ok(/^mp_[0-9a-f]+$/.test(row.fingerprint));
           assert.deepStrictEqual(Object.keys(row.device).sort(), DEVICE_KEYS.slice().sort(), '§B：device 只允许 8 个白名单字段');
@@ -3517,7 +3517,7 @@ function run(test) {
       assert.ok(/select=id,name,kind,status,detail,meta,checked_at&order=id/.test(C.urlsOf('/service_health')[0].url));
       // diagAnalyses / diagRepairs：查询契约 + 失败返回 null（页面保留上次数据）
       await cloud.diagAnalyses();
-      assert.ok(/diag_analysis\?select=\*&order=ts\.desc&limit=20/.test(C.urlsOf('/diag_analysis')[0].url));
+      assert.ok(/diag_analysis\?select=\*&status=neq\.ignored&order=ts\.desc&limit=20/.test(C.urlsOf('/diag_analysis')[0].url));
       await cloud.diagRepairs();
       assert.ok(/repair_tasks\?select=\*&order=created_at\.desc&limit=20/.test(C.urlsOf('/repair_tasks')[0].url));
       C.setReq(function (o) {
@@ -3980,7 +3980,7 @@ function run(test) {
       assert.ok(/stepSegments\(points\)/.test(pwPageSrc) && /changeDots\(points\)/.test(pwPageSrc) && /fillText\(this\._noUpd/.test(pwPageSrc), 'canvas 阶梯线 + 真实变化点 + 无更新提示文字');
       assert.ok(/近 30 天无变化/.test(pwPageSrc) && /_hist30/.test(pwPageSrc), 'hero 更新时间用 30d 真实变化点/无变化文案');
       assert.ok(!/zq_power_slow|slow.*SECTION_KEYS/.test(src('utils/privacy.js')), '慢频/30d 不新增 UD 同步字段');
-      assert.ok(/VERSION = '2\.1\.0'/.test(src('utils/version.js')), '版本号为 2.1.0');
+      assert.ok(/VERSION = '2\.1\.1'/.test(src('utils/version.js')), '版本号为 2.1.1');
     });
 
     await test('契约：privacy SECTION_KEYS 11 键（power → water 最后）/ DEFAULTS / 空 v6 与 merge 默认一致 / 14 顶层键', function () {

@@ -2,13 +2,13 @@
 
 面向高校班级的微信小程序：身份核验之后，把抽签、分组、课表、作业、通知、名单、点名、投票等班级事务放到一个入口里。
 
-![version](https://img.shields.io/badge/version-2.1.0-blue)
+![version](https://img.shields.io/badge/version-2.1.1-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![platform](https://img.shields.io/badge/platform-%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F-07C160)
 
 ## 简介
 
-班级工具站是原生微信小程序（WXML / WXSS / JavaScript），**不依赖 npm，没有构建链**，用微信开发者工具导入仓库根目录即可运行。
+班级工具站是原生微信小程序（WXML / WXSS / JavaScript），用微信开发者工具导入仓库根目录即可运行。项目使用微信基础库 3.x 的原生 JavaScript，关闭开发者工具的 ES6 转换与增强编译，避免包内引入未打包的 SWC 运行时模块。
 
 它和网页端、Android、鸿蒙、Windows 端共用同一套云数据契约：同一份班级身份、`userdata`（v6）、作业、通知、投票等数据在各端之间互通，换端不需要重新录入。
 

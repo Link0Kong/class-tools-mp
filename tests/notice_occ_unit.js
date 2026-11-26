@@ -549,7 +549,34 @@ async function run(test) {
     assert.ok(!/url\(\s*['"]?https?:/i.test(wxss) && !/@import/.test(wxss), '不得引入外部资源');
   });
 
-  test('静态：nt.js 期次/统计接线（occOf/statOf/isOccRef/until）+ 无新增网络请求 + VERSION 2.1.0', function () {
+  await test('期次卡补详情使用基础组 ID，空详情和冷却安静降级，手动打开可重试', async function () {
+    const page = loadNtPage();
+    const cloud = require(path.join(ROOT, 'utils/cloud.js'));
+    const original = cloud.ntGroupFull;
+    const raw = { id: 'g_fixture', items: [{ kind: 'img', lazy: true }] };
+    const ctx = { _raw: [raw], _rawById: page._rawById, applyFilter() {} };
+    const requested = [];
+    const ref = 'g_fixture@occ:20261126';
+    let response = null;
+    cloud.ntGroupFull = gid => { requested.push(gid); return Promise.resolve(response); };
+    try {
+      const [a, b] = await Promise.all([page.refreshGroupBody.call(ctx, ref), page.refreshGroupBody.call(ctx, raw.id)]);
+      assert.strictEqual(a, null);
+      assert.strictEqual(b, null);
+      assert.deepStrictEqual(requested, [raw.id]);
+      assert.strictEqual(page._needsGroupBody.call(ctx, raw), false);
+      assert.strictEqual(await page.refreshGroupBody.call(ctx, ref), null);
+      assert.deepStrictEqual(requested, [raw.id]);
+      response = { id: raw.id, items: [] };
+      assert.strictEqual(await page.refreshGroupBody.call(ctx, ref, true), response);
+      assert.deepStrictEqual(requested, [raw.id, raw.id]);
+      assert.strictEqual(ctx._raw[0], response);
+    } finally {
+      cloud.ntGroupFull = original;
+    }
+  });
+
+  test('静态：nt.js 期次/统计接线（occOf/statOf/isOccRef/until）+ 无新增网络请求 + VERSION 2.1.1', function () {
     const js = src('pages/nt/nt.js');
     assert.ok(/notice\.statOf\(rawAll, doneMap, now\)/.test(js), '统计走 utils/notice.statOf（§2.4 单一真源）');
     assert.ok(/notice\.occOf\(go, now\)/.test(js), 'applyFilter 应用期次窗口算法');
@@ -568,7 +595,7 @@ async function run(test) {
     assert.ok(/notice\.occOf\(g, now\)/.test(indexJs) && /done\[occ\.key\]/.test(indexJs), '工作台期次计入轮换');
     assert.ok(/notice\.isLongterm\(g, now\)/.test(indexJs), '工作台资料/长期定义不计');
     assert.ok(/notice\.hasTimeAnchor\(g\)/.test(indexJs), '工作台无时间资料不计');
-    assert.ok(/VERSION\s*=\s*'2\.1\.0'/.test(src('utils/version.js')), 'VERSION 必须为 2.1.0');
+    assert.ok(/VERSION\s*=\s*'2\.1\.1'/.test(src('utils/version.js')), 'VERSION 必须为 2.1.1');
     // 红线：不发真实请求的静态保证（云端只经 utils/cloud；页面不直连 URL）
     assert.ok(js.indexOf('https://') < 0 || js.indexOf('https://') === js.lastIndexOf('https://'), 'nt.js 不应新增外链');
   });

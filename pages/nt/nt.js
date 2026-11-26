@@ -890,7 +890,8 @@ Page({
   //   b) 旧缓存里「无 url、也无 archive」的文件（数据管线后补 archive、ts 未变）。
   _needsGroupBody(g) {
     if (!g) return false;
-    if (this._bodyTried && this._bodyTried[g.id]) return false;
+    if ((this._bodyTried && this._bodyTried[g.id]) ||
+        (this._bodyFailAt && Date.now() - this._bodyFailAt[g.id] < 10000)) return false;
     return (g.items || []).some(function (it) {
       if (!it) return false;
       if (it.kind === 'img' && it.lazy) return true;
@@ -898,19 +899,22 @@ Page({
     });
   },
   // 按 id 拉单条完整 body（data URI 在内存里用，不回写持久缓存）；并发去重。
-  // manual=true（用户点附件/图片）允许重试；自动路径用 _bodyTried 负缓存，防止「文件确实未获取」
-  // 的卡片每次 applyFilter 都重新拉同一行（2026-11-17 实测死循环 84 次/页）。
+  // 期次卡共享基础通知的请求与缓存。详情缺失时保留轻量卡片，手动打开附件可立即重试。
   refreshGroupBody(gid, manual) {
+    gid = notice.baseGidOfRef(gid);
     this._bodyPending = this._bodyPending || {};
     this._bodyTried = this._bodyTried || {};
     this._bodyFailAt = this._bodyFailAt || {};
     if (!manual && this._bodyTried[gid]) return Promise.resolve(this._rawById(gid));
-    if (!manual && this._bodyFailAt[gid] && Date.now() - this._bodyFailAt[gid] < 10000) {
-      return Promise.reject(new Error('body-cooldown'));
+    if (!manual && Date.now() - this._bodyFailAt[gid] < 10000) {
+      return Promise.resolve(null);
     }
     if (this._bodyPending[gid]) return this._bodyPending[gid];
     const p = cloud.ntGroupFull(gid).then((g) => {
-      if (!g) throw new Error('no-body');
+      if (!g) {
+        this._bodyFailAt[gid] = Date.now();
+        return null;
+      }
       this._bodyTried[gid] = true;
       delete this._bodyFailAt[gid];
       const i = (this._raw || []).findIndex(function (x) { return x.id === gid; });
@@ -919,9 +923,6 @@ Page({
       this._all = this._raw.map(function (raw) { return mapGroup(raw); });
       this.applyFilter();
       return g;
-    }).catch((e) => {
-      this._bodyFailAt[gid] = Date.now();
-      throw e;
     }).then((g) => {
       delete this._bodyPending[gid];
       return g;
@@ -967,11 +968,11 @@ Page({
     if (!all.length) { this._imgs[gid] = []; return Promise.resolve([]); }
     // lite 列表的图片 data URI 已置空：先拉单条完整 body，再走原有落盘流程（只拉一次，按卡片懒加载）
     if (all.some(function (x) { return !x.src && x.lazy; })) {
-      if (this._bodyTried && this._bodyTried[gid]) { this._imgs[gid] = []; return Promise.resolve([]); }
+      if (this._bodyTried && this._bodyTried[g.id]) { this._imgs[gid] = []; return Promise.resolve([]); }
       this._loadingImgs[gid] = true;
-      return this.refreshGroupBody(gid).then(() => {
+      return this.refreshGroupBody(gid).then((body) => {
         this._loadingImgs[gid] = false;
-        return this.ensureImgs(gid);
+        return body ? this.ensureImgs(gid) : [];
       }).catch((e) => {
         this._loadingImgs[gid] = false;
         return [];
@@ -1596,7 +1597,7 @@ Page({
     if (!first) return Promise.reject(new Error('no-item'));
     const ready = (first.url || first.src)
       ? Promise.resolve(first)
-      : (first.lazy ? this.refreshGroupBody(gid, true).then(itemOf) : Promise.reject(new Error('no-url')));
+      : (first.lazy ? this.refreshGroupBody(gid, true).then((body) => body && itemOf()) : Promise.reject(new Error('no-url')));
     return ready.then((it) => {
       if (!it) throw new Error('no-item');
       const url = it.url || it.src || '';
@@ -1616,7 +1617,7 @@ Page({
     if (!first) return Promise.reject(new Error('no-archive-file'));
     const ready = (first.url || first.src)
       ? Promise.resolve(first)
-      : (first.lazy ? this.refreshGroupBody(gid, true).then(fileOf) : Promise.reject(new Error('no-url')));
+      : (first.lazy ? this.refreshGroupBody(gid, true).then((body) => body && fileOf()) : Promise.reject(new Error('no-url')));
     return ready.then((f) => {
       if (!f) throw new Error('no-archive-file');
       const url = f.url || f.src || '';

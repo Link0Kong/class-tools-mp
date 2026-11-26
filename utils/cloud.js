@@ -2057,11 +2057,11 @@ function diagAgentInfo() {
     };
   });
 }
-// AI 分析结论（契约 §2：GET diag_analysis?select=*&order=ts.desc&limit=20）
+// AI 分析结论（历史已忽略项由服务控制台保留）。
 // 失败返回 null（页面保留上次数据，10s 轮询的瞬时失败不把 AI 行闪没）
 function diagAnalyses() {
   if (!identity.has() || !isEnabled()) return Promise.resolve([]);
-  const q = 'select=*&order=ts.desc&limit=20';
+  const q = 'select=*&status=neq.ignored&order=ts.desc&limit=20';
   return request('GET', CONFIG.restBase + CONFIG.tables.diagAnalysis + '?' + q, undefined, headers(false))
     .then(function (list) { return Array.isArray(list) ? list : []; })
     .catch(function () { return null; });
