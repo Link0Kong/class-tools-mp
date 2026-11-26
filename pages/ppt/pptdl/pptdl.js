@@ -19,6 +19,7 @@ const identity = require('../../../utils/identity.js');
 const ppt = require('../utils/ppt.js');
 const util = require('../../../utils/util.js');
 const share = require('../../../utils/share.js');
+const cloudspace = require('../../../utils/cloudspace.js');
 
 Page({
   data: {
@@ -27,7 +28,8 @@ Page({
     errorDetail: '',          // 转换失败/状态详情（页面短文案）
     d: null,                  // ppt.downloadDetailView 视图
     dl: null,                 // 下载中 {key,on,pct,text}（同一时刻只下载一个）
-    shareSupported: false     // wx.shareFileMessage 可用（基础库/端能力）
+    shareSupported: false,    // wx.shareFileMessage 可用（基础库/端能力）
+    transfer: false
   },
 
   onLoad(options) {
@@ -35,6 +37,8 @@ Page({
     this._loaded = false;
     this._id = '';
     try { this._id = decodeURIComponent(String((options && options.id) || '')); } catch (e) { this._id = String((options && options.id) || ''); }
+    this._fileId = String((options && options.fileId) || '');
+    this._sessionId = String((options && options.sessionId) || '');
     this._m = null;
     this._deck = null;
     this._files = {};       // key → {path,name}（已下载临时文件，转发时直接复用）
@@ -44,6 +48,16 @@ Page({
     this._retryT = null;
     this._denied = !identity.has();
     if (this._denied) { this.setData({ state: 'denied' }); return; }
+    if (this._fileId) {
+      if (!/^[0-9a-f]{16}$/.test(this._fileId) || !/^[0-9a-f]{16}$/.test(this._sessionId)) {
+        this._fileId = '';
+        this.setData({ state: 'error', errorText: '文件参数无效' });
+        return;
+      }
+      this.setData({ state: 'loading', transfer: true });
+      wx.setNavigationBarTitle({ title: '下载转换结果' });
+      return;
+    }
     if (!this._id) { this.setData({ state: 'error', errorText: '缺少演示参数' }); return; }
     this.setData({ state: 'loading' });
   },
@@ -51,7 +65,7 @@ Page({
   onShow() {
     share.enable();
     if (!identity.ensure()) return;
-    if (!this._loaded && this.data.state !== 'denied') this._load();
+    if (this._fileId || (!this._loaded && this._id && this.data.state !== 'denied')) this._load();
   },
 
   onUnload() {
@@ -63,6 +77,8 @@ Page({
   /* ---------------- 加载清单（§4.5 / §12.4.1） ---------------- */
   _load() {
     if (this._dead) return;
+    if (this._fileId) { this._loadTransfer(); return; }
+    if (!this._id) return;
     const self = this;
     if (!this._loaded) this.setData({ state: 'loading', errorText: '' });
     ppt.getManifest(this._id).then(function (r) {
@@ -103,6 +119,26 @@ Page({
       });
     });
   },
+  _loadTransfer() {
+    const sid = identity.sid();
+    const load = this._transferLoad = (this._transferLoad || 0) + 1;
+    if (!this._loaded || this._transferOwner !== sid) this.setData({ state: 'loading', d: null });
+    cloudspace.conversionResult(this._sessionId, this._fileId).then((r) => {
+      if (this._dead || this._transferLoad !== load || identity.sid() !== sid) return;
+      const manifest = ppt.normManifest(r.manifest);
+      this._transferOwner = sid;
+      this._loaded = true;
+      this._files = {};
+      if (!r.ok || !manifest) {
+        this.setData({ state: 'error', d: null, errorText: cloudspace.failText(r, '转换结果已不可用') });
+        return;
+      }
+      const view = ppt.downloadDetailView(manifest, { title: r.name, status: 'ready' }, {});
+      view.meta = '';
+      view.missingCompat = false;
+      this.setData({ state: 'ready', d: view, shareSupported: this._shareSupported() });
+    });
+  },
   retryLoad() {
     if (this._dead) return;
     this._loaded = false;
@@ -114,6 +150,7 @@ Page({
     try { return typeof wx.shareFileMessage === 'function'; } catch (e) { return false; }
   },
   _rowOf(key) {
+    if (this._fileId && this._transferOwner !== identity.sid()) return null;
     const d = this.data.d || {};
     const rows = (d.rows || []).concat(d.mediaRows || []);   // §12.8 视频/音频行同样可下载/取消/转发/复制链接
     for (let i = 0; i < rows.length; i++) if (rows[i].key === key) return rows[i];
@@ -134,16 +171,33 @@ Page({
   },
   _startDownload(row, after) {
     const self = this;
+    const sid = identity.sid();
+    const header = {};
+    if (this._fileId) {
+      if (row.url.indexOf(cloudspace.base() + '/ppt-result/') !== 0) {
+        util.toast('转换结果地址无效');
+        return;
+      }
+      header['X-Device-Id'] = identity.token();
+    }
     this._dlKey = row.key;
     this._dlAborted = false;
     this.setData({ dl: { key: row.key, on: true, pct: -1, text: ppt.downloadText(-1) } });
     try {
       const task = wx.downloadFile({
         url: row.url,
+        header: header,
         success: function (res) {
           self._dlTask = null;
           if (self._dead) return;
-          if (!res || res.statusCode !== 200 || !res.tempFilePath) { self._downloadFail(row); return; }
+          if (self._fileId && sid !== identity.sid()) { self.setData({ dl: null }); return; }
+          if (!res || res.statusCode !== 200 || !res.tempFilePath) {
+            self._downloadFail(row);
+            if (self._fileId && res && (res.statusCode === 401 || res.statusCode === 403 || res.statusCode === 404)) {
+              self._loadTransfer();
+            }
+            return;
+          }
           self._files[row.key] = { path: res.tempFilePath, name: row.name };
           self._dlKey = '';
           self.setData({ dl: null });
@@ -247,7 +301,7 @@ Page({
     }
     // 其它失败（基础库/模拟器不支持等）→ 有转发能力则降级转发，否则提示复制链接
     if (this._shareSupported()) { util.toast('保存失败，已改为转发'); this._shareLocal(row, path); return; }
-    util.toast('保存失败，可复制链接用播放器打开');
+    util.toast(this._fileId ? '保存失败' : '保存失败，可复制链接用播放器打开');
   },
   _openAudio(row, path) {
     const self = this;
@@ -264,7 +318,7 @@ Page({
   },
   _audioFallback(row, path) {
     if (this._shareSupported()) { this._shareLocal(row, path); return; }
-    util.toast('已下载，可复制链接用播放器打开');
+    util.toast(this._fileId ? '已下载' : '已下载，可复制链接用播放器打开');
   },
 
   /* ---------------- 转发 / 复制链接（§12.4.2） ---------------- */
@@ -285,7 +339,7 @@ Page({
         filePath: path,
         fileName: row.name,
         success: function () { /* 已转发到聊天/电脑 */ },
-        fail: function () { util.toast('转发失败，可复制链接'); }
+        fail: () => { util.toast(this._fileId ? '转发失败' : '转发失败，可复制链接'); }
       });
     } catch (e) {
       // 端能力不可用 → 降级复制链接
@@ -299,6 +353,7 @@ Page({
     this._copyUrl(row);
   },
   _copyUrl(row) {
+    if (this._fileId) return;
     if (!row || !row.url) { util.toast('暂无可下载链接'); return; }
     try {
       wx.setClipboardData({
@@ -318,7 +373,7 @@ Page({
 
   /* ---------------- 重新处理（旧 deck 补 compat / 失败重排；§12.3/§12.4.3） ---------------- */
   retryDeck() {
-    if (this._dead) return;
+    if (this._dead || this._fileId) return;
     const self = this;
     ppt.retryDeck(this._id).then(function (r) {
       if (!r.ok) { util.toast(r.reason || '提交失败'); return; }
@@ -340,6 +395,11 @@ Page({
   },
 
   onShareAppMessage() {
+    if (this._fileId) return share.message({
+      title: '班级工具｜文件传输',
+      path: '/pages/cloudspace/cloudspace',
+      imageUrl: '/images/share/default.png'
+    });
     return share.message({
       title: '班级工具｜演示下载',
       path: '/pages/ppt/pptdl/pptdl?id=' + encodeURIComponent(this._id || ''),
@@ -348,7 +408,7 @@ Page({
   },
   onShareTimeline() {
     return share.timeline({
-      title: '班级工具｜演示下载',
+      title: this._fileId ? '班级工具｜文件传输' : '班级工具｜演示下载',
       imageUrl: '/images/share/default.png'
     });
   }

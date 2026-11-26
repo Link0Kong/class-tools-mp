@@ -26,7 +26,8 @@ Page({
     count: 0,
     bytesText: '0 B',
     expired: 0,
-    uploading: 0
+    uploading: 0,
+    converting: {}
   },
 
   onLoad: function () {
@@ -34,6 +35,8 @@ Page({
     this._since = 0;
     this._pollTimer = 0;
     this._dead = false;
+    this._visible = false;
+    this._account = '';
     this._refreshIng = false;
     this._opened = {};
     try { this._opened = JSON.parse(wx.getStorageSync('zq_mp_file_opened_v1') || '{}') || {}; } catch (e) { this._opened = {}; }
@@ -53,6 +56,12 @@ Page({
 
   onShow: function () {
     share.enable();
+    this._visible = true;
+    const account = identity.sid();
+    if (this._account !== account) {
+      this._account = account;
+      this.resetSession();
+    }
     if (!identity.ensure()) return;
     this._dead = false;
     if (!this._sessionId) this.boot();
@@ -60,8 +69,8 @@ Page({
     this.startPoll();
   },
 
-  onHide: function () { this.stopPoll(); },
-  onUnload: function () { this._dead = true; this.stopPoll(); },
+  onHide: function () { this._visible = false; this.stopPoll(); },
+  onUnload: function () { this._dead = true; this._visible = false; this.stopPoll(); },
   onPullDownRefresh: function () {
     var that = this;
     this.refresh(true).then(function () { try { wx.stopPullDownRefresh(); } catch (e) {} });
@@ -82,11 +91,21 @@ Page({
   },
 
   // ---------------------------------------------------------------- 云空间连接
+  resetSession: function () {
+    this.stopPoll();
+    this._sessionId = '';
+    this._since = 0;
+    this._refreshIng = false;
+    this._refreshAgain = false;
+    this.setData({ files: [], ups: [], count: 0, bytesText: '0 B', expired: 0, converting: {} });
+  },
+
   boot: function () {
     var that = this;
+    var account = this._account;
     this.setData({ loading: true, err: '' });
     cloudspace.mine().then(function (r) {
-      if (that._dead) return null;
+      if (that._dead || identity.sid() !== account) return null;
       if (r && !r.ok) {
         that.setData({ loading: false, err: cloudspace.failText(r, '云空间连接失败') });
         return null;
@@ -103,7 +122,7 @@ Page({
       that.setData({ loading: false, err: '云空间服务不可达' });
       return null;
     }).then(function (sess) {
-      if (!sess || that._dead) return;
+      if (!sess || that._dead || identity.sid() !== account) return;
       that._sessionId = String(sess.id || '');
       that._since = 0;
       that.startPoll();
@@ -113,12 +132,23 @@ Page({
 
   refresh: function (force) {
     var that = this;
-    if (!this._sessionId || this._refreshIng) return Promise.resolve(false);
+    if (!this._sessionId) return Promise.resolve(false);
+    if (this._refreshIng) {
+      this._refreshAgain = this._refreshAgain || !!force;
+      return Promise.resolve(false);
+    }
+    var session = this._sessionId;
+    var account = this._account;
     this._refreshIng = true;
-    return cloudspace.state(this._sessionId, force ? 0 : (this._since || 0)).then(function (r) {
-      that._refreshIng = false;
-      if (that._dead) return false;
+    return cloudspace.state(session, force ? 0 : (this._since || 0), true).then(function (r) {
+      if (that._dead || identity.sid() !== account || that._sessionId !== session) return false;
       if (!r || !r.ok) {
+        if (r && (r.status === 403 || r.status === 404)) {
+          that.resetSession();
+          if (that._visible) that.boot();
+          return false;
+        }
+        if (r && r.dropReason === 'token') that.setData({ files: [], count: 0, bytesText: '0 B' });
         that.setData({ loading: false, err: cloudspace.failText(r, '连接中断') });
         return false;
       }
@@ -141,15 +171,26 @@ Page({
       that.startPoll();
       return true;
     }).catch(function () {
-      that._refreshIng = false;
-      that.setData({ loading: false, err: '网络不可用，稍后重试' });
+      if (!that._dead && identity.sid() === account && that._sessionId === session) {
+        that.setData({ loading: false, err: '网络不可用，稍后重试' });
+      }
       return false;
+    }).then(function (ok) {
+      if (that._sessionId === session && that._account === account) {
+        that._refreshIng = false;
+        if (that._refreshAgain && that._visible) {
+          that._refreshAgain = false;
+          that.refresh(true);
+        }
+      }
+      return ok;
     });
   },
 
   startPoll: function () {
     var that = this;
     this.stopPoll();
+    if (!this._visible) return;
     this._pollTimer = setInterval(function () {
       if (that._dead) return;
       that.refresh(false);
@@ -267,6 +308,40 @@ Page({
   },
 
   // ---------------------------------------------------------------- 下载 / 删除 / 清空
+  conversionAction: function (e) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const file = this.data.files.find(function (row) { return row.id === id; });
+    if (!file || !file.conversionAction || this.data.converting[id]) return;
+    const session = this._sessionId;
+    const account = this._account;
+    const act = () => {
+      if (identity.sid() !== account || this._sessionId !== session
+          || !this.data.files.some(function (row) { return row.id === id; })
+          || this.data.converting[id]) return;
+      if (file.conversion && file.conversion.status === 'ready') {
+        wx.navigateTo({ url: '/pages/ppt/pptdl/pptdl?fileId=' + encodeURIComponent(id) +
+          '&sessionId=' + encodeURIComponent(session) });
+        return;
+      }
+      const retry = file.conversion && file.conversion.status === 'failed' ? file.conversion.attempt : null;
+      this.setData({ converting: Object.assign({}, this.data.converting, { [id]: true }) });
+      cloudspace.submitConversion(session, id, retry).then((r) => {
+        if (this._dead || identity.sid() !== account || this._sessionId !== session) return;
+        if (!r.ok) util.toast(cloudspace.failText(r, '提交转换失败'));
+        this.refresh(true).then(() => {
+          if (!this._dead && identity.sid() === account && this._sessionId === session) {
+            const converting = Object.assign({}, this.data.converting);
+            delete converting[id];
+            this.setData({ converting: converting });
+          }
+        });
+      });
+    };
+    if (e.currentTarget.dataset.more && typeof wx.showActionSheet === 'function') {
+      wx.showActionSheet({ itemList: [file.conversionAction], success: act });
+    } else act();
+  },
+
   download: function (e) {
     var id = String((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id) || '');
     var f = null;
@@ -365,9 +440,7 @@ Page({
             that.refresh(true);
             return;
           }
-          that._sessionId = '';
-          that._since = 0;
-          that.setData({ files: [], ups: [], count: 0, bytesText: '0 B', expired: 0 });
+          that.resetSession();
           util.toast('云空间已清空');
           that.boot();
         }).catch(function () { util.toast('网络不可用，清空未完成'); });

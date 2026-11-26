@@ -96,7 +96,7 @@
           <view class="dl-row-sub">
             <text wx:if="{{shareSupported}}" class="dl-subbtn" data-key="{{item.key}}"
                   bindtap="shareFile">转发到聊天/电脑</text>
-            <text class="dl-subbtn" data-key="{{item.key}}" bindtap="copyLink">复制链接</text>
+            <text wx:if="{{!transfer}}" class="dl-subbtn" data-key="{{item.key}}" bindtap="copyLink">复制链接</text>
           </view>
         </view>
       </view>
@@ -128,7 +128,7 @@
           <view class="dl-row-sub">
             <text wx:if="{{shareSupported}}" class="dl-subbtn" data-key="{{item.key}}"
                   bindtap="shareFile">转发到聊天/电脑</text>
-            <text class="dl-subbtn" data-key="{{item.key}}" bindtap="copyLink">复制链接</text>
+            <text wx:if="{{!transfer}}" class="dl-subbtn" data-key="{{item.key}}" bindtap="copyLink">复制链接</text>
           </view>
         </view>
       </view>

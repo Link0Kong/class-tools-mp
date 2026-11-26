@@ -17,6 +17,7 @@
 
 const CHUNK = 8388608;                 // 与 drop 服务/IOS 网页一致的 8MiB 分片
 const TTL_MS = 3 * 24 * 3600 * 1000;   // 文件自上传完成起 72h
+const ppt = require('../pages/ppt/utils/ppt.js');
 
 function config() {
   try { return require('./cloud-config.js') || {}; } catch (e) { return {}; }
@@ -66,6 +67,7 @@ function request(method, path, data, opt) {
         if (!j || typeof j !== 'object') j = { ok: false, reason: '服务响应异常' };
         if (res && res.statusCode >= 400) {
           j.ok = false;
+          j.status = res.statusCode;
           if (!j.reason) j.reason = res.statusCode === 507 ? '服务器空间不足' : ('服务错误 ' + res.statusCode);
           const rh = (res && res.header) || {};
           const kind = rh['X-Drop-Reason'] || rh['x-drop-reason'] || '';
@@ -94,9 +96,18 @@ function mine() { return request('GET', '/mine'); }
 function open() { return request('POST', '/open', {}); }
 // v2.5：all=1 → 服务端随事件返回**当前有效文件清单**（files / expiredNotice）。
 // 事件表只保留最近 500 条，只按事件渲染会在「重新打开 / 换端 / 事件被截断」时看不到文件。
-function state(sessionId, since) {
+function state(sessionId, since, withPpt) {
   return request('GET', '/state?sessionId=' + encodeURIComponent(String(sessionId)) +
-    '&all=1&since=' + Number(since || 0));
+    '&all=1&since=' + Number(since || 0) + (withPpt ? '&ppt=1' : ''));
+}
+function submitConversion(sessionId, fileId, retryAttempt) {
+  const body = { sessionId: sessionId };
+  if (retryAttempt) body.retryAttempt = retryAttempt;
+  return request('POST', '/ppt/' + encodeURIComponent(String(fileId)), body, { timeout: 12000 });
+}
+function conversionResult(sessionId, fileId) {
+  return request('GET', '/ppt/' + encodeURIComponent(String(fileId)) +
+    '?sessionId=' + encodeURIComponent(String(sessionId)));
 }
 function initUpload(sessionId, name, size, mime, totalChunks) {
   return request('POST', '/upload/init', {
@@ -230,14 +241,30 @@ function spaceView(events, now) {
 // v2.5：服务端权威清单（/state?all=1 的 files）→ 与 spaceView 同形状。
 // 事件表会被截断（最近 500 条）且「since 之后没有新事件」不等于「没有文件」，
 // 因此文件列表必须以这里为准；事件只用于「本次增量」提示（如 toast「收到新文件」）。
-function listView(files, now, expiredNotice) {
+function conversionView(row, job, enabled) {
+  if (job) row.conversion = job;
+  if (!job) {
+    if (enabled && ppt.validateFile(row).ok) row.conversionAction = '转换';
+  } else if (job.status === 'queued') row.conversionText = '等待处理';
+  else if (job.status === 'processing') {
+    row.conversionText = '转换中' + (job.progress > 0 ? ' ' + job.progress + '%' : '');
+  } else if (job.status === 'ready') row.conversionAction = '下载转换结果';
+  else if (job.status === 'failed') {
+    row.conversionText = '转换失败';
+    if (enabled) row.conversionAction = '重试转换';
+  }
+  return row;
+}
+
+function listView(files, now, expiredNotice, pptEnabled) {
   const live = (files || []).filter(function (f) { return f && f.id && !f.expired; });
   live.sort(function (a, b) { return (Number(b.at) || 0) - (Number(a.at) || 0); });
   let bytes = 0;
   live.forEach(function (f) { bytes += Number(f.size) || 0; });
   const out = live.map(function (f) {
-    return fileView({ id: f.id, name: f.name, size: f.size, mime: f.mime,
+    const row = fileView({ id: f.id, name: f.name, size: f.size, mime: f.mime,
       url: f.downloadUrl, expired: false, at: Number(f.at) || 0 }, now);
+    return conversionView(row, f.conversion, pptEnabled);
   });
   return {
     files: out,
@@ -250,7 +277,7 @@ function listView(files, now, expiredNotice) {
 
 // 响应 → 视图（优先用服务端 files；旧服务端没有 files 时回退事件合并）
 function respView(resp, now) {
-  if (resp && resp.files instanceof Array) return listView(resp.files, now, resp.expiredNotice);
+  if (resp && resp.files instanceof Array) return listView(resp.files, now, resp.expiredNotice, resp.pptConversion === true);
   return spaceView((resp && resp.events) || [], now);
 }
 
@@ -275,6 +302,7 @@ module.exports = {
   CHUNK: CHUNK, TTL_MS: TTL_MS,
   base: base, envVersion: envVersion, request: request, failText: failText,
   mine: mine, open: open, state: state,
+  submitConversion: submitConversion, conversionResult: conversionResult,
   initUpload: initUpload, chunkUpload: chunkUpload, finishUpload: finishUpload,
   deleteFile: deleteFile, closeSpace: closeSpace,
   chunkPlan: chunkPlan, fmtSize: fmtSize, fullTime: fullTime, ttlText: ttlText,

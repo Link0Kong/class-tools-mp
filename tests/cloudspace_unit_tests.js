@@ -161,6 +161,26 @@ function run(outerTest) {
     assert.strictEqual(legacy.count, 1);
     assert.strictEqual(legacy.files[0].id, 'z');
   });
+  T('A9a PPT 文件行复用服务端任务状态，原件下载链接独立', function () {
+    const now = 1700000000000;
+    const samples = [
+      { name: '讲义.pdf' }, { name: '第三组汇报.PPTX' },
+      { name: '排队.ppt', conversion: { status: 'queued', attempt: 1 } },
+      { name: '处理中.pptx', conversion: { status: 'processing', progress: 35, attempt: 1 } },
+      { name: '已完成.pptx', conversion: { status: 'ready', attempt: 1 } },
+      { name: '失败.pptx', conversion: { status: 'failed', attempt: 2 } }
+    ].map(function (row, i) {
+      return Object.assign({ id: String(i), at: now - i, size: 100, downloadUrl: 'https://drop.test/file/' + i }, row);
+    });
+    const v = cs.respView({ files: samples, pptConversion: true }, now);
+    assert.deepStrictEqual(v.files.map((row) => row.conversionAction),
+      [undefined, '转换', undefined, undefined, '下载转换结果', '重试转换']);
+    assert.deepStrictEqual(v.files.map((row) => row.conversionText),
+      [undefined, undefined, '等待处理', '转换中 35%', undefined, '转换失败']);
+    assert.strictEqual(v.files[4].url, samples[4].downloadUrl);
+    assert.strictEqual(v.files[5].conversion.attempt, 2);
+    assert.strictEqual(cs.respView({ files: samples.slice(1, 2) }, now).files[0].conversionAction, undefined);
+  });
   T('A10 fileIdsOf：只取 file 事件的 fileId（增量提示用）', function () {
     const ids = cs.fileIdsOf([
       { kind: 'file', payload: { fileId: 'f1' } },
@@ -199,6 +219,20 @@ function run(outerTest) {
     mockRequest.log = [];
     cs.state('s', 7);
     assert.ok(lastReq().url.indexOf('&since=7') > 0, lastReq().url);
+  });
+  T('B3a PPT 查询、提交和重试都沿用文件传输的身份与文件 ID', function () {
+    mockRequest.log = [];
+    cs.state('s', 7, true);
+    assert.ok(lastReq().url.endsWith('&since=7&ppt=1'));
+    cs.submitConversion('s', 'f');
+    assert.ok(lastReq().url.endsWith('/ppt/f'));
+    assert.deepStrictEqual(lastReq().data, { sessionId: 's' });
+    cs.submitConversion('s', 'f', 2);
+    assert.deepStrictEqual(lastReq().data, { sessionId: 's', retryAttempt: 2 });
+    cs.conversionResult('s', 'f');
+    assert.strictEqual(lastReq().method, 'GET');
+    assert.ok(lastReq().url.endsWith('/ppt/f?sessionId=s'));
+    assert.strictEqual(lastReq().header['X-Device-Id'], 'tok-cloudspace');
   });
   T('B4 /upload/chunk：原始字节 + octet-stream + uploadId/index', function () {
     mockRequest.log = [];

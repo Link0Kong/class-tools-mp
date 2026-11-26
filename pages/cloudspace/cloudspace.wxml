@@ -52,10 +52,17 @@
         <view class="cs-file-ico">{{item.ico}}</view>
         <view class="cs-file-main">
           <view class="cs-file-name">{{item.name}}</view>
-          <view class="cs-file-meta">{{item.sizeText}} · {{item.timeText}} · {{item.ttlText}}</view>
+          <view class="cs-file-meta"><text wx:if="{{converting[item.id] || item.conversionText}}"
+            class="{{item.conversion.status === 'failed' ? 'cs-file-error' : ''}}">{{converting[item.id] ? '正在提交' : item.conversionText}} · </text>{{item.sizeText}} · {{item.timeText}} · {{item.ttlText}}</view>
         </view>
         <view class="cs-file-acts">
           <view class="cs-dl" hover-class="cs-hover" bindtap="download" data-id="{{item.id}}">{{item.opened ? '打开' : '下载'}}</view>
+          <block wx:if="{{item.conversionAction}}">
+            <view class="cs-dl cs-ppt-action" hover-class="cs-hover" bindtap="conversionAction"
+                  data-id="{{item.id}}">{{item.conversionAction}}</view>
+            <view class="cs-dl cs-ppt-more" hover-class="cs-hover" bindtap="conversionAction"
+                  aria-label="{{item.conversionAction}}" data-id="{{item.id}}" data-more="{{true}}">···</view>
+          </block>
           <view class="cs-del" hover-class="cs-hover" bindtap="del" data-id="{{item.id}}">删除</view>
         </view>
       </view>

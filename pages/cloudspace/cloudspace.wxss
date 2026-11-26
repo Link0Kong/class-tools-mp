@@ -72,6 +72,13 @@
 }
 .cs-dl { background: var(--md-primary-container); color: var(--md-on-primary-container); }
 .cs-del { background: var(--md-surface-container-high); color: var(--md-error, #9A3D2B); }
+.cs-file-error { color: var(--md-error, #9A3D2B); }
+.cs-ppt-action { padding: 0 14rpx; white-space: nowrap; }
+.cs-ppt-more { display: none; }
+@media (max-width: 385px) {
+  .cs-ppt-action { display: none; }
+  .cs-ppt-more { display: flex; min-width: 48rpx; padding: 0 10rpx; }
+}
 
 .cs-expired { margin-top: 16rpx; font-size: 22rpx; color: var(--md-on-surface-variant); }
 .cs-note { padding: 4rpx 8rpx; font-size: 22rpx; line-height: 1.65; color: var(--md-on-surface-variant); }
