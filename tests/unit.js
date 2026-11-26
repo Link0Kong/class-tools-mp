@@ -2542,6 +2542,15 @@ const fakeCanvas = (() => {
     const rest = tt.plan(src.courses, src.term, new Date(2026, 7, 31, 8, 50));
     assert.deepStrictEqual(rest.today.map(s => s.state), ['done', 'next']);
     assert.strictEqual(rest.next.startText, '09:00');
+    const double = [{ ...course, end: 2 }];
+    const rowAt = (h, m, s = 0) => tt.plan(double, src.term, new Date(2026, 7, 31, h, m, s)).today[0];
+    assert.strictEqual(rowAt(7, 59, 59).minutes, 11);
+    assert.strictEqual(rowAt(8, 0).minutes, 10);
+    assert.strictEqual(rowAt(8, 49, 59).minutes, 1);
+    assert.strictEqual(rowAt(8, 50).state, 'next');
+    assert.strictEqual(rowAt(8, 50).minutes, 10);
+    assert.strictEqual(rowAt(9, 0).minutes, 40);
+    assert.strictEqual(rowAt(9, 40).minutes, 0);
     const bell = tt.plan(src.courses, src.term, new Date(2026, 7, 31, 9, 0));
     assert.deepStrictEqual(bell.today.map(s => [s.name, s.state]), [['数学', 'done'], ['英语', 'ongoing']]);
     assert.strictEqual(bell.next.name, '实践');

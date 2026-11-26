@@ -54,8 +54,8 @@
             <view class="wb-cls-name">{{item.name}}</view>
             <view class="wb-cls-meta">{{item.span}}<text wx:if="{{item.room}}"> · {{item.room}}</text></view>
           </view>
-          <text wx:if="{{item.state === 'ongoing'}}" class="pill pill--primary wb-cls-pill">上课中</text>
-          <text wx:elif="{{item.state === 'next' && today.next && item.bellAt === today.next.startAt}}" class="pill wb-cls-pill">下一节</text>
+          <text wx:if="{{item.state === 'ongoing'}}" class="pill pill--primary wb-cls-pill">距下课 {{item.minutes}} 分钟</text>
+          <text wx:elif="{{item.state === 'next' && today.next && item.bellAt === today.next.startAt}}" class="pill wb-cls-pill">{{10 >= item.minutes ? '距上课 ' + item.minutes + ' 分钟' : '下一节'}}</text>
         </view>
         <view wx:if="{{today.todayState === 'done'}}" class="wb-note">今日课程已结束<text wx:if="{{today.next}}"> · 下次 {{today.next.label}} {{today.next.name}}</text></view>
       </block>

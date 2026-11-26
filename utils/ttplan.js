@@ -85,6 +85,8 @@ function sessionsOn(courses, term, date, now) {
     const focus = period ? PERIODS[period - 1] : null;
     const bell = new Date(s);
     if (focus) bell.setHours(...focus[0].split(':').map(Number), 0, 0);
+    const finish = new Date(e);
+    if (focus) finish.setHours(...focus[1].split(':').map(Number), 0, 0);
     const state = now >= e ? 'done' : (now >= bell ? 'ongoing' : 'next');
     list.push({
       key: di + '-' + index,
@@ -99,7 +101,8 @@ function sessionsOn(courses, term, date, now) {
       bellAt: bell.getTime(),
       bellText: focus ? focus[0] : p1[0],
       endAt: e.getTime(),
-      state: state
+      state: state,
+      minutes: state === 'done' ? 0 : Math.ceil(((state === 'ongoing' ? finish : bell) - now) / 60000)
     });
   });
   list.sort(function (a, b) { return a.startAt - b.startAt; });
