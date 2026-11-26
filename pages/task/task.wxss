@@ -87,7 +87,7 @@
 .tk-ai-hint { margin: 14rpx 0; color: var(--md-on-surface-variant); font-size: 25rpx; line-height: 1.5; }
 .tk-ai-actions { display: flex; flex-wrap: wrap; gap: 10rpx; justify-content: flex-end; margin-top: 20rpx; }
 .tk-ai-actions .m3-btn { flex: 0 0 auto; width: auto; min-width: 0; margin: 0; }
-.tk-ai-choice { display: block; width: 100%; max-width: none; box-sizing: border-box; padding: 16rpx 22rpx; margin: 10rpx 0; text-align: left;
+.tk-ai-choice { display: block; box-sizing: border-box; padding: 16rpx 22rpx; text-align: left;
   border: 1rpx solid var(--md-outline-variant); border-radius: var(--md-shape-md); background: var(--md-surface-container-lowest);
   color: var(--md-on-surface); line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
 .tk-ai-choice-title { font-size: 29rpx; font-weight: 700; }

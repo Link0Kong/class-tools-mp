@@ -206,7 +206,7 @@
     <view wx:elif="{{ai.show}}">
       <view class="tk-ai-hint">选择一项填入新建任务，核对后再保存。</view>
       <view wx:if="{{ai.drafts.length >= 8}}" class="tk-ai-hint">本次已整理 8 项。如果原文还有其他待办，可以分批发送。</view>
-      <button wx:for="{{ai.drafts}}" wx:key="key" class="tk-ai-choice" data-index="{{index}}" bindtap="chooseAiDraft">
+      <button wx:for="{{ai.drafts}}" wx:key="key" class="tk-ai-choice" style="width:100%;margin:10rpx 0" data-index="{{index}}" bindtap="chooseAiDraft">
         <text class="tk-ai-choice-title">{{item.title}}</text>
         <view wx:if="{{item.due || item.steps.length}}" class="tk-ai-choice-meta">
           <text wx:if="{{item.due}}">{{item.due}}{{item.dueTime ? ' ' + item.dueTime : ''}}</text>
