@@ -788,7 +788,7 @@ function run(test) {
       ftDef.setGr.call(ftctx, { currentTarget: { dataset: { v: '12' } } });
       assert.strictEqual(store2.get().fit.grade, '12', 'fttable 选大一大二 → 写回 store.fit.grade');
       // 已持久化到本机存储（换页/重启后可读）
-      const persisted = JSON.parse(C.mem['zq_tools_v2']);
+      const persisted = JSON.parse(C.mem[require('../utils/store.js').KEY]);
       assert.strictEqual(persisted.fit.sex, 'm');
       assert.strictEqual(persisted.fit.grade, '12');
       // udSections（上云 body 的来源）也立即带上新值

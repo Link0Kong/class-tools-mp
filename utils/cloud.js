@@ -139,6 +139,18 @@ function dropSync(name) {
 }
 // 后台刷新完成 → 让当前页面自己重绘（页面实现 onCloudSync 即可）。
 // unit 测试里没有 getApp 时静默跳过，不抛错。
+function sessionChanged() {
+  udStop();
+  if (_notifyT) clearTimeout(_notifyT);
+  _notifyT = null;
+  _membersPulling = _marksPulling = _ntSync = _udPushing = null;
+  _marksAt = 0;
+  _udClearing = false;
+  _ntMem = { sid: '', at: 0, g: null, sig: '' };
+  _powerCache = null;
+  _powerHistCache = {};
+  Object.assign(NET, { hw:false, nt:false, ud:false, tested:false, lastOk:0, lastFail:0, failStreak:0, retryAt:0, ntCached:false });
+}
 function notifyPagesSoon() {
   if (_notifyT) return;
   _notifyT = setTimeout(function () {
@@ -275,7 +287,9 @@ function rawRequest(method, url, data, header, opts) {
   if (!isEnabled()) return Promise.reject(new Error('cloud-disabled'));
   // 无身份时绝不发数据请求；只有 class_verify（public）允许匿名发出
   if (!opts.public && !identity.has()) return Promise.reject(new Error('identity-required'));
+  const stale = () => !opts.public && opts.revision !== identity.revision();
   return scheduleRun(function () {
+    if (stale()) return Promise.reject(new Error('session-changed'));
     return new Promise(function (resolve, reject) {
       NET_STATS.requests += 1; NET_STATS.lastAt = Date.now();
       const o = {
@@ -285,6 +299,7 @@ function rawRequest(method, url, data, header, opts) {
         header: header,
         timeout: timeoutOf(opts),
         success: function (res) {
+          if (stale()) { reject(new Error('session-changed')); return; }
           const sc = (res && res.statusCode) || 0;
           if (sc >= 200 && sc < 300) { noteNetOk(); resolve(opts.fullResponse ? res : res.data); }
           else {
@@ -299,7 +314,7 @@ function rawRequest(method, url, data, header, opts) {
             reject(new Error('http' + sc));
           }
         },
-        fail: function (err) { noteNetFail(); reject(err || new Error('network')); }
+        fail: function (err) { if (stale()) { reject(new Error('session-changed')); return; } noteNetFail(); reject(err || new Error('network')); }
       };
       // HTTP/2：仅 https（微信基础库 2.10.4+ 支持；旧基础库/明文 http 忽略此选项）
       if (netOpt().enableHttp2 && /^https:\/\//i.test(url)) o.enableHttp2 = true;
@@ -311,7 +326,7 @@ function rawRequest(method, url, data, header, opts) {
 // GET 失败自动重试（默认 2 次尝试）；幂等只读 RPC 用 opts.retry=true 同样享受重试。
 // 写请求不重试，避免重复写入。瞬时 5xx（502/503/504）按可重试处理（幂等请求才可能走到这里）。
 function request(method, url, data, header, retried, opts) {
-  opts = opts || {};
+  opts = Object.assign({ revision: identity.revision() }, opts);
   const canRetry = method === 'GET' || !!opts.retry;
   const maxAttempts = canRetry ? (retried ? 1 : netOpt().retryAttempts) : 1;
   const shareKey = (canRetry && netOpt().coalesce && opts.coalesce !== false) ? (method + ' ' + (currentSid() || '') + ' ' + identity.revision() + ' ' + url) : '';
@@ -321,7 +336,7 @@ function request(method, url, data, header, retried, opts) {
       const msg = String((e && e.message) || '');
       const isHttp = msg.indexOf('http') === 0;
       const transient = /^http(502|503|504)$/.test(msg);
-      if (!canRetry || attempt + 1 >= maxAttempts || (isHttp && !transient)) throw e;
+      if ((!opts.public && opts.revision !== identity.revision()) || !canRetry || attempt + 1 >= maxAttempts || (isHttp && !transient)) throw e;
       NET_STATS.retries += 1;
       const base = netOpt().retryBaseMs;
       const wait = base * Math.pow(2, attempt) + Math.floor(Math.random() * 120);
@@ -458,6 +473,7 @@ function saveMembers(list) {
 }
 var _membersPulling = null;
 function classMembersPull(force) {
+  const revision = identity.revision();
   if (!identity.has() || !isEnabled()) return Promise.resolve([]);
   // 6h TTL：名单极少变化；本机 store 已有名单时直接返回，0 请求
   const local = members();
@@ -467,18 +483,20 @@ function classMembersPull(force) {
   if (_membersPulling) return _membersPulling;
   const p = request('POST', CONFIG.restBase + CONFIG.rpc.members, {}, headers(false))
     .then(function (raw) {
-      const list = Array.isArray(raw) ? raw : ((raw && Array.isArray(raw.data)) ? raw.data : []);
+      if (revision !== identity.revision()) return [];
+      const list = Array.isArray(raw) ? raw : raw && raw.data;
+      if (!Array.isArray(list)) return [];
       const arr = list.map(normalizeMember).filter(Boolean);
-      if (arr.length) saveMembers(arr);
+      if (!list.length || arr.length) saveMembers(arr);
       touchSync('members');
       return arr;
     })
     .catch(function () { return []; })
     .then(function (arr) {
-      _membersPulling = null;
+      if (_membersPulling === p) _membersPulling = null;
       return arr;
     }, function () {
-      _membersPulling = null;
+      if (_membersPulling === p) _membersPulling = null;
       return [];
     });
   _membersPulling = p;
@@ -534,12 +552,14 @@ function normalizeLeague(list) {
 }
 function league() { return (store.get().classLeague || []).slice(); }
 function leaguePull(force) {
+  const revision = identity.revision();
   if (!identity.has() || !isEnabled() || udOff()) return Promise.resolve(league());
   const d = store.get();
   const at = Number(d.classLeagueAt) || 0;
   if (!force && d.classLeague && d.classLeague.length && at && (Date.now() - at) < TTL.league) return Promise.resolve(league());
   return request('POST', CONFIG.restBase + CONFIG.rpc.league, {}, headers(false))
     .then(function (raw) {
+      if (revision !== identity.revision()) return [];
       const body = Array.isArray(raw) ? raw[0] : raw;
       const rows = (body && Array.isArray(body.seats)) ? body.seats : (Array.isArray(body) ? body : []);
       const arr = normalizeLeague(rows);
@@ -598,13 +618,15 @@ var _marksPulling = null;
 var _marksAt = 0;                 // 最近一次 marks 拉取结束时间（ms）——首屏提速：避免页面 onShow 与 app 预热重复强拉
 function marksFresh(ms) { return _marksAt > 0 && (Date.now() - _marksAt) < (Number(ms) || 5000); }
 function marksPull(force) {
+  const revision = identity.revision();
   const seat = currentSid();
   if (!seat || !isEnabled() || udOff()) return Promise.resolve(null);
   // 2 分钟 TTL：勾选状态变化不频繁，30s 轮询里大部分轮次 0 请求
   if (!force && syncFresh('marks', TTL.marks)) return Promise.resolve([]);
   if (_marksPulling) return _marksPulling;      // 单飞：多页面同时 onShow 只发一次
-  _marksPulling = request('GET', CONFIG.restBase + CONFIG.tables.marks + '?select=*&seat=eq.' + encodeURIComponent(seat), undefined, headers(false))
+  const p = request('GET', CONFIG.restBase + CONFIG.tables.marks + '?select=*&seat=eq.' + encodeURIComponent(seat), undefined, headers(false))
     .then(function (list) {
+      if (revision !== identity.revision()) return null;
       const dd = store.get();
       let changed = false;
       (list || []).forEach(function (x) {
@@ -637,23 +659,26 @@ function marksPull(force) {
       return list || [];
     })
     .catch(function () { return null; })
-    .then(function (r) { _marksPulling = null; return r; });
-  return _marksPulling;
+    .then(function (r) { if (_marksPulling === p) _marksPulling = null; return r; });
+  _marksPulling = p;
+  return p;
 }
 
 function markId(seat, kind, ref) { return seat + '|' + kind + '|' + ref; }
 function setMark(kind, ref, value) {
+  const revision = identity.revision();
   const seat = currentSid();
   applyMarkLocally(kind, ref, value);
   if (!seat || !ref) return Promise.resolve(false);
   // 云同步关闭 / 未配置 / 未登录：只落本机并进待补发队列，恢复后由 flushPending 补发（契约 §3.4）
   if (!isEnabled() || udOff()) { pushPending({ seat: seat, kind: kind, ref: ref, val: value }); return Promise.resolve(false); }
+  pushPending({ seat, kind, ref, val: value });
   const row = { id: markId(seat, kind, ref), seat: seat, kind: kind, ref: ref, val: !!value, ts: Date.now() };
   return cbUpsert(CONFIG.tables.marks, row).then(function () {
-    dropPending(seat, kind, ref);
+    if (revision !== identity.revision()) return false;
+    dropPending(seat, kind, ref, value);
     return true;
   }).catch(function () {
-    pushPending({ seat: seat, kind: kind, ref: ref, val: value });
     return false;
   });
 }
@@ -665,9 +690,9 @@ function pushPending(p) {
   d.markPend.push(p);
   store.save();
 }
-function dropPending(seat, kind, ref) {
+function dropPending(seat, kind, ref, value) {
   const d = store.get();
-  d.markPend = (d.markPend || []).filter(function (p) { return !(p.seat === seat && p.kind === kind && p.ref === ref); });
+  d.markPend = (d.markPend || []).filter(function (p) { return !(p.seat === seat && p.kind === kind && p.ref === ref && !!p.val === !!value); });
   store.save();
 }
 function pendCount() {
@@ -684,9 +709,9 @@ function flushPending() {
   const d = store.get();
   const jobs = [];
   (d.markPend || []).slice().forEach(function (p) {
-    if (!isEnabled() || !p.seat) return;
+    if (!isEnabled() || p.seat !== currentSid()) return;
     jobs.push(cbUpsert(CONFIG.tables.marks, { id: markId(p.seat, p.kind, p.ref), seat: p.seat, kind: p.kind, ref: p.ref, val: !!p.val, ts: Date.now() })
-      .then(function () { dropPending(p.seat, p.kind, p.ref); })
+      .then(function () { dropPending(p.seat, p.kind, p.ref, p.val); })
       .catch(function () { /* 留队列下次再试 */ }));
   });
   (d.homework || []).filter(function (x) { return x._pending; }).forEach(function (x) {
@@ -1013,7 +1038,7 @@ function ntSync(notifyOnChange) {
   }
   _ntSync = p;
   _ntSync.catch(function () { /* 失败静默：保留旧缓存，下次再校验 */ })
-    .then(function () { _ntSync = null; });
+    .then(function () { if (_ntSync === p) _ntSync = null; });
   return _ntSync;
 }
 
@@ -1516,7 +1541,7 @@ function udSetPend(v) {
   const next = !!v;
   if (d.udPend === next) return;
   d.udPend = next;
-  try { store.writeKey(store.KEY, d); } catch (e) { /* 落盘失败不影响业务 */ }
+  try { store.saveQuiet(); } catch (e) { /* 落盘失败不影响业务 */ }
 }
 
 // 「清除云端」抑制期：截止时间未到 → 不自动回推；用户显式改动同步内容时由 udTouch 解除
@@ -1526,7 +1551,7 @@ function udClearHold() {
   const d = store.get();
   if (!d.udHoldUntil) return;
   d.udHoldUntil = 0;
-  try { store.writeKey(store.KEY, d); } catch (e) { /* 落盘失败不影响业务 */ }
+  try { store.saveQuiet(); } catch (e) { /* 落盘失败不影响业务 */ }
 }
 
 // 云同步开关（契约 §3.4：关闭时不拉、不推、marks 写入入队；恢复后补推 + 拉一次）
@@ -1568,6 +1593,7 @@ function setCloudOff(off) {
 
 // 拉：GET userdata → merge(remote, local) → 应用 → 若本机改动赢/云端缺内容则排一次推送（契约 §3.4）
 function udPull(force) {
+  const revision = identity.revision();
   const sid = currentSid();
   if (!sid) return Promise.resolve({ ok: false, reason: '请先完成身份验证' });
   if (!isEnabled()) return Promise.resolve({ ok: false, reason: '未连接云端' });
@@ -1580,6 +1606,7 @@ function udPull(force) {
   udOwnedDirty().forEach(function (k) { view.at[k] = now; });   // 本机未推送的改动 → 抢占时间戳，不被旧云端值覆盖
   udMirrorPower(view);
   return cbById(CONFIG.tables.userdata, sid).then(function (row) {
+    if (revision !== identity.revision()) return { ok:false, reason:'身份已变更' };
     const remote = udParse(row && row.blob);
     const wasV5 = !!(remote && Number(remote.v) === 5);            // 契约 §3.3：v5 迁移后要写回 v6
     const merged = mergeUd(remote, view);
@@ -1604,6 +1631,7 @@ function udPull(force) {
     if (willPush) udPushSoon();
     return { ok: true, changed: changed, pushed: false, willPush: willPush, held: needPush && !willPush, migratedV5: false };
   }).catch(function () {
+    if (revision !== identity.revision()) return { ok: false, reason: '身份已变更' };
     NET.ud = false;
     return { ok: false, reason: '网络不可用，请稍后重试' };
   });
@@ -1613,6 +1641,7 @@ function udPull(force) {
 // force=true：无条件写回合并结果（v5 → v6 迁移用；否则「内容相同但云端仍是 v5」会被幂等判断跳过）
 // 另外只要远端 blob 还是 v5，即使非 force 也会把 v6 写回（兜底：任何一次 push 都完成迁移）。
 function udPush(force) {
+  const revision = identity.revision();
   const sid = currentSid();
   if (!sid) return Promise.resolve({ ok: false, reason: '请先完成身份验证' });
   if (!isEnabled()) return Promise.resolve({ ok: false, reason: '未连接云端，数据已保存在本机' });
@@ -1624,7 +1653,7 @@ function udPush(force) {
     if (!force) return _udPushing;
     // 已有推送在途：等它落定后再强制写回一次，避免 v5 迁移被幂等跳过
     return _udPushing.catch(function () { /* 前一次失败也继续尝试迁移写回 */ }).then(function () {
-      return udPush(true);
+      return revision === identity.revision() ? udPush(true) : { ok:false, reason:'身份已变更' };
     });
   }
   const view = udSections();
@@ -1632,6 +1661,7 @@ function udPush(force) {
   udOwnedDirty().forEach(function (k) { view.at[k] = now; });
   udMirrorPower(view);
   _udPushing = cbById(CONFIG.tables.userdata, sid).then(function (row) {
+    if (revision !== identity.revision()) return { ok:false, reason:'身份已变更' };
     const remote = udParse(row && row.blob);
     const merged = mergeUd(remote, view);
     const remoteNorm = mergeUd(remote, {});
@@ -1650,6 +1680,7 @@ function udPush(force) {
       return { ok: true, pushed: false, changed: false };
     }
     return cbUpsert(CONFIG.tables.userdata, { id: sid, blob: JSON.stringify(merged), ts: Date.now() }).then(function () {
+      if (revision !== identity.revision()) return { ok:false, reason:'身份已变更' };
       const d = store.get();
       d.udCache = merged;
       if (merged && merged.power && typeof merged.power === 'object') {
@@ -1662,11 +1693,14 @@ function udPush(force) {
       return { ok: true, pushed: true, changed: true };
     });
   }).catch(function (e) {
+    if (revision !== identity.revision()) return { ok: false, reason: '身份已变更' };
     udSetPend(true);
     NET.ud = false;
     return { ok: false, reason: '网络不可用，请稍后重试', error: e };
   });
-  _udPushing.then(function () { _udPushing = null; }, function () { _udPushing = null; });
+  const push = _udPushing;
+  const finish = () => { if (_udPushing === push) _udPushing = null; };
+  push.then(finish, finish);
   return _udPushing;
 }
 function udPushSoon() {
@@ -1705,11 +1739,13 @@ function udTouch() {
 
 // 拉取→合并→应用→必要时推送（契约 §5.2：返回 { ok, changed, pushed, reason }，不再用 conflict 弹窗语义）
 function udSync(manual) {
+  const revision = identity.revision();
   const sid = currentSid();
   if (!sid) return Promise.resolve({ ok: false, changed: false, pushed: false, reason: '请先完成身份验证' });
   if (!isEnabled()) return Promise.resolve({ ok: false, changed: false, pushed: false, reason: '未连接云端，数据已保存在本机' });
   if (udOff()) return Promise.resolve({ ok: false, changed: false, pushed: false, reason: '云同步已关闭' });
   return udPull(!!manual).then(function (r) {
+    if (revision !== identity.revision()) return { ok:false, reason:'身份已变更' };
     if (!r || !r.ok) return { ok: false, changed: false, pushed: false, reason: (r && r.reason) || '网络不可用，请稍后重试' };
     if (!r.willPush) return { ok: true, changed: !!r.changed, pushed: !!r.pushed, reason: '' };
     return udPush().then(function (p) {
@@ -1729,6 +1765,7 @@ function resolveUseLocal() { return udPush().then(function (p) { return !!(p && 
 // 本机数据保留（用户可另行「清除本机数据」）。清除成功后进入「抑制期」（udHoldUntil）：
 //   不自动回推云端；直到用户下一次显式修改同步内容时才把本机内容合并后重新上传（页面如实说明）。
 function udClearCloud() {
+  const revision = identity.revision();
   const sid = currentSid();
   if (!sid) return Promise.resolve({ ok: false, reason: '请先完成身份验证' });
   if (!isEnabled()) return Promise.resolve({ ok: false, reason: '未连接云端' });
@@ -1743,6 +1780,7 @@ function udClearCloud() {
   const settle = _udPushing ? _udPushing.catch(function () { /* 等在途推送落定，避免「先清后写」 */ }) : Promise.resolve();
   return settle
     .then(function () {
+      if (revision !== identity.revision()) throw new Error('session-changed');
       return cbUpsert(CONFIG.tables.userdata, { id: sid, blob: JSON.stringify(empty), ts: t0 });
     })
     .then(function () {
@@ -1784,7 +1822,7 @@ function udClearCloud() {
       _udClearing = false;
       return { ok: true, marks: markN, fitrecs: fitN, clearedAt: t0, holdUntil: d.udHoldUntil };
     })
-    .catch(function (e) { _udClearing = false; return { ok: false, reason: '网络不可用，请稍后重试', error: e }; });
+    .catch(function (e) { if (revision === identity.revision()) _udClearing = false; return { ok: false, reason: '网络不可用，请稍后重试', error: e }; });
 }
 
 // ---------------------------------------------------------------- 反馈建议
@@ -2449,6 +2487,7 @@ function ttLegacyFetch() {
   });
 }
 function ttFetch(force) {
+  const revision = identity.revision();
   if (!identity.has()) return Promise.reject(new Error('identity-required'));
   if (!isEnabled()) return Promise.reject(new Error('cloud-disabled'));
   if (udOff()) return Promise.reject(new Error('cloud-off'));
@@ -2461,7 +2500,9 @@ function ttFetch(force) {
     touchSync('tt');
     return body;
   }).catch(function () {
+    if (revision !== identity.revision()) throw new Error('session-changed');
     return ttLegacyFetch().then(function (data) {
+      if (revision !== identity.revision()) throw new Error('session-changed');
       touchSync('tt');
       return data;
     });
@@ -2473,6 +2514,7 @@ function ttFetch(force) {
 // 30s 轮询走 force=false：TTL 内 0 请求，过期表才刷新。
 // v19：加入用户数据 v6 双向同步 udSync（TTL 60s；force 立即；cloudOff 时整体短路，不拉不推）。
 function cloudPull(force) {
+  const revision = identity.revision();
   if (!isEnabled()) return Promise.resolve({ off: true });
   if (!identity.has()) return Promise.resolve({ off: false, identity: false });
   if (udOff()) return Promise.resolve({ off: true, cloudOff: true });
@@ -2484,6 +2526,7 @@ function cloudPull(force) {
   return Promise.all([
     marksPull(force), fitPull(force), hwPull(force), ntPull(force), ensureMembers(!!force), udSync(!!force)
   ]).then(function (r) {
+    if (revision !== identity.revision()) return { stale:true };
     flushPending();
     return { marks: r[0], fit: r[1], homework: r[2], notices: r[3], members: r[4], ud: r[5] };
   });
@@ -2516,6 +2559,7 @@ function netState() {
 }
 
 module.exports = {
+  sessionChanged,
   CONFIG: CONFIG, configure: configure, isEnabled: isEnabled, isReadyForSync: isReadyForSync,
   // 2026-11-18 自建后端切流 / 网络体验优化（只读探针/统计；页面不依赖，测试与诊断用）
   restInfo: restInfo, netStats: netStats, netReset: netReset, timeoutOf: timeoutOf,

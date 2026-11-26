@@ -312,7 +312,8 @@ async function run(test) {
 
   await test('页面：历史倒序/对比渲染、人数切换写回、保存与删除后重算（本机数据）', async function () {
     purge();
-    global.wx.removeStorageSync('zq_tools_v2');
+    setIdentity();
+    global.wx.removeStorageSync(R('utils/store.js').KEY);
     const store = R('utils/store.js');
     const def = loadPage('pages/water/water.js');
     setIdentity();
@@ -384,7 +385,8 @@ async function run(test) {
 
   await test('页面：未选择关注宿舍 → 只引导不渲染表单（0 请求 / 0 数据）', function () {
     purge();
-    global.wx.removeStorageSync('zq_tools_v2');
+    setIdentity();
+    global.wx.removeStorageSync(R('utils/store.js').KEY);
     global.wx.removeStorageSync('zq_power_sel_3260799999');
     const store = R('utils/store.js');
     store.reload();

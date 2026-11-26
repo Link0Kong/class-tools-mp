@@ -275,7 +275,7 @@ function pageCtx(def) {
     assert.strictEqual(saved.length, tools.TOOLS.length);
     // 落盘（重新 reload 仍一致）
     store.reload();
-    const raw = JSON.parse(mem['zq_tools_v2']);
+    const raw = JSON.parse(mem[require('../utils/store.js').KEY]);
     assert.deepStrictEqual(raw.toolOrder, saved, 'toolOrder 必须落盘到 zq_tools_v2');
     assert.deepStrictEqual(tools.toolOrder(), saved);
     // 拖一个没勾选的工具 → homeTools 内容不变
@@ -657,7 +657,7 @@ function pageCtx(def) {
     assert.strictEqual(ctx.data.dragging, false);
     const savedOrder = tools.toolOrder();
     assert.strictEqual(savedOrder.indexOf('tt'), 3, '松手后 toolOrder 应保留拖动后的顺序');
-    const raw = JSON.parse(mem['zq_tools_v2']);
+    const raw = JSON.parse(mem[require('../utils/store.js').KEY]);
     assert.strictEqual(raw.toolOrder.indexOf('tt'), 3, '拖动结果必须落盘到 zq_tools_v2');
     assert.deepStrictEqual(tools.homeTools(), ['hw', 'nt', 'ft', 'draw'], '未勾选工具的拖动不影响勾选集合');
     // 拖动对快捷顺序的影响：把已勾选的 draw 拖到最前 → 首页快捷顺序同步

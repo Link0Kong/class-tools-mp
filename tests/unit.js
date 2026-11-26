@@ -448,17 +448,17 @@ const fakeCanvas = (() => {
     assert.strictEqual(flow.getFlow().draw, null);
   });
 
-  await test('store：旧键 ziqi.tools.v1 迁移 + 固定单桶 + reset + 名单缓存默认值', () => {
+  await test('store：无归属旧键只读 + 账号独立存储 + reset + 名单缓存默认值', () => {
     const { store } = fresh();
     clearMem();
     mem['ziqi.tools.v1'] = JSON.stringify({ courses: [{ name: '高数' }], homework: [{ content: 'x' }], notices: [], termStart: '2026-09-07' });
-    assert.strictEqual(store.get().course.length, 1);
-    assert.strictEqual(store.get().termStart, '2026-09-07');
+    assert.strictEqual(store.readLegacy().course.length, 1);
+    assert.strictEqual(store.get().termStart, '');
     assert.deepStrictEqual(store.get().classMembers, []);
     assert.strictEqual(store.get().classRoster, '');
     store.get().roster = '1 甲';
     store.save();
-    assert.ok(mem['zq_tools_v2']);
+    assert.ok(mem[store.KEY]);
     store.reload();
     assert.strictEqual(store.get().roster, '1 甲');
     store.reset();
@@ -1753,7 +1753,7 @@ const fakeCanvas = (() => {
   function ttSeedStore(ttCache) {
     clearMem();
     setIdentity(ID);
-    mem['zq_tools_v2'] = JSON.stringify(ttCache ? { ttCache: ttCache } : {});
+    mem['zq_tools_v2_' + ID.sid] = JSON.stringify(ttCache ? { ttCache: ttCache } : {});
   }
   // onShow 用的页面 ctx：不预置 _courses，让 loadCached() 真正从本机渲染；setLog 记录每一次 setData
   function ttShowCtx(def) {
@@ -1850,7 +1850,7 @@ const fakeCanvas = (() => {
     const term = ttTerm4WeeksAgo();
     clearMem();
     setIdentity(ID);
-    mem['zq_tools_v2'] = JSON.stringify({ course: TT_ENTRY_C, termStart: term });   // v12 之前的本机课表字段
+    mem['zq_tools_v2_' + ID.sid] = JSON.stringify({ course: TT_ENTRY_C, termStart: term });   // v12 之前的本机课表字段
     ttEntryCloud();
     reqImpl = ttEntryReq({ c: TT_ENTRY_C, t: term, meta: { fetchedAt: Date.now() } });
     const ctx = ttShowCtx(def);

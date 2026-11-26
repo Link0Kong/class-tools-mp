@@ -8,12 +8,13 @@
 //   · 旧数据只有 draw 没有 drawLast：lastDraw() 自动回退到 draw，升级不报错、不丢结果。
 // 不占用主数据键 zq_tools_v2，单独使用 zq_flow。
 const FLOWKEY = 'zq_flow';
+const { keyFor } = require('./store.js');
 
 function empty() { return { draw: null, drawLast: null, group: null, updatedAt: 0 }; }
 
 function getFlow() {
   try {
-    const v = wx.getStorageSync(FLOWKEY);
+    const v = wx.getStorageSync(keyFor(FLOWKEY));
     if (!v) return empty();
     if (typeof v === 'string') { try { return JSON.parse(v) || empty(); } catch (e) { return empty(); } }
     return v;
@@ -22,7 +23,7 @@ function getFlow() {
 function setFlow(f) {
   f = f || empty();
   f.updatedAt = Date.now();
-  try { wx.setStorageSync(FLOWKEY, JSON.stringify(f)); } catch (e) { /* ignore */ }
+  try { wx.setStorageSync(keyFor(FLOWKEY), JSON.stringify(f)); } catch (e) { /* ignore */ }
   return f;
 }
 function patch(k, v) { const f = getFlow(); f[k] = v; return setFlow(f); }

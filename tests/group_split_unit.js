@@ -43,7 +43,7 @@ function fresh() {
   };
 }
 function clearStorage() {
-  ['zq_tools_v2', 'zq_flow', 'zq_class_identity', 'zq_ud_cache', 'ziqi.tools.v1'].forEach(function (k) {
+  ['zq_tools_v2_guest', 'zq_flow_guest', 'zq_tools_v2_' + ID.sid, 'zq_flow_' + ID.sid, 'zq_class_identity', 'zq_ud_cache', 'ziqi.tools.v1'].forEach(function (k) {
     try { wx.removeStorageSync(k); } catch (e) { /* ignore */ }
   });
 }
@@ -129,7 +129,7 @@ async function run(test) {
     assert.deepStrictEqual(last.pool, [1, 2, 3, 7]);
     assert.ok(last.at > 0 && last.cfg && last.cfg.range === '1 – 10');
     // 旧数据（只有 draw、没有 drawLast）回退到 draw
-    wx.setStorageSync('zq_flow', JSON.stringify({ draw: { result: [5], pool: [5], removed: [], log: [], cfg: null }, group: null, updatedAt: 1 }));
+    wx.setStorageSync(require('../utils/store.js').keyFor('zq_flow'), JSON.stringify({ draw: { result: [5], pool: [5], removed: [], log: [], cfg: null }, group: null, updatedAt: 1 }));
     assert.deepStrictEqual(fresh().flow.lastDraw().result, [5], '旧 flow 数据回退当前 draw，不报错');
   });
 
@@ -258,7 +258,7 @@ async function run(test) {
     assert.strictEqual(ctx.data.state, 'empty');
     assert.strictEqual(ctx.data.steps, undefined);
     // 旧数据兼容：只有 zq_flow.draw、没有 drawLast → 重置前补快照，分组仍可沿用
-    wx.setStorageSync('zq_flow', JSON.stringify({
+    wx.setStorageSync(require('../utils/store.js').keyFor('zq_flow'), JSON.stringify({
       draw: { result: [9], pool: [9], removed: [], log: [], cfg: null, proof: { status: 'failed' } },
       group: null, updatedAt: 1
     }));

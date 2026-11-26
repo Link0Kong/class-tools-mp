@@ -263,10 +263,10 @@ function run(test) {
       C.clearMem();
       // 预置本机缓存（zq_tools_v2）→ 冷启动直接可用
       const store = R('utils/store.js');
+      C.setIdentity();
       store.get().termStart = '2026-09-01';
       store.get().homework = [{ id: 'h1', subject: '高数', content: '习题', date: '2099-01-01' }];
       store.save();
-      C.setIdentity();
       const cloud = R('utils/cloud.js'); enableCloud(cloud);
       C.setReq(function (o) { o.success({ statusCode: 200, data: [] }); });
       const def = loadPage('index/index');

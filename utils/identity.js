@@ -63,18 +63,22 @@ function save(id) {
     try { require('./cache.js').clearAll(); } catch (e) { /* ignore */ }
     // 个人任务不是班级共享数据：换人验证时立即清掉，避免下一位同学看到上一位的备注/附件元数据
     try {
-      const st = require('./store.js');
-      try { require('./task.js').leaveAccount(); } catch (e) { /* ignore */ }
-      if (st.get().task) { st.get().task = null; st.saveQuiet(); }
+      require('./task.js').leaveAccount();
     } catch (e) { /* ignore */ }
     try { wx.removeStorageSync('zq_task_owner_v1'); } catch (e) { /* ignore */ }
     try { wx.removeStorageSync('zq_task_ui_mp_v1'); } catch (e) { /* ignore */ }
   }
-  try { wx.setStorageSync(KEY, JSON.stringify(v)); sessionRevision++; return v; } catch (e) { return null; }
+  try { wx.setStorageSync(KEY, JSON.stringify(v)); } catch (e) { return null; }
+  sessionRevision++;
+  _expiredAt = 0;
+  require('./cloud.js').sessionChanged();
+  return v;
 }
 
 function clear() {
+  try { if (has()) require('./task.js').leaveAccount(); } catch (e) {}
   sessionRevision++;
+  try { require('./cloud.js').sessionChanged(); } catch (e) {}
   try { wx.removeStorageSync(KEY); } catch (e) { /* ignore */ }
   // 隐私：退出身份即清掉持久缓存（通知按 audience 过滤，不能让下一名同学在同一台手机看到）
   try { require('./cache.js').clearAll(); } catch (e) { /* ignore */ }
@@ -160,13 +164,19 @@ function onAuthExpired() {
 
 // 验证身份：class_verify → 保存身份 → 拉取 class_members 名单
 // 返回 Promise<{ok, reason?, identity?, members?}>
+let loginAttempt = 0;
 function login(sidIn, nameIn) {
+  const attempt = ++loginAttempt;
+  const started = revision();
   const cloud = require('./cloud.js');   // 延迟 require，避免与 cloud.js 形成加载期循环依赖
   return cloud.classVerify(sidIn, nameIn).then(function (r) {
+    if (attempt !== loginAttempt || started !== revision()) return { ok: false, reason: '身份已变更' };
     if (!r || !r.ok || !r.identity) return r || { ok: false, reason: '验证失败，请重试' };
     const saved = save(r.identity);
     if (!saved) return { ok: false, reason: '身份保存失败，请清理小程序缓存后重试' };
+    const savedRevision = revision();
     return cloud.classMembersPull().then(function (list) {
+      if (savedRevision !== revision()) return { ok: false, reason: '身份已变更' };
       return { ok: true, identity: saved, members: (list || []).length, membersFailed: !(list && list.length) };
     }).catch(function () {
       return { ok: true, identity: saved, members: 0, membersFailed: true };

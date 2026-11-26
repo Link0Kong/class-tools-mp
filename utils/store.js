@@ -1,8 +1,3 @@
-// utils/store.js —— 本地存储层（v12 / 1.3.0）
-// v12 起不再有「账号桶」：身份来自班级 token（utils/identity.js），本机数据固定在 zq_tools_v2。
-// 键名与数据结构保持与旧版兼容，保证老用户升级后本机数据可继续读取：
-//   KEY    = 'zq_tools_v2'       主数据（JSON 字符串）
-//   OLDKEY = 'ziqi.tools.v1'     旧版数据（只读兼容）
 const KEY = 'zq_tools_v2';
 const OLDKEY = 'ziqi.tools.v1';
 const waterUtil = require('./water.js');
@@ -206,41 +201,57 @@ function mkD(raw) {
   return d;
 }
 
-function loadRaw() {
-  let raw = readKey(KEY);
-  if (!raw) {
-    const o = readKey(OLDKEY);
-    if (o) {
-      raw = {
-        course: o.courses || [], homework: o.homework || [], notices: o.notices || [],
-        termStart: o.termStart || '', settings: o.settings || {}
-      };
-    }
-  }
-  return raw;
+// Anonymous legacy snapshots have no evidence tying the entire blob to a verified account.
+function keyFor(base) {
+  const sid = require('./identity.js').sid();
+  return base + '_' + (sid ? encodeURIComponent(sid) : 'guest');
 }
-
-function get() { if (!cache) cache = mkD(loadRaw()); return cache; }
+function readLegacy() {
+  const raw = readKey(KEY);
+  if (raw) return raw;
+  const old = readKey(OLDKEY);
+  return old ? { course: old.courses, homework: old.homework, notices: old.notices,
+    termStart: old.termStart, settings: old.settings } : null;
+}
+function loadRaw() {
+  const saved = readKey(keyFor(KEY));
+  if (saved) return saved;
+  const sid = require('./identity.js').sid();
+  const old = readLegacy();
+  if (!old || !sid) return null;
+  // Only the explicitly owned legacy fragments are eligible for recovery.
+  let taskOwner = '';
+  try { taskOwner = wx.getStorageSync('zq_task_owner_v1'); } catch (e) {}
+  const pending = Array.isArray(old.markPend) ? old.markPend.filter(p => p && p.seat === sid) : [];
+  return { markPend: pending, task: taskOwner === sid ? old.task : null };
+}
+let cachedKey;
+function get() {
+  const key = keyFor(KEY);
+  if (!cache || cachedKey !== key) { cachedKey = key; cache = mkD(loadRaw()); }
+  return cache;
+}
 // 保存本机数据后触发「用户数据 sync 脏检测」（CONTRACT §5.2）：
 //   * 延迟 require cloud.js：避免 store ↔ cloud 循环依赖，也避免 app 启动早期就把云端模块拉起来；
 //   * try/catch + cloud 内部再判（未登录 / 未配置 / cloudOff / 无基线时直接返回），本机保存永不受影响。
 function save() {
-  const ok = writeKey(KEY, get());
+  const ok = writeKey(keyFor(KEY), get());
   try { require('./cloud.js').udTouch(); } catch (e) { /* 同步脏检测失败不影响本机保存 */ }
   return ok;
 }
 // 只落本机、不触发 userdata v6 脏检测（任务只走独立 taskdata 表；避免无意义 UD 推送）
 function saveQuiet() {
-  return writeKey(KEY, get());
+  return writeKey(keyFor(KEY), get());
 }
-function reload() { cache = mkD(readKey(KEY)); return cache; }
+function reload() { cache = null; return get(); }
 let localGeneration = 0;
 function localRevision() { return localGeneration; }
 function reset() {
+  get();
   localGeneration++;
   if (wx.getStorageInfoSync) {
     const keys = wx.getStorageInfoSync().keys || [];
-    keys.filter(key => key.startsWith('zq_water_shared_v2_')).forEach(key => wx.removeStorageSync(key));
+    keys.filter(key => key.startsWith('zq_water_shared_v2_' + encodeURIComponent(require('./identity.js').sid()) + ':')).forEach(key => wx.removeStorageSync(key));
   }
   cache = mkD(null);
   save();
@@ -248,7 +259,7 @@ function reset() {
 }
 
 module.exports = {
-  localRevision,
-  KEY, OLDKEY, DEF, mkD, readKey, writeKey, normSeats, normRemind, normLow, normTtLocal,
+  localRevision, keyFor, readLegacy,
+  get KEY() { return keyFor(KEY); }, OLDKEY, DEF, mkD, readKey, writeKey, normSeats, normRemind, normLow, normTtLocal,
   get, save, saveQuiet, reload, reset
 };

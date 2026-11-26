@@ -1542,6 +1542,7 @@ async function run(test) {
       assert.strictEqual(identity.canUseVote(), true, '本机班委身份：入口可见');
       assert.deepStrictEqual(tools.quickList(4).map(function (t) { return t.key; }), ['vote', 'hw'], '班委首页保留投票');
       C.setIdentity(ordinary);
+      store.get().homeTools = ['vote', 'hw']; store.save();
       assert.strictEqual(identity.canUseVote(), false, '本机普通身份：入口隐藏');
       assert.deepStrictEqual(tools.quickList(4).map(function (t) { return t.key; }), ['hw'], '普通同学首页隐藏投票');
       C.setIdentity(officialTest);
