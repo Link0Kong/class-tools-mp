@@ -2,7 +2,7 @@
 //
 // 需求 2：小程序端要有可阅读的隐私政策 / 用户协议入口和正文，不能只放不可用的外链。
 // 实现：
-//   * 正文来自 utils/legal-data.js（由 web/legal/mp/{privacy,terms}.html 提取，版本 V1.0 / 生效 2026-11-17）；
+//   * 正文来自 utils/legal-data.js（由 web/legal/mp/{privacy,terms}.html 提取）；
 //   * 原生页面渲染 + 页面滚动，不依赖外部网页 / request 域名 / 外链；
 //   * 入口：身份页协议勾选、我的 → 数据与隐私、数据与隐私页；
 //   * 支持 /pages/legal/legal?type=privacy|terms，缺省 privacy；分享仍走 utils/share.js。

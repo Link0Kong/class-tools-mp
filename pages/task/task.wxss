@@ -81,6 +81,17 @@
 .tk-quick-btn { flex: none; width: 68rpx; height: 76rpx; display: flex; align-items: center; justify-content: center;
   border-radius: 16rpx; color: var(--md-on-surface-variant); font-size: 32rpx; }
 .tk-quick-btn.on { color: var(--md-tertiary); background: var(--md-tertiary-container); }
+.tk-ai-entry.m3-btn { display: inline-flex; margin: 8rpx 0 0; }
+.tk-ai-entry::after, .tk-ai-actions button::after, .tk-ai-choice::after { border: 0; }
+.tk-ai-textarea.tk-ed-textarea { height: 244rpx; border: 1rpx solid var(--md-outline-variant); background: var(--md-surface-container-lowest); }
+.tk-ai-hint { margin: 14rpx 0; color: var(--md-on-surface-variant); font-size: 25rpx; line-height: 1.5; }
+.tk-ai-actions { display: flex; flex-wrap: wrap; gap: 10rpx; justify-content: flex-end; margin-top: 20rpx; }
+.tk-ai-actions .m3-btn { flex: 0 0 auto; width: auto; min-width: 0; margin: 0; }
+.tk-ai-choice { display: block; width: 100%; max-width: none; box-sizing: border-box; padding: 16rpx 22rpx; margin: 10rpx 0; text-align: left;
+  border: 1rpx solid var(--md-outline-variant); border-radius: var(--md-shape-md); background: var(--md-surface-container-lowest);
+  color: var(--md-on-surface); line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.tk-ai-choice-title { font-size: 29rpx; font-weight: 700; }
+.tk-ai-choice-meta { display: flex; flex-wrap: wrap; gap: 16rpx; color: var(--md-on-surface-variant); font-size: 23rpx; }
 .tk-quickdue { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 12rpx 0 4rpx; padding: 16rpx; border-radius: var(--md-shape-md);
   background: var(--md-surface-container-low); border: 1rpx dashed var(--md-outline-variant); }
 .tk-field { min-height: 76rpx; display: flex; align-items: center; justify-content: center; padding: 0 20rpx;

@@ -11,6 +11,7 @@ const store = require('../../utils/store.js');
 const util = require('../../utils/util.js');
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');
+const cloudConfig = require('../../utils/cloud-config.js');
 const share = require('../../utils/share.js');
 const sharecard = require('../../utils/sharecard.js');
 const shareflow = require('../../utils/shareflow.js');
@@ -36,6 +37,36 @@ const MIME = {
 };
 
 function pad(n) { return ('0' + n).slice(-2); }
+function aiText(value, limit) {
+  return typeof value === 'string' ? value.trim().slice(0, limit).replace(/[\uD800-\uDBFF]$/, '') : '';
+}
+function aiDrafts(value) {
+  if (!value || !Array.isArray(value.drafts)) return [];
+  return value.drafts.slice(0, 8).map(function (raw, index) {
+    if (!raw) return null;
+    const title = aiText(raw.title, 200);
+    if (!title) return null;
+    const due = typeof raw.due === 'string' && task.dateOk(raw.due) ? raw.due : '';
+    const dueTime = due && typeof raw.dueTime === 'string' && task.timeOk(raw.dueTime) ? raw.dueTime : '';
+    const steps = (Array.isArray(raw.steps) ? raw.steps : []).slice(0, 50).map(function (s) {
+      return s ? { text: aiText(s.text, 120), note: aiText(s.note, 500), done: false } : null;
+    }).filter(function (s) { return s && s.text; });
+    const suggestions = (Array.isArray(raw.suggestions) ? raw.suggestions : []).slice(0, 8).map(function (s) {
+      return aiText(s, 500);
+    }).filter(Boolean);
+    const extra = suggestions.length ? '完成建议\n' + suggestions.map(function (s) { return '• ' + s; }).join('\n') : '';
+    const notes = [aiText(raw.notes, 5000 - extra.length - (extra ? 2 : 0)), extra].filter(Boolean).join('\n\n');
+    return { key: index, title: title, notes: notes, due: due, dueTime: dueTime, steps: steps };
+  }).filter(Boolean);
+}
+function aiError(status) {
+  if (status === 400) return '云端无法整理这段文字，请检查内容后重试。';
+  if (status === 401) return '登录已失效，请重新登录后再试。';
+  if (status === 429) return '整理请求过于频繁，请稍后重试。';
+  if (status === 503) return '云端 AI 暂不可用，请稍后重试。';
+  if (status === 504) return '整理超时，请重试。';
+  return '暂时无法整理，请稍后重试。';
+}
 function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 function hhmm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
 function extOf(n) { const m = String(n || '').match(/\.([a-z0-9]{1,6})$/i); return m ? m[1].toLowerCase() : ''; }
@@ -98,6 +129,7 @@ Page(shareflow.install({
     classCount: 0,
     remindBar: { show: false, id: '', title: '', meta: '' },
     detail: { show: false, task: null },
+    ai: { show: false, picker: false, busy: false, text: '', canSend: false, status: '', drafts: [] },
     editor: { show: false },
     manage: { show: false, views: [], groups: [] },
     groupForm: { show: false, id: '', name: '', color: 'cy', isNew: true, colors: [] },
@@ -129,6 +161,7 @@ Page(shareflow.install({
   },
   onShow() {
     share.enable();
+    this.checkAiAccount();
     if (!identity.ensure()) return;
     this._dead = false;
     try { store.reload(); } catch (e) {}
@@ -139,12 +172,14 @@ Page(shareflow.install({
     this.startReminderTimer();
   },
   onHide() {
+    this.abortAi();
     this.stopReminderTimer();
     task.flush();
   },
   onCloudSync() { this.refresh(); },
   onUnload() {
     this._dead = true;
+    this.abortAi();
     clearTimeout(this._searchTimer);
     this.stopReminderTimer();
     task.flush();
@@ -441,8 +476,86 @@ Page(shareflow.install({
     if (t) this.setData({ 'detail.task': this.buildDetail(t) });
   },
 
+  // ------------------------------------------------------------ AI 整理
+  checkAiAccount() {
+    const owner = identity.token();
+    if ((this._aiOwner || '') !== owner) {
+      this._aiOwner = owner;
+      this.abortAi();
+      const update = { ai: { show: false, picker: false, busy: false, text: '', canSend: false, status: '', drafts: [] } };
+      if (this.data.editor.show && this.data.editor.aiDraftIndex !== undefined) update['editor.show'] = false;
+      this.setData(update);
+    }
+    return owner;
+  },
+  openAi() {
+    if (!this.checkAiAccount()) { util.toast('请先登录再使用 AI 整理'); return; }
+    this.setData({ 'ai.show': true, 'ai.picker': !!this.data.ai.drafts.length });
+  },
+  abortAi() {
+    const request = this._aiRequest;
+    if (!request) return;
+    this._aiRequest = null;
+    if (request.task) request.task.abort();
+    if (!this._dead) this.setData({ 'ai.busy': false, 'ai.status': '' });
+  },
+  closeAi() {
+    this.abortAi();
+    this.setData({ 'ai.show': false });
+  },
+  onAiInput(e) {
+    if (this.data.ai.busy) return;
+    const text = e.detail.value;
+    this.setData({ 'ai.text': text, 'ai.canSend': !!text.trim(), 'ai.status': '' });
+  },
+  showAiInput() { this.setData({ 'ai.picker': false }); },
+  showAiPicker() {
+    if (!this.data.ai.busy && this.data.ai.drafts.length) this.setData({ 'ai.picker': true });
+  },
+  submitAi() {
+    const owner = this.checkAiAccount();
+    const ai = this.data.ai;
+    const text = ai.text.trim();
+    if (!owner || !ai.show || ai.picker || this._aiRequest || !text || text.length > 6000) return;
+    const request = { task: null };
+    this._aiRequest = request;
+    this.setData({ 'ai.busy': true, 'ai.status': '正在整理，请稍候。' });
+    const isCurrent = () => !this._dead && this.checkAiAccount() === owner && this._aiRequest === request;
+    const fail = (message) => {
+      if (!isCurrent()) return;
+      this._aiRequest = null;
+      this.setData({ 'ai.busy': false, 'ai.status': message });
+    };
+    try {
+      request.task = wx.request({
+        url: cloudConfig.webBase + '/task-ai/suggest',
+        method: 'POST', timeout: 35000,
+        header: { 'Content-Type': 'application/json', 'X-Class-Token': owner },
+        data: { text: text, localDate: task.today() },
+        success: (response) => {
+          if (!isCurrent()) return;
+          if (response.statusCode !== 200) { fail(aiError(response.statusCode)); return; }
+          const drafts = aiDrafts(response.data);
+          if (!drafts.length) { fail('没有可填写的任务，请补充要做的事后重试。'); return; }
+          this._aiRequest = null;
+          this.setData({ 'ai.drafts': drafts, 'ai.picker': true, 'ai.busy': false, 'ai.text': '', 'ai.canSend': false, 'ai.status': '' });
+          if (drafts.length === 1) this.openAiDraft(0);
+        },
+        fail: (error) => fail(aiError(error && /timeout/i.test(error.errMsg) ? 504 : 0))
+      });
+    } catch (error) {
+      fail(aiError(0));
+    }
+  },
+  chooseAiDraft(e) { this.openAiDraft(Number(e.currentTarget.dataset.index)); },
+  openAiDraft(index) {
+    if (!this.checkAiAccount() || !this.data.ai.show || this.data.editor.show) return;
+    const draft = this.data.ai.drafts[index];
+    if (draft) this.openEditor('', draft, index);
+  },
+
   // ------------------------------------------------------------ 编辑器
-  openEditor(id) {
+  openEditor(id, aiDraft, aiDraftIndex) {
     if (id && typeof id !== 'string') id = (id.currentTarget && id.currentTarget.dataset && id.currentTarget.dataset.id) || '';
     id = id ? String(id) : '';
     const t = id ? task.findTask(id) : null;
@@ -475,9 +588,21 @@ Page(shareflow.install({
       attachments: t ? attsOf(t) : [], stepAdd: '', busy: false
     };
     this._editOriginal = t ? copyTask(t) : null;
-    this.setData({ editor: edit });
+    if (aiDraft) {
+      const { title, notes, due, dueTime, steps } = aiDraft;
+      Object.assign(edit, { title, notes, due, dueTime, aiDraftIndex, steps: steps.map(function (step) { return Object.assign({}, step); }) });
+      this.setData({ editor: edit, 'ai.show': false });
+    } else this.setData({ editor: edit });
   },
-  closeEditor() { this.setData({ 'editor.show': false }); },
+  closeEditor() {
+    const aiDraftIndex = this.data.editor.aiDraftIndex;
+    const update = { 'editor.show': false };
+    if (aiDraftIndex !== undefined && this.checkAiAccount() && this.data.ai.drafts.length) {
+      update['ai.show'] = true;
+      update['ai.picker'] = true;
+    }
+    this.setData(update);
+  },
   onEditInput(e) { this.setData({ ['editor.' + e.currentTarget.dataset.k]: e.detail.value }); },
   onEditDate(e) { this.setData({ 'editor.due': e.detail.value }); if (!e.detail.value) this.setData({ 'editor.dueTime': '' }); },
   onEditTime(e) { this.setData({ 'editor.dueTime': e.detail.value }); },
@@ -643,6 +768,7 @@ Page(shareflow.install({
   saveEditor() {
     const e = this.data.editor;
     if (!e || !e.show) return;
+    if (e.aiDraftIndex !== undefined && (!this.checkAiAccount() || !this.data.editor.show)) return;
     const title = String(e.title || '').replace(/\s+/g, ' ').trim();
     if (!title) { util.toast('填写任务标题'); return; }
     if (e.due && !task.dateOk(e.due)) { util.toast('截止日期无效'); return; }
@@ -683,7 +809,15 @@ Page(shareflow.install({
     const saved = task.findTask(base.id);
     if (saved && !saved.done) this._syncTaskReminder(saved, this._editOriginal);
     else if (saved) { try { notify.cancelTask(saved.id).catch(function () {}); } catch (err) {} }
-    this.setData({ 'editor.show': false });
+    const update = { 'editor.show': false };
+    if (e.aiDraftIndex !== undefined) {
+      const drafts = this.data.ai.drafts.slice();
+      drafts.splice(e.aiDraftIndex, 1);
+      update['ai.drafts'] = drafts;
+      update['ai.show'] = !!drafts.length;
+      update['ai.picker'] = !!drafts.length;
+    }
+    this.setData(update);
     this.refresh();
     util.toast(e.isNew ? '已添加' : '已保存');
   },

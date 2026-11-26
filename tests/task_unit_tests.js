@@ -249,5 +249,91 @@ T('页面/入口：app.json 注册任务页、工具入口与四件套齐全', f
   assert.strictEqual(tools.normalizeToolOrder(['task'])[0], 'hw', '旧 task 排序 key 必须迁移');
 });
 
+T('AI 整理：只显式发送原文，选择后回填，保存才写入，待填任务继续排队', function () {
+  const x = fresh();
+  let page;
+  let sent;
+  let submissions = 0;
+  let aborted = false;
+  global.Page = (config) => { page = config; };
+  wx.request = (request) => {
+    if (!request.url.endsWith('/task-ai/suggest')) return;
+    sent = request;
+    submissions++;
+    return { abort() { aborted = true; } };
+  };
+  try {
+    require(path.join(ROOT, 'pages/task/task.js'));
+    page.setData = function (changes) {
+      Object.keys(changes).forEach((key) => {
+        const keys = key.split('.');
+        const parent = keys.length === 2 ? this.data[keys[0]] : this.data;
+        parent[keys[keys.length - 1]] = changes[key];
+      });
+    };
+    page.refresh = function () {};
+    page._syncTaskReminder = function () {};
+    const enter = (text) => page.onAiInput({ detail: { value: text } });
+    const candidate = { title: '准备报告', notes: '十分钟', due: '2026-12-02', dueTime: '09:30',
+      steps: [{ text: '拟提纲', note: '先确定主题', done: true }], suggestions: ['留出练习时间'] };
+
+    page.openAi();
+    enter(' 明早交报告，还有阅读作业 ');
+    assert.strictEqual(submissions, 0);
+    page.submitAi();
+    page.submitAi();
+    assert.strictEqual(submissions, 1);
+    assert.deepStrictEqual(sent.data, { text: '明早交报告，还有阅读作业', localDate: x.task.today() });
+    assert.strictEqual(sent.header['X-Class-Token'], 'tok-task-unit');
+    sent.success({ statusCode: 429 });
+    assert.ok(page.data.ai.status.includes('频繁'));
+    assert.strictEqual(page.data.ai.text, ' 明早交报告，还有阅读作业 ');
+
+    page.submitAi();
+    sent.success({ statusCode: 200, data: { drafts: [candidate, { title: '阅读作业', due: '2026-02-31', dueTime: '10:00' }] } });
+    assert.strictEqual(page.data.ai.picker, true);
+    assert.strictEqual(page.data.editor.show, false);
+    assert.strictEqual(x.task.items().length, 0);
+    page.chooseAiDraft({ currentTarget: { dataset: { index: 0 } } });
+    assert.strictEqual(page.data.editor.title, '准备报告');
+    assert.strictEqual(page.data.editor.due, '2026-12-02');
+    assert.strictEqual(page.data.editor.dueTime, '09:30');
+    assert.ok(page.data.editor.notes.includes('完成建议\n• 留出练习时间'));
+    assert.deepStrictEqual(page.data.editor.steps, [{ text: '拟提纲', note: '先确定主题', done: false }]);
+    page.closeEditor();
+    assert.strictEqual(page.data.ai.drafts.length, 2);
+    page.openAiDraft(0);
+    page.data.editor.title = '核对过的报告';
+    page.saveEditor();
+    assert.deepStrictEqual(x.task.items().map((item) => item.title), ['核对过的报告']);
+    assert.strictEqual(page.data.ai.show, true);
+    assert.strictEqual(page.data.ai.drafts.length, 1);
+    page.openAiDraft(0);
+    assert.strictEqual(page.data.editor.due, '');
+    assert.strictEqual(page.data.editor.dueTime, '');
+    page.closeEditor();
+
+    page.showAiInput();
+    enter('保留原文字');
+    page.submitAi();
+    page.closeAi();
+    sent.success({ statusCode: 200, data: { drafts: [candidate] } });
+    assert.strictEqual(aborted, true);
+    assert.strictEqual(page.data.ai.show, false);
+    assert.strictEqual(page.data.editor.show, false);
+    assert.strictEqual(page.data.ai.drafts[0].title, '阅读作业');
+    page.openAi();
+    page.showAiInput();
+    page.submitAi();
+    sent.success({ statusCode: 200, data: { drafts: [candidate] } });
+    assert.strictEqual(page.data.editor.show, true);
+    assert.strictEqual(page.data.editor.title, '准备报告');
+    assert.strictEqual(x.task.items().length, 1);
+  } finally {
+    delete global.Page;
+    delete wx.request;
+  }
+});
+
 console.log('\n================ ' + pass + ' passed, ' + fail + ' failed ================');
 if (fail) process.exit(1);

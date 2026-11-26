@@ -2,7 +2,7 @@
 
 面向高校班级的微信小程序：身份核验之后，把抽签、分组、课表、作业、通知、名单、点名、投票等班级事务放到一个入口里。
 
-![version](https://img.shields.io/badge/version-2.1.1-blue)
+![version](https://img.shields.io/badge/version-2.1.2-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![platform](https://img.shields.io/badge/platform-%E5%BE%AE%E4%BF%A1%E5%B0%8F%E7%A8%8B%E5%BA%8F-07C160)
 
@@ -20,6 +20,7 @@
 - **分组**：独立工具，不抽签也能用；成员来源「全班 / 最近抽签 / 自选名单」，按组数或每组人数分组，可复制与分享。
 - **课表**：周视图 / 日视图、今日课程、下一节课、学期周次。
 - **任务（原作业工具入口）**：个人任务 + 班级作业统一入口；分组/步骤与步骤备注/附件/截止与提醒/重复/标签/我的一天/重要；与网页任务共用 `taskdata` 云同步，工作台/通知均可转入，支持分享卡与单任务分享预览。原班级作业发布/附件/勾选能力保留在任务页「班级作业」分段内。
+- **AI 整理任务**：输入或粘贴文字后，点击发送给云端 AI。标题、截止时间、步骤和建议会填入新建任务，用户核对后自行保存。
 - **通知**：列表与详情、附件、置顶与已处理、长期通知归档。
 - **体测**：国标算分、等级与历史记录。
 - **名单**：班委 / 团员 / 全班，按座号展示（不展示学号）。
@@ -36,6 +37,7 @@
 ## 在线体验与发布
 
 - 线上入口：微信搜索小程序「班级工具」（以微信公众平台实际发布版本为准）。
+- 源码版本 2.1.2，任务 AI 待在线验证，尚未发布。
 - 网站：<https://tool.furina.fun>（网站备案号 **闽ICP备2026042939号-2**，工信部查询 <https://beian.miit.gov.cn/>）。
 - 小程序需要在[微信公众平台](https://mp.weixin.qq.com/)上传代码、提交审核并发布。
 - **本仓库只包含源码**，不包含已构建的发布包；体验版 / 正式版由开发者工具上传后生成。
@@ -64,12 +66,11 @@
 
 | 类型 | 域名 | 用途 |
 | --- | --- | --- |
-| request 合法域名 | `https://tool.furina.fun` | 文件传输 / 大屏互联（`/drop`）、课表 legacy 兜底（`/tt.json`）、PPT 媒体缓存（`/pptfiles`）；REST 切到 selfhosted 后同一域名的 `/v1/rdb/rest/` |
-| request 合法域名 | `https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com` | 当前 REST 档位 `cloudbase` 的 CloudBase 网关（`utils/cloud-config.js` 的 `ACTIVE_REST_PROFILE` 仍为 `cloudbase`） |
+| request 合法域名 | `https://tool.furina.fun` | 任务 AI（`/task-ai/suggest`）、文件传输 / 大屏互联（`/drop`）、课表兜底（`/tt.json`）、PPT 媒体缓存（`/pptfiles`）、自建 REST（`/v1/rdb/rest/`） |
+| request 合法域名 | `https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com` | `cloudbase` REST 档位的 CloudBase 网关 |
 | downloadFile 合法域名 | `https://tool.furina.fun` | drop 文件下载、`/pptfiles` 媒体（图片 / 视频 / 缩略图） |
 | downloadFile 合法域名 | `https://tool-furina-fun.oss-cn-hongkong.aliyuncs.com` | 仅在 `pptEcs.enabled=false` 或非 `/ppt/**` 直链回退 OSS 香港默认域名时需要；香港默认域名能否通过微信校验未查证，发布前用真机正式版验一张图 + 一段视频 |
 
-- `webBase`（`https://tool.furina.fun`）只用于生成抽签存证核验链接，小程序不向它发请求，**不需要**加入合法域名（用户扫码后在浏览器打开）。
 - 小程序自身备案号是 `utils/compliance.js` 的 **闽ICP备2026042939号**（「我的」页底部展示），与**网站**备案号 `-2` 不是同一个，不要混用。
 - 域名校验只在体验版 / 正式版生效；开发者工具可勾选「不校验合法域名」调试，但上传发布前必须配好上表。
 

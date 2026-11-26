@@ -284,12 +284,13 @@ async function run(outerTest) {
 
   /* ---------------- C. 法律正文 ---------------- */
   const legal = require(path.join(MP, 'utils/legal-data.js'));
-  await T('法律 C1：两份正文元信息（V1.0 / 生效 2026-11-17 / 运营者信息）', async function () {
+  await T('法律 C1：两份正文元信息（V1.1 / 生效 2026-11-26 / 运营者信息）', async function () {
     ['privacy', 'terms'].forEach(function (k) {
       const d = legal[k];
       assert.ok(d && d.blocks.length > 30 && d.toc.length >= 15, k + ' 正文过少');
-      assert.strictEqual(d.version, 'V1.0');
-      assert.strictEqual(d.effective, '2026年11月17日');
+      assert.strictEqual(d.version, 'V1.1');
+      assert.strictEqual(d.effective, '2026年11月26日');
+      assert.strictEqual(d.updated, '2026年11月26日');
       assert.ok(String(d.operator || '').trim().length >= 2, k + ' 缺少运营者');
       assert.ok(d.title === '隐私政策' || d.title === '用户协议');
     });
@@ -306,6 +307,7 @@ async function run(outerTest) {
     assert.ok(all.indexOf('腾讯云 CloudBase') >= 0 && all.indexOf('阿里云 OSS') >= 0, '第三方服务段落');
     assert.ok(all.indexOf('Ko_Link@outlook.com') >= 0, '联系方式');
     assert.ok(all.indexOf('查阅') >= 0 && all.indexOf('删除') >= 0 && all.indexOf('撤回同意') >= 0, '用户权利');
+    assert.ok(all.includes('任务 AI 整理') && all.includes('DeepSeek') && all.includes('本地日期'), '任务 AI 处理说明');
   });
 
   await T('法律 C3：用户协议覆盖 服务性质/资格/规范/内容/隐私/第三方/免责/争议解决 + 禁止清单', async function () {

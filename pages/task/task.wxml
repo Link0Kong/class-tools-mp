@@ -97,6 +97,7 @@
       <picker range="{{listNames}}" value="{{quickListIdx}}" bindchange="onQuickList"><view class="tk-field">{{quickListLabel}}</view></picker>
       <view class="tk-field tk-field--act" bindtap="clearQuickDue">清除</view>
     </view>
+    <button class="tk-ai-entry m3-btn m3-btn--text m3-btn--sm" bindtap="openAi">{{ai.drafts.length ? '继续整理 · ' + ai.drafts.length + ' 项待填写' : 'AI 整理任务'}}</button>
 
     <view class="section-gap"></view>
     <view wx:if="{{!tasks.length && !doneTasks.length}}" class="m3-card m3-card--filled enter enter-1">
@@ -186,6 +187,35 @@
         <view class="m3-btn m3-btn--text" bindtap="detailShare">分享</view>
         <view wx:if="{{!detail.task.done}}" class="tk-dt-move" bindtap="moveTask" data-d="-1"><view class="tk-ico tk-ico--chevron-up"></view></view>
         <view wx:if="{{!detail.task.done}}" class="tk-dt-move" bindtap="moveTask" data-d="1"><view class="tk-ico tk-ico--chevron"></view></view>
+      </view>
+    </view>
+  </bottom-sheet>
+
+  <bottom-sheet show="{{ai.show}}" title="{{ai.picker ? '选择要填写的任务' : 'AI 整理任务'}}" bind:close="closeAi">
+    <view wx:if="{{ai.show && !ai.picker}}">
+      <view class="tk-ed-label">任务原文</view>
+      <textarea class="tk-ed-textarea tk-ai-textarea" value="{{ai.text}}" maxlength="6000" disabled="{{ai.busy}}" placeholder="粘贴作业要求、待办清单，或输入你要做的事" bindinput="onAiInput"></textarea>
+      <view class="tk-ai-hint">点击发送后，DeepSeek 将收到本次文字和本地日期，用于整理任务。请删去账号、密码等敏感信息。</view>
+      <view wx:if="{{ai.status}}" class="tk-ai-hint" aria-live="polite">{{ai.status}}</view>
+      <view class="tk-ai-actions">
+        <button class="m3-btn m3-btn--text" bindtap="closeAi">关闭</button>
+        <button wx:if="{{ai.drafts.length}}" class="m3-btn m3-btn--text" disabled="{{ai.busy}}" bindtap="showAiPicker">返回待填写任务</button>
+        <button class="m3-btn m3-btn--filled" disabled="{{ai.busy || !ai.canSend}}" bindtap="submitAi">{{ai.busy ? '正在整理…' : '发送给云端 AI'}}</button>
+      </view>
+    </view>
+    <view wx:elif="{{ai.show}}">
+      <view class="tk-ai-hint">选择一项填入新建任务，核对后再保存。</view>
+      <view wx:if="{{ai.drafts.length >= 8}}" class="tk-ai-hint">本次已整理 8 项。如果原文还有其他待办，可以分批发送。</view>
+      <button wx:for="{{ai.drafts}}" wx:key="key" class="tk-ai-choice" data-index="{{index}}" bindtap="chooseAiDraft">
+        <text class="tk-ai-choice-title">{{item.title}}</text>
+        <view wx:if="{{item.due || item.steps.length}}" class="tk-ai-choice-meta">
+          <text wx:if="{{item.due}}">{{item.due}}{{item.dueTime ? ' ' + item.dueTime : ''}}</text>
+          <text wx:if="{{item.steps.length}}">{{item.steps.length}} 个步骤</text>
+        </view>
+      </button>
+      <view class="tk-ai-actions">
+        <button class="m3-btn m3-btn--text" bindtap="closeAi">关闭</button>
+        <button class="m3-btn m3-btn--text" bindtap="showAiInput">整理其他文字</button>
       </view>
     </view>
   </bottom-sheet>
