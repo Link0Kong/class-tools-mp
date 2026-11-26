@@ -52,6 +52,8 @@ function get() {
 
 function has() { return !!get(); }
 
+let sessionRevision = 0;
+function revision() { return sessionRevision; }
 function save(id) {
   const v = normalize(id);
   if (!v) { clear(); return null; }
@@ -62,16 +64,17 @@ function save(id) {
     // 个人任务不是班级共享数据：换人验证时立即清掉，避免下一位同学看到上一位的备注/附件元数据
     try {
       const st = require('./store.js');
-      try { require('./task.js').clearFiles(); } catch (e) { /* ignore */ }
+      try { require('./task.js').leaveAccount(); } catch (e) { /* ignore */ }
       if (st.get().task) { st.get().task = null; st.saveQuiet(); }
     } catch (e) { /* ignore */ }
     try { wx.removeStorageSync('zq_task_owner_v1'); } catch (e) { /* ignore */ }
     try { wx.removeStorageSync('zq_task_ui_mp_v1'); } catch (e) { /* ignore */ }
   }
-  try { wx.setStorageSync(KEY, JSON.stringify(v)); return v; } catch (e) { return null; }
+  try { wx.setStorageSync(KEY, JSON.stringify(v)); sessionRevision++; return v; } catch (e) { return null; }
 }
 
 function clear() {
+  sessionRevision++;
   try { wx.removeStorageSync(KEY); } catch (e) { /* ignore */ }
   // 隐私：退出身份即清掉持久缓存（通知按 audience 过滤，不能让下一名同学在同一台手机看到）
   try { require('./cache.js').clearAll(); } catch (e) { /* ignore */ }
@@ -185,7 +188,7 @@ function logout() {
 
 module.exports = {
   KEY, IDENTITY_PAGE,
-  get, has, save, clear,
+  get, has, save, clear, revision,
   token, sid, name, role, badge, isAdmin, label,
   isCommitteeOf, isCommittee, isTestSid, isTest, canUseVote,
   ensure, goIdentity, login, logout, onAuthExpired

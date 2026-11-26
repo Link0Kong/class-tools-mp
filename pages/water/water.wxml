@@ -24,6 +24,11 @@
     <text wx:if="{{syncErr}}" class="wt-sync-retry">重试</text>
   </view>
 
+  <view wx:if="{{hasSel}}" class="wt-sync">
+    <text bindtap="viewPrivate">查看个人旧账本</text>
+    <text wx:if="{{waterPending}}" bindtap="reviewPending" class="wt-sync-retry">核对待发操作</text>
+  </view>
+
   <!-- 未选择：引导（0 请求、0 数据） -->
   <block wx:if="{{state === 'idle'}}">
     <view class="m3-card m3-card--outlined wt-guide">

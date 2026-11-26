@@ -517,7 +517,7 @@ function run(test) {
       assert.strictEqual(water.fixedPersons('1-13---324', 99), 4, '非法 → 默认 4');
     });
 
-    await test('C2 water.mergeCloud：同 month 云端覆盖本地；本地独有月份补传；changed 正确', function () {
+    await test('C2 water.mergeCloud：全量结果移除失效月份，读取不补传', function () {
       purge();
       const water = R('utils/water.js');
       const local = [{ m: '2026-09', r: 100, ts: 1 }, { m: '2026-10', r: 110, ts: 2 }, { m: '2026-11', r: 120, ts: 3 }];
@@ -527,10 +527,10 @@ function run(test) {
       ];
       const m = water.mergeCloud(local, cloud);
       assert.strictEqual(m.changed, true);
-      assert.deepStrictEqual(m.recs.map(function (r) { return r.m + '=' + r.r; }), ['2026-09=100', '2026-10=111', '2026-11=121'], '同月云端覆盖、按月份升序');
-      assert.deepStrictEqual(m.missing.map(function (r) { return r.m; }), ['2026-09'], '本地独有月份进补传队列');
+      assert.deepStrictEqual(m.recs.map(function (r) { return r.m + '=' + r.r; }), ['2026-10=111', '2026-11=121']);
+      assert.deepStrictEqual(m.missing, [], '旧缓存不构成写入意图');
       assert.strictEqual(m.cloudCount, 2);
-      const same = water.mergeCloud(m.recs, cloud.concat([{ month: '2026-09', reading: 100, persons: 4 }]));
+      const same = water.mergeCloud(m.recs, cloud);
       assert.strictEqual(same.changed, false, '完全一致 → 不重写本机');
       const empty = water.mergeCloud([], []);
       assert.strictEqual(empty.changed, false);
@@ -567,7 +567,7 @@ function run(test) {
       const cloud = R('utils/cloud.js'); enableCloud(cloud);
       C.setReq(function (o) {
         if (String(o.url).indexOf('/water_room?') >= 0) return o.success({ statusCode: 200, data: [{ roomverify: '1-13---324', persons: 6 }] });
-        if (String(o.url).indexOf('/water?') >= 0) return o.success({ statusCode: 200, data: [{ roomverify: '1-13---324', month: '2026-11', reading: 123.4, persons: 6 }] });
+        if (String(o.url).indexOf('/water?') >= 0) return o.success({ statusCode: 200, header: { 'Content-Range': '0-0/1' }, data: [{ roomverify: '1-13---324', month: '2026-11', reading: 123.4, persons: 6 }] });
         o.success({ statusCode: 200, data: [] });
       });
       const list = await cloud.waterList('1-13---324', true);
@@ -609,37 +609,43 @@ function run(test) {
       store.get().water = { rooms: { '4-23A---321': { p: 4, recs: [{ m: '2026-10', r: 100, ts: 1 }, { m: '2026-11', r: 110, ts: 2 }] } } };
       store.save();
       const cloud = R('utils/cloud.js'); enableCloud(cloud);
-      C.setReq(function (o) {
-        if (String(o.url).indexOf('/water?') >= 0) return o.success({ statusCode: 200, data: [{ month: '2026-10', reading: 101, persons: 4, updated_at: '2026-10-31T00:00:00+08:00' }, { month: '2026-11', reading: 111, persons: 4, updated_at: '2026-11-30T00:00:00+08:00' }] });
-        if (String(o.url).indexOf('/water_room?') >= 0) return o.success({ statusCode: 200, data: [{ roomverify: '4-23A---321', persons: 6 }] });
-        o.success({ statusCode: 200, data: [] });
-      });
-      const def = loadPage('water/water');
-      const ctx = ctxOf(def);
+      const rv = '4-23A---321', sid = R('utils/identity.js').sid();
+      const monthly = [{ roomverify: rv, month: '2026-10', reading: 101, persons: 4 },
+        { roomverify: rv, month: '2026-11', reading: 111, persons: 4 }];
+      let people = 4;
+      function online(o) {
+        const url = String(o.url);
+        if (url.includes('/water_room?')) {
+          if (o.method === 'POST') people = o.data.persons;
+          return o.success({ statusCode: 200, data: [{ roomverify: rv, persons: people }] });
+        }
+        if (url.includes('/water?')) {
+          if (o.method === 'POST') monthly.push(o.data);
+          return o.success({ statusCode: 200, header: { 'Content-Range': '0-' + (monthly.length - 1) + '/' + monthly.length }, data: monthly.slice() });
+        }
+        return o.success({ statusCode: 200, data: [] });
+      }
+      C.setReq(online);
+      const ctx = ctxOf(loadPage('water/water'));
       ctx.onLoad();
-      ctx._render();
-      assert.strictEqual(ctx.data.persons, 4);
-      assert.strictEqual(ctx.data.personsLocked, false, '23A 人数不再锁定');
-      ctx.pickPersons({ currentTarget: { dataset: { p: 6 } } });
-      assert.strictEqual(store.get().water.rooms['4-23A---321'].p, 6, '23A 可改成 6 人间');
       await ctx._cloudSync(true);
-      await sleep(30);
-      assert.strictEqual(store.get().water.rooms['4-23A---321'].recs[1].r, 111, '云端同月覆盖本地');
-      assert.strictEqual(ctx.data.persons, 6, '云端 water_room 也采用 6 人');
-      assert.ok(/宿舍共享|已同步/.test(ctx.data.syncText), '页脚显示云端共享状态：' + ctx.data.syncText);
-      // 离线保存 → pending；恢复后重试清空
-      C.setReq(function (o) { o.success({ statusCode: 500, data: {} }); });
+      assert.strictEqual(ctx.data.persons, 4);
+      assert.strictEqual(ctx.data.personsLocked, false);
+      await ctx.pickPersons({ currentTarget: { dataset: { p: 6 } } });
+      assert.strictEqual(ctx.data.persons, 6);
+      assert.strictEqual(ctx._room().recs[1].r, 111);
+      assert.strictEqual(store.get().water.rooms[rv].recs[1].r, 110, '私人历史保持原值');
+      C.setReq(o => o.success({ statusCode: 403, data: {} }));
+      // Turn off networking for a proven local create. Restore a fresh read before replay.
+      cloud.configure({ enabled: false });
       ctx.setData({ month: '2026-12' });
       ctx.onReadingInput({ detail: { value: '130' } });
-      ctx.saveRecord();
-      await sleep(20);
-      assert.ok(store.get().waterPend.length >= 1, '云端失败 → 离线 pending 队列');
-      assert.strictEqual(store.get().waterPend[0].op, 'put');
-      assert.strictEqual(store.get().waterPend[0].m, '2026-12');
-      C.setReq(function (o) { o.success({ statusCode: 200, data: [] }); });
-      const ok = await ctx._flushPending();
-      assert.strictEqual(ok, true, '恢复后重试成功');
-      assert.strictEqual(store.get().waterPend.length, 0, 'pending 清空');
+      await ctx.saveRecord();
+      const shared = R('utils/water-shared.js');
+      assert.strictEqual(shared.read(sid, rv).ops[0].field, '2026-12');
+      C.setReq(online);enableCloud(cloud);
+      assert.strictEqual(await ctx._flushPending(), true);
+      assert.strictEqual(shared.read(sid, rv).ops.length, 0);
       const wxml = src('pages/water/water.wxml');
       const pageJs = src('pages/water/water.js');
       const waterJs = src('utils/water.js');
@@ -650,7 +656,7 @@ function run(test) {
       assert.ok(/personsLocked/.test(wxml) && /固定/.test(wxml), '固定 4 人间 UI');
       assert.ok(/syncText/.test(wxml), '云端共享状态 UI');
       assert.ok(!/cloud\.waterList/.test(wxml), 'WXML 不直接调用云函数');
-      assert.ok(/waterPend/.test(pageJs), '页面使用离线队列');
+      assert.ok(/shared\.queue/.test(pageJs), '页面保存有归属的写入意图');
       assert.ok(!/wx\.request/.test(pageJs), '页面不直接 wx.request（统一 utils/cloud.js）');
       assert.ok(!/免费/.test(waterJs) || /不再出现「免费」/.test(waterJs), 'utils/water.js 文案不再用「免费」');
     });

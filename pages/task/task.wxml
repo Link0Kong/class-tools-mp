@@ -136,7 +136,9 @@
     </view>
   </block>
 
-  <view class="tk-sync">{{syncText}}<text wx:if="{{cloudEnabled}}"> · 任务云同步</text></view>
+  <view class="tk-sync">{{syncText}}<text wx:if="{{cloudEnabled}}"> · 任务云同步</text>
+    <button wx:if="{{hasLegacyDraft}}" size="mini" bindtap="reviewLegacyTasks">核对旧本机任务</button>
+  </view>
 
   <!-- 详情 -->
   <bottom-sheet show="{{detail.show}}" title="" bind:close="closeDetail">

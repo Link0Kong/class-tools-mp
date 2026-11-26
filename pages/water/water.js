@@ -11,21 +11,17 @@
 // 与网站 WATER 模块同口径（契约 web/tools/tests/_water_contract.md + 2026-11-11 共享契约
 // _water_shared_contract.md）：
 //   * 关注宿舍沿用「宿舍电费」的 power.sel（可在此切换；未选择时页面只引导、0 请求、0 数据）；
-//   * 宿舍人数 4 / 6（默认 4；23 号楼 A/B 座固定 4 人间、不可改）→ 每月水定额 = 2 吨水 × 人数；
+//   * 宿舍人数 1–6（默认 4）→ 每月水定额 = 2 吨水 × 人数；
 //   * 每月手动抄表（月份 + 水表读数），自动对比上一条：用量 = 本次 − 上次；
 //   * 水费 = max(0, 用量 − 2×人数) × 3.03；折合扣电 = 水费 ÷ 0.58；
 //   * 历史按月倒序、可删除，删除后用量/水费/折合扣电全部自动重算；
 //   * 水费规则卡（2026-11-06 用户反馈：电费规则移入「宿舍电费」页电量统计；
 //     2026-11-11 契约 §5：文案统一叫「定额」，不再出现「每月免费 N 吨水」，公式数值不变）。
 //
-// 2026-11-11 云端共享（需求 6，契约 §1–§4）：
-//   * 进入水量页 / 切换宿舍：先渲染本机缓存（store.water，秒开）→ 再 GET 云端（public.water + water_room）；
-//     同 month 云端覆盖本地，本地独有月份补传（失败静默进离线队列）；云端失败保留本机缓存并显示「离线」；
-//   * 保存 / 删除 / 改人数：先写本机 + store.save()（UD v6 water 继续作离线缓存）→ 再尽力写云端；
-//     失败进 store.waterPend，onShow/进页/联网时自动重试（契约 §3.2）；
-//   * 云端数据为宿舍共享：同宿舍任一同学写入后，其他人进入即可看到（以宿舍为单位）；
-//   * 2026-11-19：取消 23A/23B 固定四人间，所有宿舍均可自选 1–6 人间（不再强制 upsert=4）；
-//   * 隐私：只显示规范楼栋 + 房间号，不含姓名 / 学号（与电费同一红线）。
+// 共享按身份与房间读取。只有可证明的用户操作能进入共享待发队列。
+const shared = require('../../utils/water-shared.js');
+const writing = new Map();
+const latestRefresh = new Map();
 const store = require('../../utils/store.js');
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');
@@ -71,7 +67,7 @@ Page({
     sel: '',
     selLabel: '',
     persons: 4,
-    personsLocked: false,     // 23A/23B 固定 4 人间（契约 §4）
+    personsLocked: false,
     personsOptions: water.ruleView(4).personsOptions,   // 「1 人间」…「6 人间」（2026-11-19 自选）
     personQuota: water.quotaOf(4),
     month: '',
@@ -103,9 +99,9 @@ Page({
 
   onLoad() {
     scrollmem.attach(this);
-    this._first = true;
-    this._syncing = false;
-    this._fixed4Pushed = {};        // 本会话内已把固定 4 人间写回云端的房间（避免每次进入重复 POST）
+    this._active = true;
+    this._netCb = e => { if (this._active && e.isConnected) this._cloudSync(true); };
+    if (wx.onNetworkStatusChange) wx.onNetworkStatusChange(this._netCb);
     this.setData({
       buildings: power.BLDS,
       activeBuilding: power.BLDS[0],
@@ -117,22 +113,20 @@ Page({
     this._syncSel(true);
   },
   onShow() {
+    this._active = true;
     share.enable();
-    if (!identity.ensure()) return;
+    if (!identity.ensure()) { this._render(); return; }
     scrollmem.restore(this);
     try { store.reload(); } catch (e) { /* ignore */ }
-    const changed = this._syncSel(false);
-    if (this._first) {
-      this._first = false;
-      this._render();
-    } else if (changed) {
-      this._render();
-    }
-    // 2026-11-11 需求 6：先渲染本机缓存，再云端核对 / 补传离线队列（不阻塞首屏）
+    this._syncSel(false);
+    this._render();
     this._cloudSync(false);
   },
-  onHide() { scrollmem.save(this); },
-  onUnload() { scrollmem.save(this); },
+  onHide() { this._active = false; scrollmem.save(this); },
+  onUnload() {
+    this._active = false; scrollmem.save(this);
+    if (wx.offNetworkStatusChange) wx.offNetworkStatusChange(this._netCb);
+  },
   onPageScroll(e) { scrollmem.onScroll(this, e); },
   // 云端 userdata 应用后（换端 / 网页端改动）：重新读取本机 water / power，并核对云端共享表
   onCloudSync() {
@@ -155,121 +149,172 @@ Page({
       return false;
     }
     this.setData({ sel: rv, hasSel: !!rv, selLabel: power.labelOf(rv), selectedRv: rv, personsLocked: locked });
-    if (locked) {
-      // 23A/23B 固定 4 人间：本机镜像也强制 4（契约 §4）
-      const d2 = store.get();
-      const room = water.roomOf(d2.water, rv);
-      if (room.p !== 4) {
-        d2.water = water.withPersons(d2.water, rv, 4);
-        store.save();
-      }
-    }
     return true;
   },
-
-  /* ---------------- 云端共享（契约 §2/§3；唯一通道 utils/cloud.js） ---------------- */
-  _cloudSync(force) {
-    const rv = this.data.sel;
-    if (!rv) return Promise.resolve(false);
-    if (!identity.has() || !cloud.isEnabled()) {
-      this.setData({ syncText: '仅本机（未连接云端）', syncErr: true });
-      return Promise.resolve(false);
+  _context() {
+    return { sid: identity.sid(), token: identity.token(), revision: identity.revision(), localRevision: store.localRevision(), rv: this.data.sel };
+  },
+  _owns(c) {
+    return this._active && c.sid && c.sid === identity.sid() && c.token === identity.token() &&
+      c.rv === this.data.sel && c.revision === identity.revision() && c.localRevision === store.localRevision();
+  },
+  _room() {
+    const c = this._context();
+    const state = shared.read(c.sid, c.rv);
+    return state.denied ? { p: 4, recs: [] } : shared.display(state);
+  },
+  _deny(c) {
+    const state = shared.read(c.sid, c.rv);
+    state.denied = true;
+    shared.save(c.sid, c.rv, state);
+    this._render();
+    this.setData({ syncText: '身份失效或无权查看 · 请重新验证', syncErr: true });
+  },
+  async _cloudSync(force) {
+    const c = this._context();
+    if (!this._owns(c) || !c.rv) return false;
+    if (!cloud.isReadyForSync()) {
+      this.setData({ syncText: '离线 · 已保存本机', syncErr: true }); return false;
     }
-    if (this._syncing) return Promise.resolve(false);
-    this._syncing = true;
-    // 顺序：先补发离线队列（保证本机写入不被云端旧值覆盖）→ 再 GET 核对/合并
-    return this._flushPending().then(() => this._pullCloud(rv, force)).then((ok) => {
-      this._syncing = false;
-      return ok;
-    }).catch(() => {
-      this._syncing = false;
-      this.setData({ syncText: '离线 · 已存本机', syncErr: true });
+    const key = c.sid + '|' + c.rv;
+    const ticket = {};
+    latestRefresh.set(key, ticket);
+    const valid = () => this._owns(c) && latestRefresh.get(key) === ticket;
+    try {
+      const previous = shared.read(c.sid, c.rv);
+      const fresh = force || previous.ops.length > 0 || previous.denied || this.data.syncErr || !Array.isArray(previous.rows);
+      const [list, people] = await Promise.all([cloud.waterList(c.rv, fresh), cloud.waterRoomGet(c.rv)]);
+      if (!valid()) { if (!identity.has()) this._render(); return false; }
+      if ([list, people].some(r => /http40[13]/.test(r.reason || ''))) { this._deny(c); return false; }
+      const gotRows = list.ok && !list.cached && Array.isArray(list.rows);
+      const gotPeople = people.ok && (people.persons === null || water.roomPersonsOf({ persons: people.persons }) !== null);
+      if ((gotRows || gotPeople) && !(gotRows && list.rows.length || gotPeople && people.persons !== null)) {
+        const authorized = await cloud.waterIdentity(c.sid);
+        if (!valid()) return false;
+        if (!authorized) { this._deny(c); return false; }
+      }
+      const state = shared.read(c.sid, c.rv);
+      if (gotRows || gotPeople) state.denied = false;
+      if (gotRows) state.rows = list.rows;
+      if (gotPeople) state.people = people.persons;
+      shared.save(c.sid, c.rv, state);
+      this._render();
+      const result = await this._flushPending(c, key, valid, { rows: gotRows, people: gotPeople });
+      if (!valid() || shared.read(c.sid, c.rv).denied) return false;
+      if (result === 'reread') return this._cloudSync(true);
+      const pending = shared.read(c.sid, c.rv).ops.length;
+      const full = (gotRows || (list.cached && Array.isArray(state.rows))) && gotPeople;
+      this.setData({ syncText: pending ? '有本机操作待核对' :
+        (full ? '宿舍共享 · 已同步' : '部分数据未核对 · 已保留本机记录'),
+        syncErr: !!pending || !full, waterPending: !!pending });
+      return full && !pending;
+    } catch (err) {
+      if (!identity.has()) this._render();
+      else if (valid() && /http40[13]/.test(String(err && err.message))) this._deny(c);
+      else if (valid()) this.setData({ syncText: '未能核对共享数据 · 已保留本机', syncErr: true });
       return false;
-    });
+    }
   },
-  // 云端 GET + 合并：同 month 云端覆盖本地；本地独有月份补传；返回是否成功
-  _pullCloud(rv, force) {
-    if (!rv) return Promise.resolve(false);
-    return Promise.all([cloud.waterList(rv, force), cloud.waterRoomGet(rv)]).then((res) => {
-      const list = res[0] || {}, roomRes = res[1] || {};
-      if (!list.ok && !roomRes.ok) {
-        this.setData({ syncText: '离线 · 已存本机', syncErr: true });
-        return false;
+  async _flushPending(c, key, valid, got) {
+    if (!c) return this._cloudSync(true);
+    if (writing.has(key)) { await writing.get(key); return 'reread'; }
+    let release;
+    writing.set(key, new Promise(resolve => { release = resolve; }));
+    let written = false;
+    try {
+      for (const candidate of shared.read(c.sid, c.rv).ops) {
+        if (!valid() || !(candidate.field === 'people' ? got.people : got.rows)) continue;
+        const state = shared.read(c.sid, c.rv);
+        const op = state.ops.find(item => item.id === candidate.id);
+        if (!op || state.denied) continue;
+        const choice = shared.decision(op, shared.value(state, op.field));
+        if (choice === 'satisfied') {
+          state.ops = state.ops.filter(item => item.id !== op.id);
+          shared.save(c.sid, c.rv, state); continue;
+        }
+        if (choice === 'review') continue;
+        op.outcomeUnknown = true;
+        shared.save(c.sid, c.rv, state);
+        let receipt;
+        if (op.field === 'people') receipt = await cloud.waterRoomUpsert(c.rv, op.desired);
+        else if (op.desired === null) receipt = await cloud.waterDelete(c.rv, op.field);
+        else receipt = await cloud.waterUpsert(c.rv, op.field, op.desired.reading, op.desired.persons);
+        if (!valid()) return;
+        if (receipt.ok) written = true;
+        else if (/http40[13]/.test(receipt.reason)) { this._deny(c); return; }
+        else if (receipt.reason === 'offline') {
+          const current = shared.read(c.sid, c.rv);
+          const previous = current.ops.find(item => item.id === op.id);
+          if (previous) { previous.outcomeUnknown = false; shared.save(c.sid, c.rv, current); }
+        }
       }
-      if (list.cached) {                       // 60s TTL 内：不重复合并/重绘（需求 9 TTL 门控）
-        this.setData({ syncText: '宿舍共享 · 已同步', syncErr: false });
-        return true;
-      }
-      const d = store.get();
-      const local = water.roomOf(d.water, rv);
-      const merged = water.mergeCloud(local.recs, list.rows || []);
-      let changed = false;
-      if (merged.changed) {
-        d.water = water.withRecs(d.water, rv, merged.recs);
-        changed = true;
-      }
-      // 人数：23A/23B 固定 4；其它楼栋以云端 water_room 为准（云端无行按本机/默认 4）
-      let persons = local.p;
-      if (water.isFixed4(rv)) persons = 4;
-      else if (roomRes.ok && roomRes.persons) persons = roomRes.persons;
-      if (persons !== local.p) {
-        d.water = water.withPersons(d.water, rv, persons);
-        changed = true;
-      }
-      if (changed) store.save();
-      d.waterSyncAt = Date.now();
-      store.save();
-      this.setData({ syncText: '宿舍共享 · 已同步 ' + hhmm(d.waterSyncAt), syncErr: false });
-      if (changed) this._render();
-      // 固定 4 人间：首次进入自动 upsert water_room.persons=4（契约 §4）
-      if (water.isFixed4(rv) && !this._fixed4Pushed[rv]) {
-        this._fixed4Pushed[rv] = true;
-        cloud.waterRoomUpsert(rv, 4).catch(function () { /* 失败不影响本地固定 4 */ });
-      }
-      // 本地独有月份补传（失败进离线队列，下次重试）
-      (merged.missing || []).forEach((row) => {
-        cloud.waterUpsert(rv, row.m, row.r, this.data.persons).then((r) => {
-          if (!r || !r.ok) this._pendPut(rv, row.m, row.r);
-        });
-      });
-      return true;
-    });
+    } finally { writing.delete(key); release(); }
+    this._render();
+    return written ? 'reread' : undefined;
   },
-  // 离线待补发队列重试（契约 §3.2）：进页 / onShow / 切宿舍 / 保存后调用
-  _flushPending() {
-    const d = store.get();
-    const ops = water.normOps(d.waterPend);
-    if (!ops.length) return Promise.resolve(true);
-    const jobs = ops.map((op) => {
-      if (op.op === 'put') return cloud.waterUpsert(op.rv, op.m, op.r, op.p || 4).then((r) => (r && r.ok) ? op : null);
-      if (op.op === 'del') return cloud.waterDelete(op.rv, op.m).then((r) => (r && r.ok) ? op : null);
-      return cloud.waterRoomUpsert(op.rv, op.p || 4).then((r) => (r && r.ok) ? op : null);
-    });
-    if (!identity.has() || !cloud.isEnabled()) return Promise.resolve(false);
-    return Promise.all(jobs).then((done) => {
-      let left = store.get().waterPend;
-      done.filter(Boolean).forEach((op) => { left = water.dropOp(left, op); });
-      const dd = store.get();
-      dd.waterPend = water.normOps(left);
-      store.save();
-      this.setData({ waterPending: left.length > 0 });
-      return left.length === 0;
-    }).catch(() => false);
+  _queue(field, desired, source) {
+    const c = this._context();
+    if (!this._owns(c)) return;
+    const state = shared.read(c.sid, c.rv);
+    if (state.denied) { util.toast('请重新验证身份'); return; }
+    shared.queue(state, field, desired, source);
+    shared.save(c.sid, c.rv, state);
+    this._render();
+    this.setData({ syncText: '待同步 · 已保存本机', syncErr: true });
+    return this._cloudSync(true);
   },
-  _pendPut(rv, m, r) {
-    const d = store.get();
-    d.waterPend = water.pushOp(d.waterPend, { op: 'put', rv: rv, m: m, r: r, p: this.data.persons, at: Date.now() });
-    store.save();
+  reviewPending() {
+    const c = this._context();
+    if (!this._owns(c)) return;
+    const state = shared.read(c.sid, c.rv), op = state.ops[0];
+    if (!op || state.denied) return;
+    const current = shared.value(state, op.field);
+    if (current === undefined) { util.toast('先联网核对当前共享值'); this._cloudSync(true); return; }
+    const label = value => value === null ? '无记录' : typeof value === 'number' ? value + ' 人' :
+      value.reading + ' 吨（' + value.persons + ' 人）';
+    wx.showActionSheet({ itemList: ['确认提交本机操作', '采用当前共享值'], success: r => {
+      if (!this._owns(c)) return;
+      wx.showModal({ title: op.field === 'people' ? '核对居住人数' : '核对 ' + op.field,
+        content: '共享值：' + label(current) + '。本机意图：' + label(op.desired) + '。',
+        success: choice => {
+          if (!choice.confirm || !this._owns(c)) return;
+          const fresh = shared.read(c.sid, c.rv);
+          if (!fresh.ops.some(o => o.id === op.id) || !shared.same(current, shared.value(fresh, op.field))) return;
+          fresh.ops = fresh.ops.filter(o => o.id !== op.id);
+          if (r.tapIndex === 0) shared.queue(fresh, op.field, op.desired);
+          shared.save(c.sid, c.rv, fresh); this._render(); this._cloudSync(true);
+        } });
+    } });
   },
-  _pendDel(rv, m) {
-    const d = store.get();
-    d.waterPend = water.pushOp(d.waterPend, { op: 'del', rv: rv, m: m, at: Date.now() });
-    store.save();
-  },
-  _pendPersons(rv, p) {
-    const d = store.get();
-    d.waterPend = water.pushOp(d.waterPend, { op: 'persons', rv: rv, p: p, at: Date.now() });
-    store.save();
+  async viewPrivate() {
+    const c = this._context();
+    if (!this._owns(c)) return;
+    const initial = shared.read(c.sid, c.rv);
+    if (initial.denied) { util.toast('请先重新验证身份'); return; }
+    let history = initial.history;
+    try {
+      const data = await cloud.waterPrivateHistory(c.sid, c.rv);
+      if (!this._owns(c)) return;
+      history = data;
+      const state = shared.read(c.sid, c.rv); state.history = data; shared.save(c.sid, c.rv, state);
+    } catch (e) {
+      if (!this._owns(c)) return;
+      if (/http40[13]/.test(String(e.message))) { this._deny(c); return; }
+    }
+    if (!history || !history.recs.length) { util.toast('没有已确认归属的个人旧记录'); return; }
+    wx.showModal({ title: '个人旧账本', content: history.recs.map(r => r.m + '　' + r.r + ' 吨').join('\n'),
+      confirmText: '选月导入', cancelText: '关闭', success: r => {
+        if (!r.confirm || !this._owns(c)) return;
+        wx.showModal({ title: '输入要导入的月份', editable: true, placeholderText: 'YYYY-MM',
+          success: pick => {
+            const rec = history.recs.find(row => row.m === pick.content);
+            if (!pick.confirm || !rec || !this._owns(c)) return;
+            const cur = shared.value(shared.read(c.sid, c.rv), rec.m);
+            wx.showModal({ title: '导入 ' + rec.m,
+              content: '历史值 ' + rec.r + ' 吨；共享值 ' + (cur ? cur.reading + ' 吨' : cur === null ? '无记录' : '尚未核对') + '。',
+              success: yes => { if (yes.confirm && this._owns(c)) this._queue(rec.m, { reading: rec.r, persons: history.p }, 'confirmed-import'); } });
+          } });
+      } });
   },
 
   /* ---------------- 自定义宿舍选择弹层（与电费页同款） ---------------- */
@@ -319,21 +364,11 @@ Page({
 
   /* ---------------- 录入 / 人数 / 删除 ---------------- */
   pickPersons(e) {
-    const p = water.normPersons((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.p));
-    if (p === this.data.persons) return;
+    const p = water.roomPersonsOf({ persons: e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.p });
     const rv = this.data.sel;
-    if (!rv) return;
-    if (water.isFixed4(rv)) { util.toast('23A/23B 固定 4 人间，不可修改'); return; }
-    const d = store.get();
-    d.water = water.withPersons(d.water, rv, p);   // 房间人数进 water section（随账号同步；云端共享表同步写）
-    store.save();
-    this.setData({ persons: p });
-    this._render();
-    if (identity.has() && cloud.isEnabled()) {
-      cloud.waterRoomUpsert(rv, p).then((r) => {
-        if (!r || !r.ok) { this._pendPersons(rv, p); util.toast('已保存本机 · 云端稍后重试'); }
-      });
-    }
+    if (!rv || p === null || !identity.has()) return;
+    if (p === this.data.persons && shared.read(identity.sid(), rv).people === p) return;
+    return this._queue('people', p);
   },
   onMonthChange(e) {
     const m = water.normMonth(e && e.detail && e.detail.value) || water.monthOf();
@@ -347,44 +382,18 @@ Page({
   saveRecord() {
     const rv = this.data.sel;
     if (!rv) { util.toast('先选择关注宿舍'); return; }
-    const room = water.roomOf(store.get().water, rv);
-    const r = water.saveRecord(room.recs, this.data.month, this.data.reading, this.data.persons);
-    if (!r.ok) { util.toast(r.reason); return; }
-    const d = store.get();
-    d.water = water.withRecs(d.water, rv, r.recs);
-    store.save();                                   // UD v6 water 继续作离线缓存；随后写云端共享表
+    const room = this._room();
+    const result = water.saveRecord(room.recs, this.data.month, this.data.reading, this.data.persons);
+    if (!result.ok) { util.toast(result.reason); return; }
     this.setData({ reading: '' });
-    this._render();
-    util.toast(r.replaced ? ('已更新 ' + this.data.month + ' 记录') : '已保存 ' + this.data.month + ' 记录');
-    const p = this.data.persons;
-    if (identity.has() && cloud.isEnabled()) {
-      cloud.waterUpsert(rv, r.rec.m, r.rec.r, p).then((res) => {
-        if (!res || !res.ok) { this._pendPut(rv, r.rec.m, r.rec.r); util.toast('已保存本机 · 云端稍后重试'); }
-      });
-    }
+    return this._queue(result.rec.m, { reading: result.rec.r, persons: room.p });
   },
   delRecord(e) {
-    const m = water.normMonth((e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.m));
-    const rv = this.data.sel;
-    if (!m || !rv) return;
-    wx.showModal({
-      title: '删除抄表记录',
-      content: '删除 ' + m + ' 的记录？删除后用量与水费会按剩余记录重算。',
-      success: (res) => {
-        if (!res || !res.confirm) return;
-        const d = store.get();
-        const room = water.roomOf(d.water, rv);
-        d.water = water.withRecs(d.water, rv, water.delRecord(room.recs, m));
-        store.save();
-        this._render();
-        util.toast('已删除 ' + m + ' 记录');
-        if (identity.has() && cloud.isEnabled()) {
-          cloud.waterDelete(rv, m).then((r) => {
-            if (!r || !r.ok) { this._pendDel(rv, m); util.toast('已删除本机 · 云端稍后重试'); }
-          });
-        }
-      }
-    });
+    const month = water.normMonth(e && e.currentTarget && e.currentTarget.dataset.m);
+    const c = this._context();
+    if (!month || !this._owns(c)) return;
+    wx.showModal({ title: '删除抄表记录', content: '删除 ' + month + ' 的共享记录？',
+      success: result => { if (result.confirm && this._owns(c)) this._queue(month, null); } });
   },
 
   /* ---------------- 渲染 ---------------- */
@@ -394,7 +403,7 @@ Page({
       if (this.data.preview) this.setData({ preview: null });
       return;
     }
-    const room = water.roomOf(store.get().water, rv);
+    const room = this._room();
     const pv = water.previewOf(room.recs, this.data.month, this.data.reading, this.data.persons);
     if (!pv || !pv.valid) {
       this.setData({ preview: { valid: false, reason: (pv && pv.reason) || '请输入有效读数' } });
@@ -430,7 +439,7 @@ Page({
       });
       return;
     }
-    const room = water.roomOf(store.get().water, rv);
+    const room = this._room();
     const p = fixed ? 4 : room.p;
     const recs = room.recs;
     const hist = water.buildHistory(recs, p);
@@ -514,7 +523,7 @@ Page({
       statusTone: statusTone,
       histCount: histRows.length,
       history: histRows,
-      waterPending: water.normOps(store.get().waterPend).length > 0,
+      waterPending: !!identity.sid() && !shared.read(identity.sid(), rv).denied && shared.read(identity.sid(), rv).ops.length > 0,
       tiles: tiles,
       cmp: {
         empty: !!cmp.empty,

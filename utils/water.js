@@ -250,41 +250,24 @@ function cloudRecsOf(rows) {
     return { m: normMonth(x.month), r: normReading(x.reading), ts: ts };
   }).filter(Boolean));
 }
-// 合并云端与本地（契约 §3.1）：同 month 以云端为准，本地独有月份进 missing 待补传；
-// 返回 { recs, missing:[{m,r,ts}], changed, cloudCount }。changed=true 表示合并后本机应重写。
+// 全量读取覆盖共享基线。旧调用方读 missing 时取得空列表。
 function mergeCloud(localRecs, cloudRows) {
+  const recs = cloudRecsOf(cloudRows);
   const local = normRecs(localRecs);
-  const cloud = cloudRecsOf(cloudRows);
-  const map = {};
-  local.forEach(function (r) { map[r.m] = { r: r.r, t: r.ts, cloud: false }; });
-  cloud.forEach(function (r) { map[r.m] = { r: r.r, t: r.ts, cloud: true }; });
-  const recs = normRecs(Object.keys(map).map(function (m) {
-    return { m: m, r: map[m].r, ts: map[m].t };
-  }));
-  const cloudMap = {};
-  cloud.forEach(function (r) { cloudMap[r.m] = r; });
-  const missing = local.filter(function (r) { return !cloudMap[r.m]; }).map(function (r) {
-    return { m: r.m, r: r.r, ts: r.ts };
-  });
-  // changed = 本机需要重写：有本地独有月份（待补传）/ 云端月份数不同 / 同月读数不同
-  let changed = missing.length > 0;
-  const localMap = {};
-  local.forEach(function (r) { localMap[r.m] = r; });
-  if (!changed && cloud.length !== local.length) changed = true;
-  if (!changed) {
-    for (let i = 0; i < cloud.length; i++) {
-      const l = localMap[cloud[i].m];
-      if (!l || Math.abs(l.r - cloud[i].r) > 1e-9) { changed = true; break; }
-    }
-  }
-  return { recs: recs, missing: missing, changed: changed, cloudCount: cloud.length };
+  const changed = local.length !== recs.length || local.some((r, i) => r.m !== recs[i].m || r.r !== recs[i].r);
+  return { recs, missing: [], changed, cloudCount: cloudRows.length };
 }
-// 云端 water_room 行 → persons（坏行/无行 → null）
 function roomPersonsOf(row) {
   const r = Array.isArray(row) ? row[0] : row;
-  if (!r || typeof r !== 'object') return null;
-  const p = Number(r.persons);
-  return (p === 4 || p === 6) ? p : null;
+  const raw = r && r.persons;
+  if (typeof raw !== 'number' && !(typeof raw === 'string' && /^[1-6]$/.test(raw))) return null;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 1 && value <= 6 ? value : null;
+}
+function validSharedRow(row, rv) {
+  return !!row && row.roomverify === rv && !!normMonth(row.month) && roomPersonsOf(row) !== null &&
+    (typeof row.reading === 'number' || (typeof row.reading === 'string' && !!row.reading.trim())) &&
+    Number.isFinite(Number(row.reading)) && Number(row.reading) >= 0;
 }
 // 离线待补发操作归一（store.waterPend）：{op:'put'|'del'|'persons', rv, m?, r?, p?, at}
 function normOp(op) {
@@ -354,6 +337,7 @@ function ruleView(persons) {
 }
 
 module.exports = {
+  validSharedRow,
   RULES: RULES, TON_TO_DEG: TON_TO_DEG, REC_CAP: REC_CAP,
   round2: round2, round1: round1, monthOf: monthOf, normMonth: normMonth, shiftMonth: shiftMonth,
   normPersons: normPersons, normReading: normReading, normRecs: normRecs, normRooms: normRooms, normWater: normWater,

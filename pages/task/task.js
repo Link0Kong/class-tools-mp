@@ -156,10 +156,15 @@ Page(shareflow.install({
       if (obj && obj.t) this._shared = obj;
     }
     this._remindTimer = null;
+    this._netCb = event => {
+      if (this._shown && event.isConnected) task.pull(true).then(() => { if (this._shown) this.refresh(); });
+    };
+    if (wx.onNetworkStatusChange) wx.onNetworkStatusChange(this._netCb);
     this._classRaw = [];
-    task.onStatus((s) => { if (!this._dead) this.setData({ syncText: s, cloudEnabled: cloud.isEnabled() }); });
+    task.onStatus((s) => { if (!this._dead) this.setData({ syncText: s, cloudEnabled: cloud.isEnabled(), hasLegacyDraft: !!task.legacyDraft() }); });
   },
   onShow() {
+    this._shown = true;
     share.enable();
     this.checkAiAccount();
     if (!identity.ensure()) return;
@@ -172,12 +177,32 @@ Page(shareflow.install({
     this.startReminderTimer();
   },
   onHide() {
+    this._shown = false;
     this.abortAi();
     this.stopReminderTimer();
     task.flush();
   },
   onCloudSync() { this.refresh(); },
+  reviewLegacyTasks() {
+    const draft = task.legacyDraft(), sid = identity.sid(), token = identity.token(), revision = identity.revision();
+    if (!draft) return;
+    const own = () => sid === identity.sid() && token === identity.token() && revision === identity.revision();
+    wx.showActionSheet({ itemList: ['复制旧记录供核对', '合并这些任务和分组'], success: choice => {
+      if (!own()) return;
+      if (choice.tapIndex === 0) { wx.setClipboardData({ data: JSON.stringify(draft, null, 2) }); return; }
+      wx.showModal({ title: '合并旧本机记录',
+        content: '恢复 ' + (draft.items || []).length + ' 条任务。相同编号采用本机字段，保留其他云端任务。确认前可先复制核对。',
+        confirmText: '合并', success: result => {
+          if (result.confirm && own()) {
+            if (!task.restoreLegacy()) util.toast('旧记录格式异常，可复制后手动核对');
+            this.refresh();
+          }
+        } });
+    } });
+  },
   onUnload() {
+    this._shown = false;
+    if (wx.offNetworkStatusChange) wx.offNetworkStatusChange(this._netCb);
     this._dead = true;
     this.abortAi();
     clearTimeout(this._searchTimer);
@@ -250,7 +275,7 @@ Page(shareflow.install({
         quickListLabel: listNames[qIdx] || '未分组',
         searchOpen: this.data.searchOpen || !!ui.search, classOpen: classOpen, classCount: classOpen.length,
         seg: classOpen.length ? this.data.seg : 'my',
-        syncText: task.syncText(), cloudEnabled: cloud.isEnabled(),
+        syncText: task.syncText(), cloudEnabled: cloud.isEnabled(), hasLegacyDraft: !!task.legacyDraft(),
         sortLabel: ({ default: '默认排序', due: '按截止时间', created: '按创建时间', important: '按重要性' })[ui.sort] || '默认排序'
       }, () => {
         if (this._pendingTask) {

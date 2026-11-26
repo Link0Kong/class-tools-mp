@@ -10,6 +10,8 @@ const store = require('./store.js');
 const util = require('./util.js');
 const identity = require('./identity.js');
 const cloud = require('./cloud.js');
+const protocol = require('./task-sync.js');
+const checkpoints = require('./task-storage.js');
 
 const UI_KEY = 'zq_task_ui_mp_v1';
 const OWNER_KEY = 'zq_task_owner_v1';
@@ -25,9 +27,8 @@ const COLOR_HEX = { cy: '#5E8F87', bl: '#7D9EBB', sd: '#C6A475', violet: '#9B8FB
 const TTL = 60000;
 const MAX_ITEMS = 2000, MAX_LISTS = 30, MAX_STEPS = 50, MAX_NOTE = 500, MAX_TITLE = 200, MAX_NOTES = 5000;
 
-let cache = null;
-let syncState = { sid: '', booted: false, pulling: false, pushing: false, lastPull: 0, dirty: false, status: '仅本机', base: null };
-let syncTimer = 0, pullP = null, pushP = null;
+let cache = null, owner = null;
+let syncTimer = 0;
 let statusListener = null;
 
 function now() { return Date.now(); }
@@ -196,34 +197,62 @@ function normData(raw) {
   return out;
 }
 
+function accountKey(sid) { return 'zq_task_cloud_' + encodeURIComponent(sid); }
+function copy(value) { return JSON.parse(JSON.stringify(value)); }
+function readLocal(key) {
+  return checkpoints.read(key);
+}
+function current(account) {
+  return account === owner && account.sid === identity.sid() && account.token === identity.token() &&
+    account.revision === identity.revision();
+}
+function persist(account) {
+  if (!account.sid || account.damaged) return;
+  checkpoints.write(accountKey(account.sid), {
+    v: 2, ts: account.ts, confirmed: account.confirmed, base: account.base,
+    local: cache, legacy: account.legacy, pending: account.pending
+  });
+}
 function load() {
-  if (cache) {
-    const sid0 = identity.sid();
-    let owner0 = '';
-    try { owner0 = String(wx.getStorageSync(OWNER_KEY) || ''); } catch (e) { owner0 = ''; }
-    if (!sid0) return cache;
-    if (owner0 && owner0 === sid0) return cache;
-    cache = null;
+  const sid = identity.sid(), token = identity.token(), revision = identity.revision();
+  if (owner && owner.sid === sid && owner.token === token && owner.revision === revision && cache) return cache;
+  clearTimeout(syncTimer);
+  let saved, damaged = false;
+  try { saved = sid && readLocal(accountKey(sid)); } catch (e) { damaged = true; }
+  const versioned = saved && saved.v === 2 && saved.local && Array.isArray(saved.local.items) &&
+    saved.base && Array.isArray(saved.base.items);
+  if (saved && saved.v === 2 && !versioned) damaged = true;
+  let previousOwner = '';
+  try { previousOwner = String(wx.getStorageSync(OWNER_KEY) || ''); } catch (e) {}
+  const old = store.get().task;
+  const mine = sid && previousOwner === sid ? old : null;
+  if (sid && !previousOwner && !versioned && hasData(old)) {
+    // The old single store cannot establish ownership after a logout.
+    checkpoints.write('zq_task_unowned_history_v1', old);
   }
-  try {
-    const sid = identity.sid();
-    let owner = '';
-    try { owner = String(wx.getStorageSync(OWNER_KEY) || ''); } catch (e) { owner = ''; }
-    // 同一台手机换人验证：任务是个人的，旧账号数据不能显示给新账号。
-    if (sid && owner && owner !== sid) {
-      cache = emptyTaskData();
-      store.get().task = cache;
-      try { store.saveQuiet(); } catch (e) {}
-      try { wx.setStorageSync(OWNER_KEY, sid); } catch (e) {}
-      return cache;
-    }
-    if (sid && !owner) { try { wx.setStorageSync(OWNER_KEY, sid); } catch (e) {} }
-    cache = normData(store.get().task);
-  } catch (e) { cache = emptyTaskData(); }
+  cache = normData(versioned ? saved.local : mine);
+  owner = { sid, token, revision, base: versioned ? saved.base : taskView(cache),
+    ts: versioned ? saved.ts : null, confirmed: versioned ? saved.confirmed : null,
+    legacy: versioned ? saved.legacy : (hasData(mine) ? copy(mine) : null),
+    pending: versioned ? saved.pending : null, damaged, status: damaged ? '本机检查点异常 · 保留草稿' : '仅本机', lastPull: 0, inflight: null };
+  if (sid) {
+    wx.setStorageSync(OWNER_KEY, sid);
+    store.get().task = cache;
+    store.saveQuiet();
+    if (!versioned && !damaged) persist(owner);
+  }
   return cache;
+}
+function leaveAccount() {
+  load();
+  if (owner.sid) persist(owner);
+  clearTimeout(syncTimer);
+  owner = null;
+  cache = null;
 }
 function saveQuiet() {
   const d = load();
+  if (owner.sid) persist(owner);
   store.get().task = d;
   try { store.saveQuiet(); } catch (e) {
     try { store.save(); } catch (e2) { /* ignore */ }
@@ -237,7 +266,7 @@ function save() {
   touch();
   return d;
 }
-function resetCache() { cache = null; }
+function resetCache() { if (owner && !current(owner)) { owner = null; cache = null; } }
 function data() { return load(); }
 function items() { return load().items || []; }
 function lists() { return load().lists || []; }
@@ -354,6 +383,21 @@ function cleanupTaskFiles(t) {
 }
 function clearFiles() {
   items().forEach(function (t) { try { cleanupTaskFiles(t); } catch (e) {} });
+  if (wx.getStorageInfoSync) {
+    const keys = wx.getStorageInfoSync().keys || [];
+    keys.filter(key => key.startsWith('zq_task_cloud_') || key === 'zq_task_unowned_history_v1').forEach(key => {
+      let saved;
+      try { saved = readLocal(key); } catch (e) { /* damaged checkpoint may still be cleared */ }
+      for (const source of [saved && saved.local, saved && saved.legacy, saved]) {
+        if (source && Array.isArray(source.items)) source.items.forEach(cleanupTaskFiles);
+      }
+      try { checkpoints.remove(key); } catch (e) { wx.removeStorageSync(key); }
+    });
+  }
+  if (owner && owner.sid) wx.removeStorageSync(accountKey(owner.sid));
+  clearTimeout(syncTimer);
+  owner = null;
+  cache = null;
 }
 function advanceDate(v, repeat) {
   const p = String(v || today()).split('-');
@@ -681,177 +725,151 @@ function addFromNotice(g) {
 
 // ---------------------------------------------------------------- 云同步
 function taskView(d) {
-  const c = JSON.parse(JSON.stringify(d || load()));
-  c.items = (c.items || []).map(function (x) { x.attachments = ''; return x; });
-  return c;
-}
-function attMap(d) {
-  const m = {};
-  (d && d.items || []).forEach(function (x) { if (x.attachments) m[x.id] = x.attachments; });
-  return m;
+  const value = copy(d || load());
+  value.items.forEach(item => { item.attachments = ''; delete item.localFiles; });
+  return value;
 }
 function hasData(d) {
   return !!(d && ((d.items && d.items.length) || (d.lists && d.lists.length) ||
-    (d.prefs && (d.prefs.sidebarOrder && d.prefs.sidebarOrder.length))));
-}
-function baseKey() { return 'zq_task_cloud_' + (syncState.sid || identity.sid()); }
-function readBase() {
-  try { return JSON.parse(wx.getStorageSync(baseKey()) || 'null'); } catch (e) { return null; }
-}
-function writeBase(ts) {
-  try { wx.setStorageSync(baseKey(), JSON.stringify({ ts: Number(ts) || 0 })); } catch (e) {}
+    (d.prefs && (d.prefs.sound === false || d.prefs.defaultRemind && d.prefs.defaultRemind !== 'none' ||
+      d.prefs.sidebarOrder && d.prefs.sidebarOrder.length))));
 }
 function setStatus(s) {
-  syncState.status = s || '仅本机';
-  if (typeof statusListener === 'function') { try { statusListener(syncState.status); } catch (e) {} }
+  if (owner) owner.status = s;
+  if (typeof statusListener === 'function') { try { statusListener(s); } catch (e) {} }
 }
 function onStatus(fn) { statusListener = fn; }
 function syncText() {
   if (!identity.has()) return '登录后同步';
-  if (!cloud.isEnabled()) return '仅本机';
-  return syncState.status || '已同步';
+  load();
+  return cloud.isEnabled() ? owner.status : '仅本机';
 }
-function parseRow(row) {
+function changed(base, local) {
+  return !protocol.equal(base.items, local.items) || !protocol.equal(base.lists, local.lists) ||
+    !protocol.equal(base.prefs, local.prefs);
+}
+function putLocal(raw, files) {
+  const next = normData(raw);
+  const attachments = new Map(files.items.map(item => [item.id, item.attachments]));
+  next.items.forEach(item => { item.attachments = attachments.get(item.id) || ''; });
+  return next;
+}
+function accept(account, wire, stamp, sent) {
+  const local = load(), latest = taskView(local);
+  const confirmed = putLocal(wire.leaf, local);
+  confirmed.updatedAt = stamp;
+  const base = taskView(confirmed);
+  cache = changed(sent, latest) ? putLocal(protocol.rebase(sent, latest, base), local) : confirmed;
+  if (changed(sent, latest)) cache.updatedAt = Math.max(cache.updatedAt, latest.updatedAt);
+  account.base = base;
+  account.confirmed = wire.root;
+  account.ts = stamp;
+  account.pending = null;
+  store.get().task = cache;
+  persist(account);
+  store.saveQuiet();
+  if (changed(account.base, taskView(cache))) setStatus('待同步 · 已保存本机');
+  else setStatus(account.legacy ? '旧本机任务待核对' : '已同步');
+}
+async function sync(account) {
   try {
-    if (!row || row.blob == null || row.blob === '') return null;
-    return normData(JSON.parse(row.blob));
-  } catch (e) { return null; }
-}
-function applySnapshot(t, ts) {
-  const local = load();
-  const att = attMap(local);
-  const next = normData(t);
-  next.items.forEach(function (x) { x.attachments = att[x.id] || ''; });
-  next.updatedAt = Number(ts) || Number(next.updatedAt) || now();
-  cache = next;
-  store.get().task = next;
-  try { store.saveQuiet(); } catch (e) {}
-  writeBase(next.updatedAt);
-  syncState.dirty = false;
-  setStatus('已同步');
-  return true;
-}
-function union(local, remote, rts) {
-  const out = normData(remote), lts = Number(local.updatedAt) || 0;
-  const seen = {};
-  out.items.forEach(function (x) { seen[x.id] = x; });
-  local.items.forEach(function (li) {
-    const ri = seen[li.id];
-    if (!ri) { out.items.push(li); return; }
-    if ((li.updatedAt || 0) > (ri.updatedAt || 0)) {
-      const i = out.items.indexOf(ri); if (i >= 0) out.items[i] = li;
+    for (let attempt = 0; attempt < 4 && current(account); attempt++) {
+      setStatus('同步中…');
+      const rows = await cloud.taskRows(account.sid);
+      if (!current(account)) return false;
+      if (!Array.isArray(rows) || rows.length > 1 || (rows.length && (!rows[0] || rows[0].id !== account.sid))) {
+        setStatus('云端回执异常 · 保留本机'); return false;
+      }
+      const row = rows[0], stamp = row ? protocol.stamp(row.ts) : 0;
+      const wire = row && stamp !== null ? protocol.decode(row.blob, stamp) :
+        (!row ? protocol.decode('', 0) : null);
+      if (!wire) { setStatus('云端快照异常 · 保留本机'); return false; }
+      account.lastPull = now();
+      const pending = account.pending;
+      if (row && pending && stamp >= pending.body.ts && protocol.equal(wire.root, JSON.parse(pending.body.blob))) {
+        accept(account, wire, stamp, pending.sent);
+        if (!changed(account.base, taskView(cache))) return true;
+        continue;
+      }
+      const local = taskView(load());
+      if (!changed(account.base, local)) {
+        if (!row) { setStatus(account.legacy ? '旧本机任务待核对' : '未读到云端记录 · 已保留本机'); return false; }
+        accept(account, wire, stamp, local);
+        return true;
+      }
+      // taskdata grants no DELETE. An existing confirmed row becoming invisible may indicate RLS.
+      if (!row && account.confirmed) { setStatus('云端记录不可见 · 保留待同步'); return false; }
+      const merged = protocol.rebase(account.base, local, wire.leaf);
+      if (row && protocol.equal(merged, wire.leaf)) { accept(account, wire, stamp, local); return true; }
+      const next = Math.max(now(), local.updatedAt, stamp + 1);
+      if (protocol.stamp(next) === null) { setStatus('云端版本异常 · 保留本机'); return false; }
+      merged.updatedAt = next;
+      const body = { id: account.sid, ts: next, blob: protocol.encode(wire, merged) };
+      account.pending = { body, sent: local };
+      persist(account);
+      const reply = await cloud.taskWrite(body, row ? stamp : null);
+      if (!current(account)) return false;
+      if (protocol.response(reply, body) !== 'row') continue;
+      accept(account, protocol.decode(body.blob, next), next, local);
+      if (!changed(account.base, taskView(cache))) return true;
     }
-  });
-  const lmap = {};
-  local.lists.forEach(function (l) { lmap[l.id] = l; });
-  out.lists = out.lists.map(function (rl) { return (lmap[rl.id] && lts > rts) ? lmap[rl.id] : rl; });
-  const rseen = {};
-  out.lists.forEach(function (l) { rseen[l.id] = 1; });
-  local.lists.forEach(function (ll) { if (!rseen[ll.id]) out.lists.push(ll); });
-  const lp = local.prefs || {}, rp = out.prefs || {};
-  out.prefs.sound = lts > rts ? lp.sound !== false : rp.sound !== false;
-  if (lts > rts) out.prefs.defaultRemind = lp.defaultRemind;
-  const lsoAt = Number(lp.sidebarOrderAt) || 0, rsoAt = Number(rp.sidebarOrderAt) || 0;
-  if (lsoAt > rsoAt) {
-    out.prefs.sidebarOrder = cleanSidebar(lp.sidebarOrder);
-    out.prefs.sidebarOrderAt = lsoAt;
-  } else if (rsoAt > lsoAt) {
-    out.prefs.sidebarOrder = cleanSidebar(rp.sidebarOrder);
-    out.prefs.sidebarOrderAt = rsoAt;
+    if (current(account)) setStatus('待同步 · 已保存本机');
+  } catch (error) {
+    if (current(account)) {
+      const detail = String(error && (error.errMsg || error.message) || '');
+      if (/http40[13]/.test(detail)) setStatus('登录失效或无权限 · 更改留在本机');
+      else if (/http405|method.*(invalid|support|allowed)|PATCH.*(invalid|support|allowed)/i.test(detail)) {
+        setStatus('当前环境不支持条件更新 · 更改留在本机');
+      } else setStatus('待同步 · 已保存本机');
+    }
   }
-  out.updatedAt = Math.max(lts, rts, now());
-  return out;
-}
-function fetchRow() {
-  const sid = identity.sid();
-  if (!sid) return Promise.reject(new Error('no-identity'));
-  return cloud.cbGet('taskdata', 'select=*&id=eq.' + encodeURIComponent(sid))
-    .then(function (rows) { return (rows && rows[0]) || null; });
-}
-function push(force) {
-  if (pushP) return pushP;
-  const sid = identity.sid();
-  if (!sid) return Promise.resolve(false);
-  setStatus('同步中…');
-  pushP = fetchRow().then(function (row) {
-    if (identity.sid() !== sid) return false;
-    const local = load(), lts = Number(local.updatedAt) || 0;
-    if (!hasData(local) && !row) { setStatus('已同步'); return true; }
-    const rts = row ? (Number(row.ts) || 0) : 0;
-    if (row && rts > lts && !force) {
-      const remote = parseRow(row);
-      if (remote) { applySnapshot(remote, rts); return true; }
-    }
-    const body = [{ id: sid, blob: JSON.stringify(taskView(local)), ts: lts }];
-    return cloud.cbUpsert('taskdata', body[0]).then(function () {
-      if (identity.sid() !== sid) return false;
-      writeBase(lts);
-      if (load().updatedAt > lts) { touch(); return true; }
-      syncState.dirty = false; setStatus('已同步'); return true;
-    });
-  }).catch(function () { if (identity.sid() === sid) setStatus('仅本机'); return false; }).then(function (x) { if (pushP === request) pushP = null; return x; });
-  const request = pushP;
-  return pushP;
+  return false;
 }
 function pull(force) {
-  const sid = identity.sid();
-  if (pullP) return pullP;
-  if (!identity.sid() || !cloud.isEnabled()) { setStatus(identity.sid() ? '仅本机' : '登录后同步'); return Promise.resolve(false); }
-  if (!force && syncState.lastPull && Date.now() - syncState.lastPull < TTL) return Promise.resolve(false);
-  setStatus('同步中…');
-  pullP = fetchRow().then(function (row) {
-    if (identity.sid() !== sid) return false;
-    syncState.lastPull = now();
-    const local = load(), lts = Number(local.updatedAt) || 0;
-    if (!row) {
-      writeBase(0);
-      if (!hasData(local)) { setStatus('已同步'); return true; }
-      return push(true);
-    }
-    const remote = parseRow(row);
-    if (!remote) { if (hasData(local)) return push(true); setStatus('已同步'); return true; }
-    const rts = Number(row.ts) || Number(remote.updatedAt) || 0;
-    const base = readBase();
-    if (!base) {
-      if (hasData(local)) {
-        const merged = union(local, remote, rts);
-        applySnapshot(merged, merged.updatedAt);
-        return push(true);
-      }
-      applySnapshot(remote, rts);
-      return true;
-    }
-    if (rts > lts) { applySnapshot(remote, rts); return true; }
-    if (lts > rts) return push(true);
-    writeBase(rts); setStatus('已同步'); return true;
-  }).catch(function () { if (identity.sid() === sid) setStatus('仅本机'); return false; }).then(function (x) { if (pullP === request) pullP = null; return x; });
-  const request = pullP;
-  return pullP;
+  load();
+  const account = owner;
+  if (!account.sid || !cloud.isEnabled()) return Promise.resolve(false);
+  if (account.damaged) { setStatus('本机检查点异常 · 保留草稿'); return Promise.resolve(false); }
+  if (account.inflight) return account.inflight;
+  if (!force && !changed(account.base, taskView(cache)) && account.lastPull && now() - account.lastPull < TTL) return Promise.resolve(false);
+  account.inflight = sync(account).then(result => { account.inflight = null; return result; },
+    error => { account.inflight = null; throw error; });
+  return account.inflight;
+}
+function push() { return pull(true); }
+function boot() { return pull(false); }
+function flush() {
+  load();
+  if (changed(owner.base, taskView(cache)) || owner.pending) return pull(true);
+  return Promise.resolve(false);
 }
 function touch() {
-  if (!identity.sid() || !cloud.isEnabled()) { setStatus(identity.sid() ? '仅本机' : '登录后同步'); return; }
-  syncState.dirty = true;
-  setStatus('同步中…');
+  load();
+  const account = owner;
+  if (account.damaged) { setStatus('本机检查点异常 · 保留草稿'); return; }
+  try { persist(account); } catch (e) { setStatus('本机存储不足 · 请保留页面'); return; }
+  if (!account.sid || !cloud.isEnabled()) { setStatus(account.sid ? '仅本机' : '登录后同步'); return; }
+  setStatus('待同步 · 已保存本机');
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(function () {
-    if (readBase()) push(); else pull(true);
-  }, 1200);
+  syncTimer = setTimeout(() => { if (current(account)) pull(true); }, 1200);
 }
-function boot() {
-  const sid = identity.sid();
-  if (!sid) { setStatus('登录后同步'); return; }
-  if (syncState.booted && syncState.sid === sid) return;
-  clearTimeout(syncTimer); pullP = null; pushP = null; syncState.dirty = false;
-  syncState.sid = sid; syncState.booted = true; syncState.lastPull = 0;
-  pull(true);
-}
-function flush() {
-  if (!syncState.dirty) return;
-  if (readBase()) push(); else pull(true);
+function legacyDraft() { load(); return owner.legacy ? copy(owner.legacy) : null; }
+function restoreLegacy() {
+  const draft = legacyDraft();
+  if (!draft || !protocol.decode(draft, 0)) return false;
+  const local = load(), old = normData(draft);
+  if (!owner.confirmed) owner.base = taskView(emptyTaskData());
+  const merged = protocol.rebase({ items: [], lists: [] }, old, local);
+  cache = putLocal(merged, { items: local.items.concat(old.items) });
+  owner.legacy = null;
+  save();
+  return true;
 }
 function status() { return syncText(); }
 function state() {
-  return { sid: identity.sid(), dirty: !!syncState.dirty, status: syncText(), lastPull: syncState.lastPull };
+  load();
+  return { sid: owner.sid, dirty: !!owner.pending || changed(owner.base, taskView(cache)),
+    status: syncText(), lastPull: owner.lastPull };
 }
 
 module.exports = {
@@ -868,6 +886,7 @@ module.exports = {
   dueMs: dueMs, dueText: dueText, reminderText: reminderText, repeatText: repeatText, calcRemindAt: calcRemindAt, icsText: icsText,
   pendingHomework: pendingHomework, addFromHW: addFromHW, addFromNotice: addFromNotice,
   taskView: taskView, boot: boot, pull: pull, push: push, touch: touch, flush: flush,
+  leaveAccount, legacyDraft, restoreLegacy,
   status: status, syncText: syncText, state: state, onStatus: onStatus,
   newId: newId, today: today, dateOk: dateOk, timeOk: timeOk
 };

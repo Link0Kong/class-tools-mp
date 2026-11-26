@@ -283,7 +283,7 @@ async function run(test) {
     ['cloud.waterList', 'cloud.waterUpsert', 'cloud.waterDelete', 'cloud.waterRoomGet', 'cloud.waterRoomUpsert'].forEach(function (k) {
       assert.ok(js.indexOf(k) >= 0, '水量页缺少云端共享调用 ' + k);
     });
-    assert.ok(/waterPend/.test(js) && /_flushPending/.test(js), '水量页应有离线待补发队列（契约 §3.2）');
+    assert.ok(/shared\.queue/.test(js) && /_flushPending/.test(js), '水量页保留按房间隔离的用户操作');
     assert.ok(/isFixed4|personsLocked/.test(js), '水量页保留固定四人间兼容字段（现已取消，所有宿舍 1–6 自选）');
     assert.ok(/is_admin|admin/.test(js) === false, '水量页不涉及管理员逻辑');
     const wxml = src('pages/water/water.wxml');
@@ -319,6 +319,10 @@ async function run(test) {
     // 电费页已关注 13 号楼 324（power.sel 是两侧共用的真源；所有宿舍 1–6 人间可选）
     store.get().power = { sel: '1-13---324', at: Date.now(), low: 30 };
     store.get().water = { rooms: { '1-13---324': { p: 4, recs: RECS.slice() } } };
+    const roomId = '1-13---324', sid = R('utils/identity.js').sid();
+    R('utils/water-shared.js').save(sid, roomId, { people: 4, ops: [], rows: RECS.map(r =>
+      ({ roomverify: roomId, month: r.m, reading: r.r, persons: 4 })) });
+    R('utils/cloud.js').configure({ enabled: false });
     store.save();
     const ctx = pageCtx(def);
     ctx.onLoad();
@@ -336,7 +340,7 @@ async function run(test) {
     assert.strictEqual(ctx.data.histCount, 3);
     // 人数 4 → 6：写回 water.rooms[rv].p，历史水费按 6 人定额重算（9 吨 < 12 → 0）
     ctx.pickPersons({ currentTarget: { dataset: { p: 6 } } });
-    assert.strictEqual(store.get().water.rooms['1-13---324'].p, 6, '人数应写回 water section');
+    assert.strictEqual(ctx._room().p, 6, '已记录显式人数调整');
     assert.strictEqual(ctx.data.persons, 6);
     assert.strictEqual(ctx.data.history[0].feeText, '0.00', '6 人间 9 吨未超定额');
     assert.strictEqual(ctx.data.rules.quotaWater, 12);
@@ -350,7 +354,7 @@ async function run(test) {
     assert.strictEqual(ctx.data.preview.usageText, '15.40');
     assert.strictEqual(ctx.data.preview.feeText, '22.42');
     ctx.saveRecord();
-    const recs = store.get().water.rooms['1-13---324'].recs;
+    const recs = ctx._room().recs;
     assert.deepStrictEqual(recs.map((x) => x.m), ['2026-09', '2026-10', '2026-11', '2026-12'], '保存后按月升序');
     assert.strictEqual(ctx.data.reading, '', '保存后清空读数');
     assert.strictEqual(ctx.data.history[0].m, '2026-12');
@@ -360,11 +364,11 @@ async function run(test) {
     ctx.onMonthChange({ detail: { value: '2027-01' } });
     ctx.onReadingInput({ detail: { value: '90' } });
     ctx.saveRecord();
-    assert.strictEqual(store.get().water.rooms['1-13---324'].recs.length, 4, '读数回退不应落盘');
+    assert.strictEqual(ctx._room().recs.length, 4, '读数回退不应落盘');
     // 删除 2026-11 → 2026-12 用量改按 2026-10 重算 = 130.4 − 106 = 24.4
     ctx.delRecord({ currentTarget: { dataset: { m: '2026-11' } } });
     await new Promise((r) => setTimeout(r, 0));
-    const after = store.get().water.rooms['1-13---324'].recs;
+    const after = ctx._room().recs;
     assert.deepStrictEqual(after.map((x) => x.m), ['2026-09', '2026-10', '2026-12']);
     assert.strictEqual(ctx.data.history[0].m, '2026-12');
     assert.strictEqual(ctx.data.history[0].usageText, '24.40', '删除后自动重算用量');
@@ -374,7 +378,8 @@ async function run(test) {
     assert.strictEqual(ctx.data.history.length, 0);
     assert.strictEqual(ctx.data.cmp.empty, true);
     ctx.pickPersons({ currentTarget: { dataset: { p: 6 } } });
-    assert.strictEqual(store.get().water.rooms['1-16---305'].p, 6);
+    assert.strictEqual(ctx._room().p, 6);
+    assert.deepStrictEqual(store.get().water.rooms[roomId].recs, RECS, '共享操作保留个人历史');
   });
 
   await test('页面：未选择关注宿舍 → 只引导不渲染表单（0 请求 / 0 数据）', function () {

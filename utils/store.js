@@ -234,9 +234,21 @@ function saveQuiet() {
   return writeKey(KEY, get());
 }
 function reload() { cache = mkD(readKey(KEY)); return cache; }
-function reset() { cache = mkD(null); save(); return cache; }
+let localGeneration = 0;
+function localRevision() { return localGeneration; }
+function reset() {
+  localGeneration++;
+  if (wx.getStorageInfoSync) {
+    const keys = wx.getStorageInfoSync().keys || [];
+    keys.filter(key => key.startsWith('zq_water_shared_v2_')).forEach(key => wx.removeStorageSync(key));
+  }
+  cache = mkD(null);
+  save();
+  return cache;
+}
 
 module.exports = {
+  localRevision,
   KEY, OLDKEY, DEF, mkD, readKey, writeKey, normSeats, normRemind, normLow, normTtLocal,
   get, save, saveQuiet, reload, reset
 };

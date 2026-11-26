@@ -286,12 +286,13 @@ function rawRequest(method, url, data, header, opts) {
         timeout: timeoutOf(opts),
         success: function (res) {
           const sc = (res && res.statusCode) || 0;
-          if (sc >= 200 && sc < 300) { noteNetOk(); resolve(res.data); }
+          if (sc >= 200 && sc < 300) { noteNetOk(); resolve(opts.fullResponse ? res : res.data); }
           else {
             NET.lastFail = Date.now();
             // 401 = 班级 token 过期/失效：清本机身份并回身份页，停止继续用失效 token 打请求。
             // （403 是 RLS 权限拒绝，可能只是单表权限，不跳身份页。）
-            if (sc === 401 && !opts.public) {
+            if (sc === 401 && !opts.public && header['X-Class-Token'] === identity.token() &&
+                (opts.revision === undefined || opts.revision === identity.revision())) {
               try { require('./identity.js').onAuthExpired(); } catch (e2) { /* ignore */ }
             }
             if (sc >= 500) noteNetFail();
@@ -313,7 +314,7 @@ function request(method, url, data, header, retried, opts) {
   opts = opts || {};
   const canRetry = method === 'GET' || !!opts.retry;
   const maxAttempts = canRetry ? (retried ? 1 : netOpt().retryAttempts) : 1;
-  const shareKey = (canRetry && netOpt().coalesce) ? (method + ' ' + (currentSid() || '') + ' ' + url) : '';
+  const shareKey = (canRetry && netOpt().coalesce && opts.coalesce !== false) ? (method + ' ' + (currentSid() || '') + ' ' + identity.revision() + ' ' + url) : '';
   if (shareKey && INFLIGHT[shareKey]) { NET_STATS.coalesced += 1; return INFLIGHT[shareKey]; }
   const run = function (attempt) {
     return rawRequest(method, url, data, header, opts).catch(function (e) {
@@ -356,6 +357,18 @@ function cbPost(table, row, extra, opts) {
   return request('POST', CONFIG.restBase + table, [row], headerOf(extra, {}), false, opts);
 }
 function cbPatch(table, id, obj) { return patchByUpsert(table, id, obj); }
+// A conditional task update must never go through patchByUpsert's unconditional POST.
+function taskRows(sid) {
+  return request('GET', CONFIG.restBase + CONFIG.tables.taskdata + '?select=id,blob,ts&id=eq.' +
+    encodeURIComponent(sid), undefined, headers(false), false, { revision: identity.revision() });
+}
+function taskWrite(row, previous) {
+  const first = previous === null;
+  const query = first ? '' : '?id=eq.' + encodeURIComponent(row.id) + '&ts=eq.' + previous;
+  const prefer = first ? 'resolution=ignore-duplicates,return=representation' : 'return=representation';
+  return request(first ? 'POST' : 'PATCH', CONFIG.restBase + CONFIG.tables.taskdata + query, row,
+    headerOf({ Prefer: prefer }), false, { revision: identity.revision() });
+}
 function cbById(table, id, extra) {
   return request('GET', CONFIG.restBase + table + '?select=*&id=eq.' + encodeURIComponent(id), undefined, headerOf(extra, {}))
     .then(function (a) { return (a && a[0]) || null; });
@@ -2170,60 +2183,97 @@ function ttLoginStatus(jobId) {
 //   DELETE water?roomverify=eq.<rv>&month=eq.<YYYY-MM>
 //   GET    water_room?select=roomverify,persons&roomverify=eq.<rv>
 //   POST   water_room?on_conflict=roomverify  {roomverify,persons}
-const _waterAt = {};               // rv → 上次成功 GET 时间（TTL 60s，避免每次 onShow 重复拉）
+const _waterAt = {};
+function waterCacheKey(rv) { return identity.revision() + '|' + identity.sid() + '|' + rv; }
 function _waterUrl(table, query) { return CONFIG.restBase + table + (query ? '?' + query : ''); }
-function waterList(rv, force) {
-  const key = String(rv == null ? '' : rv).trim();
-  if (!key) return Promise.resolve({ ok: false, reason: 'no-room', rows: [] });
-  if (!identity.has() || !isEnabled() || udOff()) return Promise.resolve({ ok: false, reason: 'offline', rows: [] });
-  const at = _waterAt[key] || 0;
-  if (!force && at && (Date.now() - at) < TTL.water) return Promise.resolve({ ok: true, cached: true, rows: [] });
-  return request('GET', _waterUrl(CONFIG.tables.water,
-    'select=roomverify,month,reading,persons&roomverify=eq.' + encodeURIComponent(key) + '&order=month.asc'),
-  undefined, headers(false)).then(function (rows) {
-    _waterAt[key] = Date.now();
-    return { ok: true, rows: Array.isArray(rows) ? rows : [] };
-  }).catch(function (e) {
-    return { ok: false, reason: String((e && e.message) || e || 'network'), rows: [] };
-  });
+async function waterList(rv, force) {
+  const key = String(rv || '').trim(), token = identity.token(), revision = identity.revision();
+  if (!key || !token || !isReadyForSync()) return { ok: false, reason: 'offline' };
+  const cacheKey = waterCacheKey(key);
+  if (!force && _waterAt[cacheKey] && Date.now() - _waterAt[cacheKey] < TTL.water) return { ok: true, cached: true };
+  const all = [], months = new Set();
+  try {
+    for (;;) {
+      if (token !== identity.token() || revision !== identity.revision()) return { ok: false, reason: 'stale' };
+      const query = 'select=roomverify,month,reading,persons&roomverify=eq.' + encodeURIComponent(key) +
+        '&order=month.asc&limit=200&offset=' + all.length;
+      const res = await request('GET', _waterUrl(CONFIG.tables.water, query), undefined,
+        headerOf({ Prefer: 'count=exact' }), false, { fullResponse: true, revision, coalesce: false });
+      if (!Array.isArray(res.data)) return { ok: false, reason: 'invalid' };
+      const hdr = res.header || {};
+      const range = String(hdr['Content-Range'] || hdr['content-range'] || '');
+      const span = /^(?:(\d+)-(\d+)|\*)\/(\d+|\*)$/.exec(range);
+      if (range && !span) return { ok: false, reason: 'incomplete' };
+      if (span && res.data.length && (Number(span[1]) !== all.length ||
+          Number(span[2]) !== all.length + res.data.length - 1)) return { ok: false, reason: 'incomplete' };
+      for (const row of res.data) {
+        if (!waterUtil.validSharedRow(row, key) || months.has(row.month)) return { ok: false, reason: 'invalid' };
+        months.add(row.month); all.push(row);
+      }
+      if (span && span[3] !== '*' && Number(span[3]) < all.length) return { ok: false, reason: 'incomplete' };
+      if (span && span[3] !== '*' && Number(span[3]) === all.length) break;
+      if (!res.data.length) {
+        if (span && span[3] !== '*' && Number(span[3]) !== all.length) return { ok: false, reason: 'incomplete' };
+        break;
+      }
+    }
+    _waterAt[cacheKey] = Date.now();
+    return { ok: true, rows: all };
+  } catch (e) { return { ok: false, reason: String(e.message || e.errMsg || e) }; }
+}
+async function waterIdentity(sid) {
+  const data = await request('POST', CONFIG.restBase + 'rpc/class_whoami', {}, headers(false), false, { revision: identity.revision() });
+  if (!data || typeof data.ok !== 'boolean') throw new Error('invalid-whoami');
+  return data.ok && data.sid === sid;
+}
+async function waterPrivateHistory(sid, key) {
+  const rows = await cbGet(CONFIG.tables.userdata, 'select=id,blob&id=eq.' + encodeURIComponent(sid));
+  if (!Array.isArray(rows) || rows.length > 1 || (rows.length && rows[0].id !== sid)) throw new Error('invalid-userdata');
+  if (!rows.length && !await waterIdentity(sid)) throw new Error('http403');
+  const doc = rows.length ? udParse(rows[0].blob) : null;
+  if (rows.length && !doc) throw new Error('invalid-userdata');
+  return waterUtil.roomOf(doc && doc.water, key);
 }
 function waterUpsert(rv, month, reading, persons) {
   const key = String(rv == null ? '' : rv).trim();
   const p = String(month == null ? '' : month).trim();
   const r = Number(reading);
-  if (!key || !/^\d{4}-(0[1-9]|1[0-2])$/.test(p) || !isFinite(r)) return Promise.resolve({ ok: false, reason: 'bad-args' });
+  if (!key || !waterUtil.validSharedRow({ roomverify: key, month: p, reading, persons }, key)) return Promise.resolve({ ok: false, reason: 'bad-args' });
   if (!identity.has() || !isEnabled() || udOff()) return Promise.resolve({ ok: false, reason: 'offline' });
   const row = { roomverify: key, month: p, reading: waterUtil.round2(r), persons: waterUtil.normPersons(persons) };
+  const cacheKey = waterCacheKey(key);
   return request('POST', _waterUrl(CONFIG.tables.water, 'on_conflict=roomverify,month'), row,
     headerOf({ Prefer: 'resolution=merge-duplicates,return=minimal' }))
-    .then(function () { _waterAt[key] = Date.now(); return { ok: true }; })
+    .then(function () { delete _waterAt[cacheKey]; return { ok: true }; })
     .catch(function (e) { return { ok: false, reason: String((e && e.message) || e || 'network') }; });
 }
 function waterDelete(rv, month) {
   const key = String(rv == null ? '' : rv).trim();
+  const cacheKey = waterCacheKey(key);
   const p = String(month == null ? '' : month).trim();
   if (!key || !p) return Promise.resolve({ ok: false, reason: 'bad-args' });
   if (!identity.has() || !isEnabled() || udOff()) return Promise.resolve({ ok: false, reason: 'offline' });
   return request('DELETE', _waterUrl(CONFIG.tables.water,
     'roomverify=eq.' + encodeURIComponent(key) + '&month=eq.' + encodeURIComponent(p)),
   undefined, headerOf({ Prefer: 'return=minimal' }))
-    .then(function () { _waterAt[key] = Date.now(); return { ok: true }; })
+    .then(function () { delete _waterAt[cacheKey]; return { ok: true }; })
     .catch(function (e) { return { ok: false, reason: String((e && e.message) || e || 'network') }; });
 }
-function waterRoomGet(rv) {
-  const key = String(rv == null ? '' : rv).trim();
-  if (!key) return Promise.resolve({ ok: false, reason: 'no-room', persons: null });
-  if (!identity.has() || !isEnabled() || udOff()) return Promise.resolve({ ok: false, reason: 'offline', persons: null });
-  return request('GET', _waterUrl(CONFIG.tables.waterRoom,
-    'select=roomverify,persons&roomverify=eq.' + encodeURIComponent(key)),
-  undefined, headers(false)).then(function (rows) {
-    const row = Array.isArray(rows) ? rows[0] : rows;
-    return { ok: true, persons: waterUtil.roomPersonsOf(row) };
-  }).catch(function (e) { return { ok: false, reason: String((e && e.message) || e || 'network'), persons: null }; });
+async function waterRoomGet(rv) {
+  if (!rv || !identity.has() || !isReadyForSync()) return { ok: false, reason: 'offline' };
+  try {
+    const rows = await request('GET', _waterUrl(CONFIG.tables.waterRoom,
+      'select=roomverify,persons&roomverify=eq.' + encodeURIComponent(rv)),
+      undefined, headers(false), false, { revision: identity.revision(), coalesce: false });
+    if (!Array.isArray(rows) || rows.length > 1) return { ok: false, reason: 'invalid' };
+    if (!rows.length) return { ok: true, persons: null };
+    const p = waterUtil.roomPersonsOf(rows[0]);
+    return rows[0] && rows[0].roomverify === rv && p !== null ? { ok: true, persons: p } : { ok: false, reason: 'invalid' };
+  } catch (e) { return { ok: false, reason: String(e.message || e.errMsg || e) }; }
 }
 function waterRoomUpsert(rv, persons) {
   const key = String(rv == null ? '' : rv).trim();
-  if (!key) return Promise.resolve({ ok: false, reason: 'bad-args' });
+  if (!key || waterUtil.roomPersonsOf({ persons }) === null) return Promise.resolve({ ok: false, reason: 'bad-args' });
   if (!identity.has() || !isEnabled() || udOff()) return Promise.resolve({ ok: false, reason: 'offline' });
   const row = { roomverify: key, persons: waterUtil.fixedPersons(key, persons) };
   return request('POST', _waterUrl(CONFIG.tables.waterRoom, 'on_conflict=roomverify'), row,
@@ -2231,7 +2281,7 @@ function waterRoomUpsert(rv, persons) {
     .then(function () { return { ok: true }; })
     .catch(function (e) { return { ok: false, reason: String((e && e.message) || e || 'network') }; });
 }
-function waterForceFresh(rv) { const key = String(rv || ''); const at = _waterAt[key] || 0; return at > 0 && (Date.now() - at) < TTL.water; }
+function waterForceFresh(rv) { return Date.now() - (_waterAt[waterCacheKey(rv)] || 0) < TTL.water; }
 
 // ---------------------------------------------------------------- 投票（2026-11-11，契约 web/vote/CONTRACT.md §2）
 // 5 个 poll_* RPC 全部复用上面的 rpcCall 通道（POST {restBase}rpc/<name>，
@@ -2472,6 +2522,7 @@ module.exports = {
   TTL: TTL, cache: cache,
   currentSid: currentSid, currentName: currentName, isAdmin: isAdmin,
   cbGet: cbGet, cbPost: cbPost, cbPatch: cbPatch, cbById: cbById, cbUpsert: cbUpsert, cbId: cbId,
+  taskRows, taskWrite,
   cbDelete: cbDelete, cbUpsertMany: cbUpsertMany,
   classVerify: classVerify, classMembersPull: classMembersPull,
   members: members, memberCount: memberCount, committee: committee, memberName: memberName,
@@ -2507,6 +2558,7 @@ module.exports = {
   // 2026-11-11 水量共享（契约 web/tools/tests/_water_shared_contract.md §1/§2）
   waterList: waterList, waterUpsert: waterUpsert, waterDelete: waterDelete,
   waterRoomGet: waterRoomGet, waterRoomUpsert: waterRoomUpsert, waterForceFresh: waterForceFresh,
+  waterIdentity, waterPrivateHistory,
   cloudPull: cloudPull, syncText: syncText, netState: netState
 };
 
