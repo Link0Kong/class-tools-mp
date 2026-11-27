@@ -24,7 +24,7 @@
 const identity = require('./identity.js');
 
 // 云端 key → 本机 key（读）；本机 key → 云端 key（写）
-const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', task: 'hw' };
+const SYNC_KEY_IN = { fit: 'ft', roster: 'bz', committee: 'bz', task: 'hw', ppt: 'file' };
 const SYNC_KEY_OUT = { bz: 'committee' };
 
 // 把任意端写入的 key 归一成本机 key（未知 key 原样返回，由调用方决定丢弃/保留）
@@ -70,14 +70,11 @@ const TOOLS = [
   { key: 'vote', name: '投票', ico: '🗳', icoImg: '/images/tool-vote.png', meta: '限时 · 长时 · 实时结果', desc: '限时/长时投票，自定义标题与选项，全班实时查看结果', url: '/pages/vote/vote', tab: false, tone: 'primary' },
   // 2026-11-12 文件传输=临时云空间（与网页 TOOLS key='file' 对齐）：同账号跨设备自动共享，
   // 无需房间码/链接/配对；任意大小 8MiB 分片上传、单文件删除、清空空间；文件自上传起保留 3 天。
-  { key: 'file', name: '文件传输', ico: '☁', icoImg: '/images/tool-file.png', meta: '临时云空间 · 3 天', desc: '同账号跨设备临时云空间：上传/下载/删除文件，任意大小分片上传，文件自上传起保留 3 天', url: '/pages/cloudspace/cloudspace', tab: false, tone: 'primary' },
+  { key: 'file', name: '文件传输', ico: '☁', icoImg: '/images/tool-file.png', meta: '个人文件 · PPT 转换 · 班级课件', desc: '同账号跨设备互传个人文件，保留 3 天；可转换个人 PPT，或在班级课件中共享、下载和播放', url: '/pages/cloudspace/cloudspace', tab: false, tone: 'primary' },
   { key: 'map', name: '地图', ico: '🗺', icoImg: '/images/tool-map.png', meta: '2.5D · 道路导航', desc: '校园 2.5D 地图、楼栋楼层与按道路步行导航；与课表下一节联动', url: '/pages/map/map', tab: false, tone: 'primary' },
   { key: 'stats', name: '统计',  ico: '📊', icoImg: '/images/tool-stats.png', meta: '访问次数 · 设备 · 版本 · 仅管理员', desc: '按访问次数排序的访问统计（同次数按最近访问；汇总摘要、趋势、登录端、版本/设备分布与账号明细，不显示学号），仅管理员可见', url: '/pages/stats/stats', tab: false, tone: 'primary', admin: true },
   // 2026-11-08 诊断 v2：所有有效班级身份可见（不再仅管理员）；2026-11-22 起可主动勾选进首页
   { key: 'diag', name: '诊断',  ico: '🩺', icoImg: '/images/tool-diag.png', meta: '服务状态 · 设备诊断 · AI 分析', desc: '依赖服务运行状态 + 本机设备诊断 + AI 原因/修复流程；所有已认证同学可查看', url: '/pages/diag/diag', tab: false, tone: 'tertiary' },
-  // 2026-11-09 PPT 演示（与网页「演示」同名，契约 web/ppt/CONTRACT.md §8.3）：
-  // 上传 .ppt/.pptx → 本机转换机转分步图片 + 外挂媒体 → 任意设备流畅播放；可主动勾选进首页
-  { key: 'ppt', name: '演示',  ico: '📽', icoImg: '/images/tool-ppt.png', meta: '上传 PPT · 自动转换 · 分步播放', desc: '上传 PPT 自动转换成分步图片与视频热点；老电脑/手机都能流畅播放，班级共享', url: '/pages/ppt/ppt', tab: false, tone: 'primary' }
 ];
 
 // 首页最多勾选 4 个工具（UD v6 契约：homeTools ≤ 4，与网页端一致）
@@ -86,7 +83,7 @@ const LEGACY_HOMES = [['draw', 'hw', 'nt'], ['hw', 'nt', 'ft', 'draw']]; // 极�
 const HIDDEN = [];                      // 课表已正式上线，不再隐藏入口
 
 function toolOf(key) {
-  if (key === 'task') key = 'hw';                 // 2026-11-22 旧「任务」独立 key 兼容
+  key = localKey(key);
   for (let i = 0; i < TOOLS.length; i++) if (TOOLS[i].key === key) return TOOLS[i];
   return null;
 }
@@ -255,11 +252,12 @@ function homeTools(id) {
   return d.homeTools.slice();
 }
 
-function isHome(key) { return homeTools().indexOf(key) >= 0; }
+function isHome(key) { return homeTools().indexOf(localKey(key)) >= 0; }
 
 // 勾选/取消勾选首页工具：{ ok, reason: 'changed'|'same'|'max'|'invalid', list }
 // 勾勾满 4 个后再勾第 5 个 → ok:false / reason:'max'（页面弹 wx.showToast，不改状态）
 function setHomeTool(key, on) {
+  key = localKey(key);
   const store = require('./store.js');
   const t = toolOf(key);
   const list = homeTools();

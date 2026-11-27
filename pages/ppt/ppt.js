@@ -446,6 +446,12 @@ Page({
       if (!r.ok) util.toast(r.reason || '原件下载失败');
     });
   },
+  openPrivateFiles() {
+    const pages = getCurrentPages();
+    const previous = pages[pages.length - 2];
+    if (previous && previous.route === 'pages/cloudspace/cloudspace') wx.navigateBack();
+    else wx.redirectTo({ url: '/pages/cloudspace/cloudspace' });
+  },
   goAll() {
     wx.switchTab({ url: '/pages/all/all' });
   },
@@ -466,14 +472,14 @@ Page({
 
   onShareAppMessage() {
     return share.message({
-      title: '班级工具｜演示 · PPT 自动转换，任意设备流畅播放',
+      title: '班级工具｜文件传输 · 班级课件',
       path: '/pages/ppt/ppt',
       imageUrl: '/images/share/default.png'
     });
   },
   onShareTimeline() {
     return share.timeline({
-      title: '班级工具｜演示 · PPT 自动转换',
+      title: '班级工具｜文件传输 · 班级课件',
       imageUrl: '/images/share/default.png'
     });
   }

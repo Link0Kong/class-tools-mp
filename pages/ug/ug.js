@@ -127,17 +127,10 @@ const CARDS = [
     scene: 'ballot', tone: 'mint'
   },
   {
-    id: 'ppt', cat: 'team', icon: '📽',
-    title: '演示', sub: '上传 PPT，自动转换后可下载',
-    steps: ['先把 .pptx 发到微信聊天', '回本页从聊天选择并上传', '下载兼容版、PDF 或原始文件'],
-    tip: '兼容包不改变 PPT 内容，可在线预览',
-    scene: 'slides', tone: 'blue'
-  },
-  {
     id: 'file', cat: 'team', icon: '☁',
-    title: '文件传输', sub: '同账号云空间，文件保留 3 天',
-    steps: ['打开本页即可看到同账号文件', '上传自动分片，可看进度或取消', '可单独删除或一键清空'],
-    tip: '单文件不限大小，自上传起保留 3 天',
+    title: '文件传输', sub: '个人文件、PPT 转换与班级课件',
+    steps: ['上传个人文件，同账号设备可取件', '在 PPT 文件行转换并下载兼容版或 PDF', '打开班级课件，可共享、播放或下载'],
+    tip: '个人文件仅本人可见，自上传起保留 3 天',
     scene: 'transfer', tone: 'mint'
   },
   {
@@ -184,7 +177,7 @@ const SECTION_MAP = {
   power: 'power', powercard: 'home',
   water: 'water',
   vote: 'vote',
-  ppt: 'ppt', deck: 'ppt',
+  ppt: 'file', deck: 'file',
   file: 'file', cloudspace: 'file', transfer: 'file',
   screencast: 'screencast', cast: 'screencast', stage: 'screencast',
   bz: 'bz', committee: 'bz', league: 'bz',

@@ -1361,7 +1361,7 @@ async function run(test) {
       });
     });
 
-    await test('VOTE-D2 utils/tools.js：vote 入口字段与网页 TOOLS 对齐、位于 water 后 ppt 前', function () {
+    await test('VOTE-D2 utils/tools.js：vote 入口字段与网页 TOOLS 对齐、位于 water 后 file 前', function () {
       purge();
       const tools = R('utils/tools.js');
       const t = tools.toolOf('vote');
@@ -1374,7 +1374,7 @@ async function run(test) {
       });
       const idx = tools.TOOLS.map(function (x) { return x.key; });
       assert.ok(idx.indexOf('water') < idx.indexOf('vote'), 'vote 应在 water 之后');
-      assert.ok(idx.indexOf('vote') < idx.indexOf('ppt'), 'vote 应在 ppt 之前');
+      assert.ok(idx.indexOf('vote') < idx.indexOf('file'), 'vote 应在 file 之前');
       // 2026-11-21 用户口径：仅班委可见；测试账号/普通同学完全隐藏入口
       const committee = { token: 'tok-vote-c', sid: 'fixture-committee-vote', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
       assert.strictEqual(tools.entryAllowed(t, committee), true, '班委应可见投票入口');

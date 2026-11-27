@@ -1069,16 +1069,17 @@ async function run(test) {
       assert.strictEqual(app.tabBar.list.length, 3, '不新增 tabBar');
       const tools = R('utils/tools.js');
       const t = tools.toolOf('ppt');
-      assert.ok(t, '工具目录应有 ppt');
-      assert.strictEqual(t.name, '演示');
-      assert.strictEqual(t.url, '/pages/ppt/ppt');
-      assert.strictEqual(!!t.noHome, false, '演示可被主动勾选进首页（≤4）');
-      assert.ok(t.icoImg === '/images/tool-ppt.png', '图标路径');
+      assert.strictEqual(t, tools.toolOf('file'), '老演示快捷方式迁移到文件传输');
+      assert.strictEqual(t.url, '/pages/cloudspace/cloudspace');
+      assert.ok(!tools.TOOLS.some(item => item.key === 'ppt'));
+      assert.deepStrictEqual(tools.normalizeHome(['ppt', 'draw', 'file']), ['file', 'draw']);
+      assert.strictEqual(tools.normalizeToolOrder(['ppt', 'file'])[0], 'file');
+      assert.ok(src('pages/cloudspace/cloudspace.wxml').includes('url="/pages/ppt/ppt">班级课件</navigator>'));
       assert.ok(fs.existsSync(path.join(ROOT, 'images/tool-ppt.png')), '图标文件存在');
       assert.ok(fs.statSync(path.join(ROOT, 'images/tool-ppt.png')).size <= 2048, '图标 ≤2KB（与其它工具图标一致）');
       const media = (function walk(d) { let n = 0; fs.readdirSync(d).forEach(function (x) { const p = path.join(d, x); if (fs.statSync(p).isDirectory()) n += walk(p); else n += fs.statSync(p).size; }); return n; })(path.join(ROOT, 'images'));
       assert.ok(media <= 200 * 1024, '媒体预算硬线 200KB，实际 ' + media + 'B');
-      assert.ok(/VERSION = '2\.1\.2'/.test(src('utils/version.js')), '版本号为 2.1.2');
+      assert.ok(/VERSION = '2\.1\.3'/.test(src('utils/version.js')), '版本号为 2.1.3');
     });
 
     await test('PPT-H2 工程：两页 4 文件 + 分享 handler；列表封面 webp + 空态唯一小字；播放器 custom/auto/disableScroll', function () {
@@ -1108,7 +1109,7 @@ async function run(test) {
       assert.ok((playWxml.match(/webp="\{\{true\}\}"/g) || []).length >= 2, '播放器主图与缩略图都必须带 webp 属性');
       // DESIGN §4.2：小程序唯一上传入口 = 聊天记录；空态一行小字是唯一允许的说明
       assert.ok(listWxml.indexOf('从聊天选择') >= 0 && listWxml.indexOf('先把 .pptx 发到聊天') >= 0, '空态按钮「从聊天选择」+ 唯一一行小字');
-      assert.ok(listWxml.indexOf('还没有演示文件') >= 0, '空态文案');
+      assert.ok(listWxml.indexOf('还没有班级课件') >= 0, '空态文案');
       assert.ok(/extension: \['ppt', 'pptx'\]/.test(src('pages/ppt/ppt.js')), '只能从聊天记录选 .ppt/.pptx');
     });
 
@@ -1219,6 +1220,22 @@ async function run(test) {
       assert.strictEqual(ctx.data.hb.online, true);
       assert.strictEqual(ctx.data.empty, false);
       assert.ok(ctx._poll, '可见时启动 10s 轮询');
+      const oldPages = global.getCurrentPages;
+      const oldBack = wx.navigateBack, oldRedirect = wx.redirectTo;
+      const navigation = [];
+      try {
+        wx.navigateBack = () => navigation.push('back');
+        wx.redirectTo = ({ url }) => navigation.push(url);
+        global.getCurrentPages = () => [{ route: 'pages/cloudspace/cloudspace' }, { route: 'pages/ppt/ppt' }];
+        ctx.openPrivateFiles();
+        global.getCurrentPages = () => [{ route: 'pages/ppt/ppt' }];
+        ctx.openPrivateFiles();
+        assert.deepStrictEqual(navigation, ['back', '/pages/cloudspace/cloudspace']);
+      } finally {
+        global.getCurrentPages = oldPages;
+        wx.navigateBack = oldBack;
+        wx.redirectTo = oldRedirect;
+      }
       def.onHide.call(ctx);
       assert.strictEqual(ctx._poll, null, 'onHide 停止轮询');
       def.onUnload.call(ctx);

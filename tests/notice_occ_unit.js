@@ -576,7 +576,7 @@ async function run(test) {
     }
   });
 
-  test('静态：nt.js 期次/统计接线（occOf/statOf/isOccRef/until）+ 无新增网络请求 + VERSION 2.1.2', function () {
+  test('静态：nt.js 期次/统计接线（occOf/statOf/isOccRef/until）+ 无新增网络请求 + VERSION 2.1.3', function () {
     const js = src('pages/nt/nt.js');
     assert.ok(/notice\.statOf\(rawAll, doneMap, now\)/.test(js), '统计走 utils/notice.statOf（§2.4 单一真源）');
     assert.ok(/notice\.occOf\(go, now\)/.test(js), 'applyFilter 应用期次窗口算法');
@@ -595,7 +595,7 @@ async function run(test) {
     assert.ok(/notice\.occOf\(g, now\)/.test(indexJs) && /done\[occ\.key\]/.test(indexJs), '工作台期次计入轮换');
     assert.ok(/notice\.isLongterm\(g, now\)/.test(indexJs), '工作台资料/长期定义不计');
     assert.ok(/notice\.hasTimeAnchor\(g\)/.test(indexJs), '工作台无时间资料不计');
-    assert.ok(/VERSION\s*=\s*'2\.1\.2'/.test(src('utils/version.js')), 'VERSION 必须为 2.1.2');
+    assert.ok(/VERSION\s*=\s*'2\.1\.3'/.test(src('utils/version.js')), 'VERSION 必须为 2.1.3');
     // 红线：不发真实请求的静态保证（云端只经 utils/cloud；页面不直连 URL）
     assert.ok(js.indexOf('https://') < 0 || js.indexOf('https://') === js.lastIndexOf('https://'), 'nt.js 不应新增外链');
   });

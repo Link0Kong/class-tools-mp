@@ -6,17 +6,22 @@
 
 <view class="page pad-b ppt-page {{themeClass}}">
 
+  <view class="file-sections">
+    <button class="file-section-link" bindtap="openPrivateFiles">个人文件</button>
+    <text class="file-section-selected">班级课件</text>
+  </view>
+
   <!-- 未完成班级身份 -->
   <block wx:if="{{state === 'denied'}}">
     <view class="m3-card m3-card--outlined">
-      <empty-state icon="📽" title="需要班级身份" text="完成学号 + 姓名验证后即可使用演示。" action-text="返回工具" bind:action="goAll"></empty-state>
+      <empty-state icon="📽" title="需要班级身份" text="验证班级身份后即可查看班级课件。" action-text="返回工具" bind:action="goAll"></empty-state>
     </view>
   </block>
 
   <!-- 首次进入骨架（3 张，仅首次；DESIGN §4.1） -->
   <block wx:elif="{{state === 'loading'}}">
     <view class="ppt-head">
-      <text class="ppt-head-t">演示</text>
+      <text class="ppt-head-t">班级课件</text>
     </view>
     <view class="m3-card m3-card--outlined ppt-sk" wx:for="{{[1,2,3]}}" wx:key="*this">
       <view class="sk ppt-sk-cover sk-shimmer"></view>
@@ -31,9 +36,9 @@
     <!-- 顶部：标题 + 上传主按钮 -->
     <view class="ppt-head">
       <view class="grow">
-        <view class="ppt-head-t">演示</view>
+        <view class="ppt-head-t">班级课件</view>
       </view>
-      <view class="ppt-upbtn {{up ? 'ppt-upbtn--off' : ''}}" bindtap="uploadTap" hover-class="ppt-upbtn--tap">上传</view>
+      <view class="ppt-upbtn {{up ? 'ppt-upbtn--off' : ''}}" bindtap="uploadTap" hover-class="ppt-upbtn--tap">上传班级课件</view>
     </view>
 
     <!-- 转换机心跳（离线只提示不报错，契约 §3.4） -->
@@ -79,7 +84,7 @@
     <!-- 空态（不放插画；唯一允许的一行说明小字） -->
     <view class="ppt-empty" wx:if="{{empty}}">
       <view class="ppt-empty-art">📽</view>
-      <view class="ppt-empty-t">还没有演示文件</view>
+      <view class="ppt-empty-t">还没有班级课件</view>
       <view class="ppt-empty-btn" bindtap="uploadTap" hover-class="ppt-empty-btn--tap">从聊天选择</view>
       <view class="ppt-empty-hint">先把 .pptx 发到聊天</view>
     </view>

@@ -381,10 +381,10 @@ const fakeCanvas = (() => {
     assert.strictEqual(tools.quickList(99).length, 4, 'quickList 最多 4 个（勾选集合本身 ≤4）');
     // 当前身份是测试账号：投票入口隐藏（2026-11-21 用户口径），其余工具顺序不变
     // 2026-11-22 分组拆分：draw 与 group 是两个独立工具（group 紧跟 draw，可勾选进首页）
-    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'file', 'map', 'stats', 'diag', 'ppt']);
+    assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'file', 'map', 'stats', 'diag']);
     // 班委（非测试身份）仍可见投票入口，且目录顺序仍 = toolOrder
     const committee = { token: 'tok-ut-c', sid: 'fixture-committee-ut', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
-    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag', 'ppt']);
+    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag']);
     assert.strictEqual(tools.toolOf('draw').name, '抽签');
     assert.strictEqual(tools.toolOf('group').name, '分组');
     assert.strictEqual(tools.toolOf('group').url, '/pages/group/group');

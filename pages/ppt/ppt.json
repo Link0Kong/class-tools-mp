@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "演示",
+  "navigationBarTitleText": "文件传输 · 班级课件",
   "enablePullDownRefresh": true,
   "usingComponents": {
     "empty-state": "/components/empty-state/index"

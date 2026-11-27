@@ -1,3 +1,4 @@
+@import "../../styles/file-sections.wxss";
 /* pages/cloudspace/cloudspace.wxss —— 文件传输 · 临时云空间（M3 token，无新配色） */
 
 .cs-page { padding: 8rpx 0 48rpx; }

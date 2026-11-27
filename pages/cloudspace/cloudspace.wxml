@@ -2,9 +2,13 @@
 <page-meta page-style="{{themeStyle}}"></page-meta>
 
 <view class="cs-page {{themeClass}}">
+  <view class="file-sections">
+    <text class="file-section-selected">个人文件</text>
+    <navigator class="file-section-link" url="/pages/ppt/ppt">班级课件</navigator>
+  </view>
   <view class="cs-head">
     <view class="cs-head-l">
-      <view class="cs-title">临时云空间</view>
+      <view class="cs-title">个人文件</view>
       <view class="cs-sub">同账号 · 跨设备 · 文件自上传起保留 3 天</view>
     </view>
     <view class="cs-refresh" hover-class="cs-hover" bindtap="onRefreshTap">刷新</view>

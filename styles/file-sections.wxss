@@ -1,0 +1,8 @@
+.file-sections { display: flex; align-items: center; gap: 12rpx; margin: 8rpx 0 20rpx; }
+.file-sections .file-section-link, .file-section-selected {
+  display: flex; align-items: center; justify-content: center; margin: 0; padding: 0 24rpx;
+  min-height: 72rpx; font-size: 28rpx; font-weight: 600; line-height: 1.3; border-radius: var(--md-shape-full);
+}
+.file-sections .file-section-link { color: var(--md-on-surface); background: var(--md-surface-container-high); }
+.file-section-link::after { border: 0; }
+.file-section-selected { color: var(--md-on-primary); background: var(--md-primary); }

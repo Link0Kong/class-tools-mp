@@ -1,3 +1,4 @@
+@import "../../styles/file-sections.wxss";
 /* pages/ppt/ppt.wxss —— 「演示」列表页（暖白卡片 + 雾青主色；DESIGN §4.1–4.2）
  * 全部尺寸按 750 设计宽（1px = 2rpx）；卡片信息密度对齐设计稿：封面 128×72 → 256×144rpx。 */
 
