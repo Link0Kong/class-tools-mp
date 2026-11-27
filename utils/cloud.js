@@ -414,12 +414,13 @@ function classVerify(sidIn, nameIn) {
   return request('POST', CONFIG.restBase + CONFIG.rpc.verify,
     { p_sid: sid, p_name: nm }, headers(false, { noIdentity: true }), false,
     // 2026-11-18：登录超时分级（弱网冷启动更宽）+ 幂等只读 RPC 重试（网络抖动少一次「网络不可用」）
-    { public: true, timeoutKey: 'login', retry: true })
+    { public: true, timeoutKey: 'login', retry: true, coalesce: false })
     .then(function (raw) {
       const body = Array.isArray(raw) ? raw[0] : raw;
       if (!body || body.ok !== true) {
         return { ok: false, reason: (body && body.reason) || '姓名或学号与班级名单不匹配' };
       }
+      if (body.sid && String(body.sid) !== sid) return { ok: false, reason: '验证返回的身份不匹配' };
       if (!body.token) return { ok: false, reason: '云端未返回身份凭证，请稍后重试' };
       return {
         ok: true,

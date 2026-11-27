@@ -73,3 +73,25 @@ test('unknown legacy snapshots stay read-only; only explicitly owned pending mar
     assert.equal(storage.zq_tools_v2, original);
   }
 });
+
+test('concurrent class verification binds the selected identity to its own request', async () => {
+  const checks = [];
+  const dev = device({ respond(req) {
+    if (req.url.endsWith('class_verify')) checks.push(req);
+    else reply(req, []);
+  }});
+  const first = dev.identity.login(A,'测试甲');
+  const second = dev.identity.login(B,'测试乙');
+  await tick();
+  assert.deepEqual(checks.map(r => r.data.p_sid), [A,B]);
+  reply(checks[1], {ok:true,sid:B,name:'测试乙',token:'B-fixture'});
+  assert.equal((await second).ok, true);
+  reply(checks[0], {ok:true,sid:A,name:'测试甲',token:'A-fixture'});
+  assert.equal((await first).ok, false);
+  assert.equal(dev.identity.sid(), B);
+  const mismatch = dev.identity.login(A,'测试甲');
+  await tick();
+  reply(checks[2], {ok:true,sid:B,name:'测试乙',token:'wrong-fixture'});
+  assert.equal((await mismatch).ok,false);
+  assert.equal(dev.identity.token(),'B-fixture');
+});
