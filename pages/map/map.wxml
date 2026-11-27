@@ -3,8 +3,8 @@
 <view class="campus {{themeClass}}">
   <view class="mbar">
     <view class="msearchbox">
-      <input class="msearch" value="{{query}}" placeholder="楼名、楼号或教室" confirm-type="search" adjust-position="{{false}}"
-        aria-label="搜索楼名或教室号" bindinput="onSearch" bindconfirm="confirmSearch" />
+      <input class="msearch" value="{{query}}" placeholder="楼栋、房号或机构" confirm-type="search" adjust-position="{{false}}"
+        aria-label="搜索楼栋、房号或机构" bindinput="onSearch" bindconfirm="confirmSearch" />
       <button wx:if="{{query}}" class="clear icon" bindtap="clearSearch" aria-label="清空搜索">×</button>
     </view>
     <view class="modes">
@@ -12,7 +12,7 @@
       <button class="{{mode === 'iso' ? 'on' : ''}}" data-mode="iso" bindtap="setMode">2.5D</button>
     </view>
     <scroll-view wx:if="{{searched}}" class="suggestions" scroll-y>
-      <button wx:for="{{results}}" wx:key="key" class="suggestion" data-id="{{item.id}}" data-room="{{item.room}}" bindtap="tapResult">
+      <button wx:for="{{results}}" wx:key="key" class="suggestion" data-index="{{index}}" bindtap="tapResult">
         <text class="result-title">{{item.title}}</text>
         <text class="result-sub">{{item.sub}}</text>
       </button>
@@ -47,12 +47,16 @@
       </view>
       <scroll-view wx:if="{{details}}" class="msbody" scroll-y>
         <view class="msroute">
-          <text class="route-label">正大门出发</text>
+          <text class="route-label">{{routeTitle}}</text>
+          <view class="origins">
+            <button wx:for="{{origins}}" wx:key="id" class="{{item.id === origin ? 'on' : ''}}" data-origin="{{item.id}}" bindtap="chooseOrigin">{{item.name}}</button>
+            <button class="{{origin === sel.id ? 'on' : ''}}" data-origin="building" bindtap="chooseOrigin">此楼出发</button>
+          </view>
           <text class="msmeta">{{routeText || (routeMeta ? '沿校园道路步行' : '暂无路线')}}</text>
         </view>
         <view class="msactions">
           <button wx:if="{{routeMeta}}" class="on" bindtap="fitRoute">路线全览</button>
-          <button wx:if="{{sel.hasRooms}}" bindtap="openFloors">教室目录</button>
+          <button wx:if="{{sel.hasRooms}}" bindtap="openFloors">楼层与房间</button>
           <button bindtap="openTT">课表</button>
         </view>
       </scroll-view>
@@ -63,16 +67,31 @@
     <view class="backdrop" bindtap="closeFloors"></view>
     <view class="floor-sheet">
       <view class="mshead">
-        <text class="msinfo msname">{{sel.name}} · 教室目录</text>
-        <button class="icon" bindtap="closeFloors" aria-label="关闭">×</button>
+        <text class="msinfo msname">{{sel.name}} · {{floor}} 层</text>
+        <button bindtap="closeFloors">回校园图</button>
       </view>
       <scroll-view class="floor-body" scroll-y>
         <view class="floors">
           <button wx:for="{{floors}}" wx:key="*this" class="{{item === floor ? 'on' : ''}}" data-floor="{{item}}" bindtap="tapFloor">{{item}} 层</button>
         </view>
+        <picker wx:if="{{orgs.length}}" range="{{orgs}}" value="{{orgIndex}}" bindchange="filterOrg" aria-label="按机构筛选">
+          <view class="org-picker">{{orgs[orgIndex]}} ▾</view>
+        </picker>
+        <block wx:if="{{hasPlan}}">
+          <view class="floor-tools">
+            <button data-zoom="out" bindtap="zoomPlan" aria-label="缩小平面图">−</button>
+            <button data-zoom="in" bindtap="zoomPlan" aria-label="放大平面图">+</button>
+            <button bindtap="fitPlan">适配全图</button>
+          </view>
+          <canvas type="2d" id="floorPlan" class="floor-plan" bindtouchstart="planStart" catchtouchmove="planMove"
+            bindtouchend="planEnd" bindtouchcancel="planCancel" aria-label="楼层平面图" />
+        </block>
+        <text wx:if="{{roomInfo}}" class="msmeta">{{roomInfo}}</text>
         <view class="rooms">
-          <button wx:for="{{rooms}}" wx:key="*this" class="{{item === room ? 'on' : ''}}" data-room="{{item}}" bindtap="chooseRoom">{{item}}</button>
-          <text wx:if="{{!rooms.length}}" class="empty">该层暂无已收录的教室</text>
+          <button wx:for="{{rooms}}" wx:key="key" class="{{item.key === activeRoom ? 'on' : ''}}" data-key="{{item.key}}" bindtap="chooseRoom">
+            <text>{{item.code}}</text><text class="msmeta">{{item.name}}{{item.org ? ' · ' + item.org : ''}}</text>
+          </button>
+          <text wx:if="{{!rooms.length}}" class="empty">该层暂无已收录的房间</text>
         </view>
       </scroll-view>
     </view>

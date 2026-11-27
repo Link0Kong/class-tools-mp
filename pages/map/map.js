@@ -1,4 +1,5 @@
 const DATA = require('./campus_map.js');
+const campus = require('./campus_logic.js');
 const share = require('../../utils/share.js');
 const appearance = require('../../utils/appearance.js');
 
@@ -20,92 +21,18 @@ const BUILDING_COLORS = {
   运动: ['#AFCAA0', '#DBE7D3', '#58764C', '#445A3D']
 };
 
-function buildCampusSearch(data) {
-  const roomsById = Object.create(null);
-  const aliasesById = Object.create(null);
-  const legacyIds = Object.create(null);
-  const norm = value => String(value || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
-  const nameKey = value => norm(value).replace(/^(\d+)#([a-z]?)$/, '$1号楼$2');
-  const names = building => [nameKey(building.n), nameKey(building.ln)];
-  const byName = name => data.buildings.find(building => names(building).includes(nameKey(name)));
-  const entries = [];
-  const roomCode = value => {
-    const code = norm(value).replace(/(?:教室|室)$/, '');
-    return /^\d{5}$/.test(code) ? code : (/^\d{4}$/.test(code) ? '0' + code : '');
-  };
-
-  for (const [id, group] of Object.entries(data.rooms || {})) {
-    const building = data.buildings.find(item => item.id === id) || byName(group.name);
-    if (!building) continue;
-    roomsById[building.id] = group;
-    legacyIds[id] = building.id;
-    for (const room of group.rooms) entries.push({ building, room, keys: [norm(room)] });
-  }
-  for (const [id, aliases] of Object.entries(data.alias || {})) {
-    const building = data.buildings.find(item => item.id === (legacyIds[id] || id))
-      || aliases.map(byName).find(Boolean)
-      || data.buildings.find(item => aliases.some(name => norm(name) === norm(item.n).replace('#', '')
-        && /^\d+#\w/.test(item.n)));
-    if (!building) continue;
-    legacyIds[id] = building.id;
-    aliasesById[building.id] = (aliasesById[building.id] || []).concat(id, aliases);
-  }
-  for (const building of data.buildings) {
-    if (/^(补全建筑\d+|自定义建筑)$/.test(building.n)) continue;
-    const group = roomsById[building.id];
-    const no = group ? group.no : building.no;
-    const dorm = norm(building.n).match(/^(\d+)#([a-z]?)$/);
-    const numbered = no ? [no, String(Number(no)), Number(no) + '号楼', no + '号楼'] : [];
-    if (dorm) numbered.push(dorm[1] + dorm[2], dorm[1] + '号楼', dorm[1] + '号楼' + dorm[2]);
-    entries.push({ building, room: '', keys: [building.id, building.n, building.ln, ...numbered,
-      ...(aliasesById[building.id] || [])].map(norm).filter(Boolean) });
-  }
-  function search(value) {
-    const query = norm(value);
-    if (!query) return [];
-    const code = roomCode(query);
-    if (code) {
-      const exact = entries.find(entry => entry.room === code);
-      if (exact) return [exact];
-      const entry = entries.find(item => !item.room
-        && ((roomsById[item.building.id] || {}).no || String(item.building.no || '').padStart(2, '0')) === code.slice(0, 2));
-      return entry ? [{ building: entry.building, room: code }] : [];
-    }
-    return entries.map(entry => {
-      let score = Infinity;
-      for (const key of entry.keys) {
-        const index = key.indexOf(query);
-        if (index < 0) continue;
-        score = Math.min(score, (key === query ? 0 : index === 0 ? 4 : 8) + (entry.room ? 1 : 0));
-      }
-      return { entry, score };
-    }).filter(result => result.score < Infinity)
-      .sort((a, b) => a.score - b.score)
-      .slice(0, 8).map(result => result.entry);
-  }
-  return { search, roomsById };
-}
-
-const DIRECTORY = buildCampusSearch(DATA);
+const DIRECTORY = campus.directory(DATA);
+const WALK = campus.routePlanner(DATA.walk);
+const ORIGINS = Object.entries(DATA.walk.origins).map(([id, name]) => ({id, name}));
 
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-
-function contains(x, y, points) {
-  let inside = false;
-  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-    const a = points[i], b = points[j];
-    if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
 
 Page({
   data: {
     query: '', results: [], searched: false,
     sel: null, room: '', subtitle: '', routeText: '', routeMeta: '',
-    details: false, floorOpen: false, floors: [], floor: 0, rooms: [],
+    details: false, origin: 'south', origins: ORIGINS, floorOpen: false, floors: [], floor: 0, rooms: [],
+    orgs: [], orgIndex: 0, hasPlan: false, activeRoom: '', roomInfo: '',
     loading: true, failed: false, mode: 'iso'
   },
 
@@ -125,7 +52,7 @@ Page({
     this._systemDark = appearance.resolved() === 'dark';
     this.scheduleDraw();
   },
-  onResize() { this.measureCanvas(); },
+  onResize() { this.measureCanvas(); if (this.data.hasPlan) this.measurePlan(); },
   onUnload() { this._alive = false; clearTimeout(this._measureTimer); },
 
   measureCanvas(retry = 0) {
@@ -162,10 +89,12 @@ Page({
       }
       this.setData({ loading: false, failed: false });
       if (first && this._target) {
-        const direct = BY_ID[this._target];
-        const target = direct ? { building: direct, room: '' } : DIRECTORY.search(this._target)[0];
-        if (target) this.selectBuilding(target.building, target.room, true);
-        else wx.showToast({ title: '地图未收录该教室', icon: 'none' });
+        const matches = DIRECTORY.search(this._target);
+        const target = matches[0];
+        if (target) {
+          if (matches.length === 1 || !target.item) this.openTarget(target);
+          else this.search(this._target);
+        } else wx.showToast({ title: '地图未收录该教室', icon: 'none' });
       }
       this.scheduleDraw();
     });
@@ -202,7 +131,7 @@ Page({
     this._view.y += y - p[1];
   },
   heightOf(b) {
-    return this.data.mode === 'flat' || b.n === '田径场' ? 0 : (b.h || 0) * 1.4;
+    return this.data.mode === 'flat' || b.n === '田径场' ? 0 : (b.h || 0);
   },
 
   area() {
@@ -213,7 +142,7 @@ Page({
   },
   fitBase() {
     const points = [];
-    DATA.buildings.forEach(b => b.p.forEach(p => points.push(this.raw(p[0], p[1], this.heightOf(b)))));
+    DATA.buildings.forEach(b => campus.parts(b, this.data.mode === 'flat').forEach(part => part.p.forEach(p => points.push(this.raw(p[0], p[1], part.h)))));
     DATA.roads.concat(DATA.water).forEach(shape => shape.p.forEach(p => points.push(this.raw(p[0], p[1]))));
     const bounds = this.bounds(points), a = this.area(), v = this._view;
     v.scale = Math.min(a.width / bounds.width, a.height / bounds.height);
@@ -306,9 +235,9 @@ Page({
     });
 
     const selected = this.data.sel && BY_ID[this.data.sel.id];
-    const route = selected && DATA.routes[selected.id];
-    if (route && route.p.length > 1) {
-      this.path(this.worldPath(route.p), false);
+    const route = this._route;
+    if (route && route.pts.length > 1) {
+      this.path(this.worldPath(route.pts), false);
       c.strokeStyle = colors.halo; c.lineWidth = 6; c.stroke();
       c.strokeStyle = colors.route; c.lineWidth = 3; c.stroke();
     }
@@ -318,20 +247,22 @@ Page({
       const height = this.heightOf(b);
       const center = this.project(b.x, b.y, height / 2), margin = Math.max(80, scale * 110);
       if (center[0] < -margin || center[0] > w + margin || center[1] < -margin || center[1] > h + margin) return;
-      const top = this.worldPath(b.p, height), bottom = height ? this.worldPath(b.p) : top;
       const active = selected && b.id === selected.id;
       const shades = BUILDING_COLORS[b.k];
       const roof = active ? colors.selected : shades ? shades[dark ? 2 : 0] : colors.fill;
       const wall = active ? (dark ? '#2C674F' : '#B5DBC9') : shades ? shades[dark ? 3 : 1] : colors.wall;
-      let depth = 0;
-      top.forEach((p, i) => {
-        depth += p[2];
-        if (!height) return;
-        const j = (i + 1) % top.length;
-        faces.push({ b, points: [bottom[i], bottom[j], top[j], p], fill: wall,
-          depth: (bottom[i][2] + bottom[j][2] + top[j][2] + p[2]) / 4, active });
-      });
-      faces.push({ b, points: top, fill: roof, depth: depth / top.length, active });
+      for (const part of campus.parts(b, this.data.mode === 'flat')) {
+        const top = this.worldPath(part.p, part.h), bottom = part.h ? this.worldPath(part.p) : top;
+        let depth = 0;
+        top.forEach((p, i) => {
+          depth += p[2];
+          if (!part.h) return;
+          const j = (i + 1) % top.length;
+          faces.push({ b, points: [bottom[i], bottom[j], top[j], p], fill: wall,
+            depth: (bottom[i][2] + bottom[j][2] + top[j][2] + p[2]) / 4, active });
+        });
+        faces.push({ b, points: top, fill: roof, depth: depth / top.length, active });
+      }
     });
     faces.sort((a, b) => a.depth - b.depth);
     this._faces = faces;
@@ -364,11 +295,14 @@ Page({
     }
   },
 
-  onSearch(e) {
-    const query = e.detail.value;
-    const results = DIRECTORY.search(query).map(({ building, room }) => ({
-      id: building.id, key: building.id + (room || ''), room,
-      title: room || building.n, sub: room ? building.n + ' · ' + Number(room.charAt(2)) + ' 层' : building.k
+  onSearch(e) { this.search(e.detail.value); },
+  search(query) {
+    this._hits = DIRECTORY.search(query);
+    const results = this._hits.map(({ building, room, item, level, missing }, i) => ({
+      key: item ? item.key : building.id + i,
+      title: item ? room + ' · ' + item.name : room || building.n,
+      sub: item ? [building.n, level + ' 层', item.org].filter(Boolean).join(' · ')
+        : missing ? building.n + ' · 房间未收录' : building.k
     }));
     this.setData({ query, results, searched: !!query.trim() });
   },
@@ -378,24 +312,44 @@ Page({
   clearSearch() { this.setData({ query: '' }); this.closeResults(); },
   confirmSearch() {
     const hit = DIRECTORY.search(this.data.query)[0];
-    if (hit) { this.clearSearch(); this.selectBuilding(hit.building, hit.room, true); }
+    if (hit) { this.clearSearch(); this.openTarget(hit); }
   },
   tapResult(e) {
-    const { id, room } = e.currentTarget.dataset;
-    this.clearSearch();
-    this.selectBuilding(BY_ID[id], room, true);
+    const hit = this._hits && this._hits[Number(e.currentTarget.dataset.index)];
+    if (hit) { this.clearSearch(); this.openTarget(hit); }
   },
-  selectBuilding(b, room = '', center = false) {
-    if (!b) return;
-    const route = DATA.routes[b.id], group = DIRECTORY.roomsById[b.id];
-    const no = group ? group.no : b.no;
-    const subtitle = [room && '教室 ' + room + ' · ' + Number(room.charAt(2)) + ' 层',
-      no && no + ' 号楼', b.k !== '其他' && b.k !== '补全建筑' && b.k].filter(Boolean).join(' · ');
+  openTarget(hit) {
+    this.selectBuilding(hit.building, hit.room, true, hit.item ? hit : null);
+    if (hit.item) this.openFloors();
+  },
+  refreshRoute(building, origin = this.data.origin) {
+    const from = DATA.walk.origins[origin] || (BY_ID[origin] && BY_ID[origin].n);
+    this._route = WALK.route(origin, building.id);
+    const route = this._route;
     this.setData({
-      sel: { id: b.id, name: b.n, hasRooms: !!group }, room, subtitle, details: false,
-      routeText: route ? (route.r || []).filter(name => name !== '校内支路').join(' → ') : '',
-      routeMeta: route ? '约 ' + route.t + ' 分钟 · ' + Math.round(route.m) + ' 米' : ''
+      origin, routeTitle: '起点 · ' + from,
+      routeText: route ? [from, ...route.names.filter(name => name !== '校内支路'), building.n + (building.entry ? '' : '附近')].join(' → ')
+        : origin === building.id ? (DIRECTORY.indoor[building.id] ? '已在此楼，可查看楼层' : '请选择另一栋楼作为终点') : '暂无路线',
+      routeMeta: route ? '约 ' + route.mins + ' 分钟 · ' + route.m + ' 米' : ''
     });
+    this.scheduleDraw();
+  },
+  chooseOrigin(e) {
+    if (!this.data.sel) return;
+    const building = BY_ID[this.data.sel.id];
+    const origin = e.currentTarget.dataset.origin === 'building' ? building.id : e.currentTarget.dataset.origin;
+    this.refreshRoute(building, origin);
+  },
+  subtitle(b, code, hit) {
+    return [code && (hit ? code + ' · ' + hit.level + ' 层' : code + ' 未收录'),
+      b.no && b.no + ' 号楼', b.k !== '其他' && b.k !== '补全建筑' && b.k].filter(Boolean).join(' · ');
+  },
+  selectBuilding(b, room = '', center = false, hit = null) {
+    if (!b) return;
+    this._activeRoom = hit;
+    this.setData({sel: {id: b.id, name: b.n, hasRooms: !!DIRECTORY.indoor[b.id]}, room,
+      subtitle: this.subtitle(b, room, hit), details: false});
+    this.refreshRoute(b);
     if (center && this._ctx) {
       const area = this.area();
       this._view.zoom = Math.max(this._view.zoom, 1.65);
@@ -405,17 +359,18 @@ Page({
     this.scheduleDraw();
   },
   clearSelection() {
+    this._route = this._activeRoom = null;
     this.setData({ sel: null, room: '', subtitle: '', details: false, floorOpen: false });
     this.scheduleDraw();
   },
   toggleDetails() { this.setData({ details: !this.data.details }); },
   fitRoute() {
     if (!this._ctx || !this.data.sel) return;
-    const b = BY_ID[this.data.sel.id], route = DATA.routes[b.id];
-    if (!route || route.p.length < 2) return;
+    const b = BY_ID[this.data.sel.id], route = this._route;
+    if (!route || route.pts.length < 2) return;
     this.setData({ details: false });
     const area = this.area(), v = this._view;
-    const points = route.p.map(p => this.raw(p[0], p[1])).concat([this.raw(b.x, b.y, this.heightOf(b))]);
+    const points = route.pts.map(p => this.raw(p[0], p[1])).concat([this.raw(b.x, b.y, this.heightOf(b))]);
     const bounds = this.bounds(points);
     v.zoom = clamp(Math.min(area.width * .88 / bounds.width, area.height * .84 / bounds.height) / v.scale, .55, 3.8);
     v.x = area.x - bounds.x * v.zoom * v.scale;
@@ -424,23 +379,126 @@ Page({
     this.scheduleDraw();
   },
   openFloors() {
-    const group = this.data.sel && DIRECTORY.roomsById[this.data.sel.id];
+    const group = this.data.sel && DIRECTORY.indoor[this.data.sel.id];
     if (!group) return;
-    const floor = this.data.room ? Number(this.data.room.charAt(2)) : group.floors[0];
-    const floors = Array.from(new Set(group.floors.concat(floor))).sort((a, b) => a - b);
-    this.setData({ floorOpen: true, floors });
-    this.showFloor(floor);
+    this.setData({floorOpen: true, floors: group.map(floor => floor.level)});
+    this.showFloor(this._activeRoom ? this._activeRoom.level : group[0].level);
   },
-  closeFloors() { this.setData({ floorOpen: false }); },
+  closeFloors() {
+    this._plan = this._planCtx = this._planGesture = null;
+    this.setData({ floorOpen: false, hasPlan: false });
+  },
   tapFloor(e) { this.showFloor(Number(e.currentTarget.dataset.floor)); },
-  showFloor(floor) {
-    const group = DIRECTORY.roomsById[this.data.sel.id];
-    this.setData({ floor, rooms: group.rooms.filter(code => Number(code.charAt(2)) === floor) });
+  showFloor(level) {
+    const floor = DIRECTORY.indoor[this.data.sel.id].find(item => item.level === level);
+    if (!floor) return;
+    this._floor = floor;
+    this._plan = null;
+    const orgs = Array.from(new Set(floor.rooms.map(room => room.org).filter(Boolean)));
+    this.setData({ floor: level, orgs: orgs.length ? ['全部机构', ...orgs] : [], orgIndex: 0, hasPlan: !!floor.size },
+      () => { if (floor.size) this.measurePlan(); });
+    this.updateFloorRooms(0);
   },
-  chooseRoom(e) {
-    this.selectBuilding(BY_ID[this.data.sel.id], e.currentTarget.dataset.room, false);
-    this.closeFloors();
+  filterOrg(e) { this.updateFloorRooms(Number(e.detail.value)); },
+  updateFloorRooms(orgIndex) {
+    const floor = this._floor;
+    const active = this._activeRoom && floor.rooms.find(room => room.key === this._activeRoom.item.key);
+    const rooms = floor.rooms.filter(room => !orgIndex || room.org === this.data.orgs[orgIndex])
+      .map(({code, name, org, key}) => ({code, name, org: org || '', key}));
+    const roomInfo = active ? [active.code, active.name, active.org,
+      floor.size && !active.p && '平面位置待核实'].filter(Boolean).join(' · ') : '';
+    this.setData({ rooms, orgIndex, activeRoom: active ? active.key : '', roomInfo });
+    this.drawPlan();
   },
+  chooseRoom(e) { this.selectRoom(e.currentTarget.dataset.key); },
+  selectRoom(key) {
+    const item = this._floor && this._floor.rooms.find(room => room.key === key);
+    if (!item) return;
+    const b = BY_ID[this.data.sel.id];
+    this._activeRoom = {item, level: this._floor.level};
+    this.setData({room: item.code, subtitle: this.subtitle(b, item.code, this._activeRoom)});
+    this.updateFloorRooms(this.data.orgIndex);
+  },
+  measurePlan() {
+    const floor = this._floor;
+    wx.createSelectorQuery().in(this).select('#floorPlan').fields({node: true, size: true, rect: true}).exec(items => {
+      const plan = items && items[0];
+      if (!this._alive || this._floor !== floor || !this.data.floorOpen || !plan || !plan.node || !plan.width || !plan.height) return;
+      this._planNode = plan.node;
+      this._planRect = {x: plan.left, y: plan.top};
+      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      const dpr = Math.min(info.pixelRatio || 1, 2);
+      plan.node.width = Math.round(plan.width * dpr); plan.node.height = Math.round(plan.height * dpr);
+      this._planCtx = plan.node.getContext('2d');
+      this._planCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this._plan = {width: plan.width, height: plan.height};
+      this.fitPlan();
+    });
+  },
+  fitPlan() {
+    const v = this._plan, floor = this._floor;
+    if (!v || !floor || !floor.size) return;
+    const [w, h] = floor.size;
+    v.fit = v.scale = Math.min((v.width - 12) / w, (v.height - 12) / h);
+    v.x = (v.width - w * v.scale) / 2;
+    v.y = (v.height - h * v.scale) / 2;
+    this.drawPlan();
+  },
+  zoomPlan(e) {
+    const v = this._plan;
+    if (v) this.scalePlan(e.currentTarget.dataset.zoom === 'in' ? 1.28 : 1 / 1.28, v.width / 2, v.height / 2);
+  },
+  scalePlan(factor, x, y) {
+    const v = this._plan;
+    if (!v) return;
+    const [w, h] = this._floor.size;
+    const next = clamp(v.scale * factor, v.fit, v.fit * 5);
+    v.x = clamp(x - (x - v.x) * next / v.scale, 20 - w * next, v.width - 20);
+    v.y = clamp(y - (y - v.y) * next / v.scale, 20 - h * next, v.height - 20);
+    v.scale = next;
+    this.drawPlan();
+  },
+  drawPlan() {
+    if (!this._plan || !this._planCtx || !this._floor || !this._floor.size || !this.data.floorOpen) return;
+    campus.floorScene(this._planCtx, this._floor, this._activeRoom && this._activeRoom.item.key, this._plan,
+      this.data.themeClass == null ? this._systemDark : this.data.themeClass === 'theme-dark');
+  },
+  planPoint(touch) {
+    return [typeof touch.x === 'number' ? touch.x : touch.clientX - this._planRect.x,
+      typeof touch.y === 'number' ? touch.y : touch.clientY - this._planRect.y];
+  },
+  planStart(e) {
+    if (!this._plan) return;
+    this._planGesture = {points: e.touches.map(touch => this.planPoint(touch)), moved: e.touches.length > 1};
+  },
+  planMove(e) {
+    const gesture = this._planGesture, v = this._plan;
+    if (!gesture || !v) return;
+    const points = e.touches.map(touch => this.planPoint(touch));
+    if (!points.length) return;
+    const [point, second] = points, [previous, before] = gesture.points;
+    const dx = point[0] - previous[0], dy = point[1] - previous[1];
+    if (!gesture.moved && !second && Math.hypot(dx, dy) < 4) return;
+    gesture.moved = true;
+    gesture.points = points;
+    if (second && before) {
+      const distance = Math.hypot(previous[0] - before[0], previous[1] - before[1]);
+      if (distance > 1) this.scalePlan(Math.hypot(point[0] - second[0], point[1] - second[1]) / distance,
+        (point[0] + second[0]) / 2, (point[1] + second[1]) / 2);
+    } else if (!second && !before) {
+      v.x += dx; v.y += dy; this.scalePlan(1, v.width / 2, v.height / 2);
+    }
+  },
+  planEnd(e) {
+    const gesture = this._planGesture, v = this._plan;
+    this._planGesture = null;
+    if (!gesture || gesture.moved || !v || !e.changedTouches.length) return;
+    const point = this.planPoint(e.changedTouches[0]);
+    const x = (point[0] - v.x) / v.scale, y = (point[1] - v.y) / v.scale;
+    const room = this._floor.rooms.find(entry => entry.p && campus.contains(x, y, entry.p));
+    if (room) this.selectRoom(room.key);
+  },
+  planCancel() { this._planGesture = null; },
 
   position(t) {
     if (t.x != null) return [t.x, t.y];
@@ -494,7 +552,7 @@ Page({
   hit(x, y) {
     const faces = this._faces || [];
     for (let i = faces.length - 1; i >= 0; i--) {
-      if (contains(x, y, faces[i].points)) return faces[i].b;
+      if (campus.contains(x, y, faces[i].points)) return faces[i].b;
     }
     let nearest = null, radius = 12;
     for (const b of DATA.buildings) {
