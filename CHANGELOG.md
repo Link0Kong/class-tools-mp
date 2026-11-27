@@ -1,5 +1,14 @@
 # 版本记录
 
+## 记住课表周/日视图 + 日视图左右滑动切天（2026-11-27，源码就绪；未上传发布；VERSION 仍 2.1.3）
+
+> 用户要求：「应用应该记住用户的课表用周视图还是日视图，并且在日视图时左右滑动应该切换的是临近的天」。
+
+- **视图偏好**：新增 `utils/ttprefs.js`（键 `zq_tt_view_v1`，经 `store.keyFor` 包装为按账号隔离的 `zq_tt_view_v1_<sid>`）；只认 `week` / `day`，缺省 / 脏值返回 `null`（课表页回落周视图），写失败静默。`pages/tt/tt.js` 的 `onLoad` 在首次 refresh 前恢复偏好，`setView` 在真正切换时写入；`pickDay`、深链 `wk/day`（`applyAgentHandoff`）与分享进入只影响本次会话，不写偏好。不写 userdata v6（`ttView` 字段仍归网页 / 安卓）。
+- **日视图滑动**：`_swipeTarget` 按视图返回 `{ kind:'week'|'day', dir, value }`；日视图左滑下一天、右滑上一天，目标限定在当前周 `dayBar` 的可见天内，到两端按 0.28 阻尼回弹，不跨周。新增 `_swipeApply(dir, fn)` 复用切周的飞出 150ms + 飞入 230ms 动画、`swipeStyle` 收尾与 320ms 点击抑制；周视图滑动行为不变。
+- **测试**：`tests/unit.js` 新增 6 条用例（偏好读写 / 账号隔离 / 重进恢复 / 分享与深链不写偏好；日视图左滑、右滑、周一与最后可见天边界）；`cd tests; node unit.js` **612 passed / 0 failed**。
+- **未改**：VERSION、云端 userdata v6、`utils/privacy.js` / `utils/cloud.js` 与其他端。
+
 ## 移除小程序端投票功能（2026-11-27，源码就绪；未上传发布；VERSION 仍 2.1.3）
 
 > 用户要求：完全移除微信小程序投票功能，同时在本地保留备份，方便后续恢复使用。

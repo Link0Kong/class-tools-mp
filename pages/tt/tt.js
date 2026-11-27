@@ -1,6 +1,7 @@
 // pages/tt/tt.js —— 课表（与网页版同步：只读 / 教务 tt.json / 按周切换 / 本节详情）
 // v12：请求统一走 utils/cloud.js 的 ttFetch（要求已通过班级身份验证）。
 const store = require('../../utils/store.js');
+const ttprefs = require('../../utils/ttprefs.js');   // 周/日视图偏好（本机按账号记住，见 onLoad / setView）
 const ttplan = require('../../utils/ttplan.js');
 const util = require('../../utils/util.js');
 const canvas = require('../../utils/canvas.js');
@@ -156,6 +157,10 @@ Page(shareflow.install({
     this._loginJob = '';
     this._loginTimer = null;
     this._loginDeadline = 0;
+    // 2026-11-27 用户需求：记住课表视图（周/日，按账号本机存储）。在首次 refresh / onShow 之前恢复；
+    // 深链（applyAgentHandoff 的 wk/day）与分享进入只在本次会话定位，不写偏好（只有 setView 点击才写）。
+    const savedView = ttprefs.load();
+    if (savedView) this.setData({ view: savedView });
   },
   onShow() {
     share.enable();
@@ -546,6 +551,7 @@ Page(shareflow.install({
     const v = e.currentTarget.dataset.v === 'day' ? 'day' : 'week';
     if (v === this.data.view) return;
     this.setData({ view: v });
+    ttprefs.save(v);                  // 用户手选视图才写偏好（pickDay / 深链 / 分享都不写）
   },
   pickDay(e) {
     if (this._tapBlocked()) return;   // 滑动结束后的 tap 不切换星期
@@ -575,25 +581,45 @@ Page(shareflow.install({
     this._wk = null; this._day = null; this._dayUser = false; this.refresh();
   },
 
-  /* 周切换：上一周 / 下一周按钮 + 课表内容左右滑动（与网页端同款：跟手 → 松手吸附 / 飞出飞入）。
+  /* 周/日内容左右滑动（与网页端同款：跟手 → 松手吸附 / 飞出飞入）。
      网页规则照搬：横向锁定 12px、提交阈值 56px、到边界橡皮筋阻尼 0.28、动画 150ms 飞出 +
      230ms cubic-bezier(.22,.8,.3,1) 飞入、滑动后 320ms 内点击一律吞掉；周/日视图切换只点击。
-     手势范围：只包「课表内容」（周表 / 日视图），比网页「整张课表卡起手都能切周」窄——按设计规范
-     「课表内容切上一周/下一周」收窄；周导航 / 周-日切换 / 下一节 / 全部课程不参与滑动。
-     2026-11-06：周表列宽改为按卡片内宽自适应（5/6/7 天 = 106/89/76rpx，恒不横向溢出），
-     因此任何横向手势都直接跟手切上一周/下一周，不再有「先滚表格、到边缘才切周」的分支。 */
+     周视图：左滑下一周 / 右滑上一周（2026-11-06 起列宽自适应，任何横向手势都直接切周）；
+     日视图（2026-11-27 用户需求）：左滑下一天 / 右滑上一天，只在当前周 dayBar 的可见天内切，
+     到本周可见天两端同样 0.28 阻尼回弹，不跨周。两种视图复用 _swipeApply 的动画骨架。
+     手势范围：只包「课表内容」（周表 / 日视图）；周导航 / 周-日切换 / 下一节 / 全部课程不参与滑动。 */
   _winW() {
     try {
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       return (info && info.windowWidth) || 375;
     } catch (e) { return 375; }
   },
+  // 返回本次滑动的目标：{ kind:'week'|'day', dir, value }；无目标（边界 / 无课表 / 无相邻天）返回 null，
+  // 调用方只判断 null（跟手时用 0.28 阻尼，松手回弹）。
   _swipeTarget(dir) {
+    if (this.data.view === 'day') return this._swipeDayTarget(dir);
     const wk = this.data.wk;
     if (!wk) return null;
     if (dir > 0 && wk >= this.data.maxWeek) return null;
     if (dir < 0 && wk <= 1) return null;
-    return { dir: dir };
+    return { kind: 'week', dir: dir, value: dir > 0 ? wk + 1 : wk - 1 };
+  },
+  // 日视图：只在当前周 dayBar 的 d 列表内取相邻天（左滑 dir=1 → 下一天；右滑 dir=-1 → 上一天）。
+  _swipeDayTarget(dir) {
+    const bar = this.data.dayBar || [];
+    let at = -1;
+    for (let i = 0; i < bar.length; i++) {
+      if (bar[i] && bar[i].d === this._day) { at = i; break; }
+    }
+    if (at < 0) {
+      for (let i = 0; i < bar.length; i++) {
+        if (bar[i] && bar[i].on) { at = i; break; }
+      }
+    }
+    if (at < 0) return null;
+    const ni = at + dir;
+    if (ni < 0 || ni >= bar.length) return null;
+    return { kind: 'day', dir: dir, value: bar[ni].d };
   },
   // 周表横向滚动位置（scroll-view bindscroll，px）：重进恢复 + 防御性状态记录，不触发 setData。
   // 列宽自适应后周表不再横向溢出（_gridMaxX 恒 0），正常设备上该回调不会被触发；保留以兜底未来变宽。
@@ -617,7 +643,7 @@ Page(shareflow.install({
     if (this._swAnim) return;
     this._swSeq = (this._swSeq || 0) + 1;   // 让上一次尚未触发的 snap 回调失效
     const t = e.touches[0];
-    // 周表列宽自适应后不再横向溢出：起手不再区分「滚表格 / 切周」，统一按切周手势处理
+    // 周表列宽自适应后不再横向溢出：起手不再区分「滚表格 / 切周」，统一按切周/切天手势处理
     this._sw = { sx: t.clientX, sy: t.clientY, lock: false, live: true, last: 0 };
   },
   onSwipeMove(e) {
@@ -629,7 +655,7 @@ Page(shareflow.install({
     const dy = t.clientY - s.sy;
     if (!s.lock) {
       if (Math.abs(dx) < SW_LOCK) return;
-      if (Math.abs(dx) > Math.abs(dy) * SW_LOCK_RATIO) s.lock = true;   // 横向锁定 = 切周手势
+      if (Math.abs(dx) > Math.abs(dy) * SW_LOCK_RATIO) s.lock = true;   // 横向锁定 = 切周/切天手势
       else { s.live = false; return; }                                   // 纵向/斜向：交给页面滚动
     }
     const tgt = this._swipeTarget(dx < 0 ? 1 : -1);
@@ -649,7 +675,8 @@ Page(shareflow.install({
     if (!(Math.abs(dx) > Math.abs(dy) * 1.1)) { this._swipeSnap(); return; }
     this._supTap = Date.now() + SW_TAP_GUARD;   // 与网页一致：真正横向滑动后的 320ms 内吞掉 tap
     const dir = dx < 0 ? 1 : -1;
-    if (this._swipeTarget(dir) && Math.abs(dx) >= SW_COMMIT) this._swipeCommit(dir);
+    const tgt = this._swipeTarget(dir);
+    if (tgt && Math.abs(dx) >= SW_COMMIT) this._swipeCommit(tgt);
     else this._swipeSnap();
   },
   onSwipeCancel() {
@@ -665,24 +692,46 @@ Page(shareflow.install({
       if (this._swSeq === seq && !this._swAnim) this.setData({ swipeStyle: '' });
     }, 220);
   },
-  _swipeCommit(dir) {
+  // 提交一次换周 / 换天（tgt 来自 _swipeTarget）：只更新页面私有状态（_wk 或 _day），渲染交给 _swipeApply。
+  _swipeCommit(tgt) {
+    if (!tgt) { this._swipeSnap(); return; }
+    if (tgt.kind === 'day') {
+      // 目标天必须在当前 dayBar 的 d 列表内（边界已在 _swipeTarget 过滤，这里兜底防过期数据）
+      const bar = this.data.dayBar || [];
+      let hit = false;
+      for (let i = 0; i < bar.length; i++) {
+        if (bar[i] && bar[i].d === tgt.value) { hit = true; break; }
+      }
+      if (!hit) { this._swipeSnap(); return; }
+      this._swipeApply(tgt.dir, () => {
+        this._day = tgt.value;
+        this._dayUser = true;       // 手滑切天与手选星期同口径：_buildData 不再按今天/首日重选
+      });
+      return;
+    }
     const wk = this.data.wk;
     if (!wk) { this._swipeSnap(); return; }
-    const nwk = dir > 0 ? Math.min(this.data.maxWeek, wk + 1) : Math.max(1, wk - 1);
+    const nwk = tgt.dir > 0 ? Math.min(this.data.maxWeek, wk + 1) : Math.max(1, wk - 1);
     if (nwk === wk) { this._swipeSnap(); return; }
+    this._swipeApply(tgt.dir, () => { this._wk = nwk; });
+  },
+  // 换周 / 换天共用的动画骨架（与 2026-11-06 的切周动画逐参数一致，日视图不另起观感）：
+  // 1) 旧内容飞出（transform .16s ease + 透明度 .25；150ms 后换页）→ 2) fn() 更新 _wk/_day 并
+  // 重建数据、新内容从另一侧进场（同一次 setData，避免闪一格）→ 3) 弹回原位（.23s 曲线，250ms 后收尾）。
+  _swipeApply(dir, fn) {
     const W = Math.min(340, Math.max(120, this._winW() * 0.5));
     const sign = dir > 0 ? -1 : 1;
     this._swAnim = true;
-    // 1) 旧内容飞出（transform .16s ease + 透明度 .25；150ms 后换页）
+    // 1) 旧内容飞出
     this.setData({ swipeStyle: 'transform:translateX(' + (sign * W) + 'px);opacity:.25;transition:transform .16s ease,opacity .16s ease;' });
     this._swLater(() => {
-      // 2) 换周 + 新内容从另一侧进场（同一次 setData，避免闪一格）
-      this._wk = nwk;
+      // 2) 换周 / 换天 + 新内容从另一侧进场
+      fn();
       const data = this._buildData() || {};
       data.swipeStyle = 'transform:translateX(' + (-sign * W) + 'px);opacity:0;transition:none;';
       this.setData(data, () => {
         this._swLater(() => {
-          // 3) 弹回原位（.23s cubic-bezier(.22,.8,.3,1)）
+          // 3) 弹回原位
           this.setData({ swipeStyle: 'transform:translateX(0);opacity:1;transition:transform .23s cubic-bezier(.22,.8,.3,1),opacity .23s ease;' });
           this._swLater(() => { this._swAnim = false; this.setData({ swipeStyle: '' }); }, 250);
         }, 20);

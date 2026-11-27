@@ -1730,6 +1730,204 @@ const fakeCanvas = (() => {
   });
 
   /* ============================================================
+     7b-2. 2026-11-27 用户需求：记住课表周/日视图；日视图左右滑动切临近的天
+     ============================================================ */
+  function ttPrefs() { return require(path.join(ROOT, 'utils/ttprefs.js')); }
+  function ttPrefKey() { return require(path.join(ROOT, 'utils/store.js')).keyFor('zq_tt_view_v1'); }
+  // 模拟「重新进入页面」：清掉页面与偏好模块缓存后重新 loadTtPage()
+  function reloadTtPage() {
+    TT_DEF = null;
+    delete require.cache[path.join(ROOT, 'pages/tt/tt.js')];
+    delete require.cache[path.join(ROOT, 'utils/ttprefs.js')];
+    return loadTtPage();
+  }
+  // 用页面真实 onLoad 建立实例（不跑 onShow，避免网络/定时器干扰）
+  function ttLoadCtx(def, options) {
+    const ctx = Object.assign({}, def);
+    ctx.data = JSON.parse(JSON.stringify(def.data));
+    ctx.setData = function (o, cb) { Object.assign(this.data, o); if (cb) cb(); };
+    def.onLoad.call(ctx, options || {});
+    return ctx;
+  }
+
+  await test('课表视图偏好：ttprefs 只认 week/day，缺省/脏值返回 null，键按账号隔离', () => {
+    clearMem();
+    setIdentity(ID);
+    const ttprefs = ttPrefs();
+    assert.strictEqual(ttprefs.KEY, 'zq_tt_view_v1');
+    assert.strictEqual(ttprefs.load(), null, '缺省应返回 null（课表页回落周视图）');
+    assert.strictEqual(ttprefs.save('day'), true);
+    assert.strictEqual(ttprefs.load(), 'day');
+    assert.strictEqual(mem[ttPrefKey()], 'day', '实际 storage 键应为 store.keyFor 包装的账号键');
+    assert.strictEqual(ttprefs.save('month'), false, '非法值不应写入');
+    assert.strictEqual(ttprefs.load(), 'day', '非法值不得覆盖已有偏好');
+    assert.strictEqual(ttprefs.save('week'), true);
+    assert.strictEqual(ttprefs.load(), 'week');
+    mem[ttPrefKey()] = 'dayview';
+    assert.strictEqual(ttprefs.load(), null, '脏值应回 null');
+    // 按账号隔离：换账号读不到上一个账号的偏好，切回来仍在
+    ttprefs.save('day');
+    setIdentity(ID2);
+    assert.strictEqual(ttprefs.load(), null, '视图偏好应按账号隔离');
+    assert.strictEqual(ttprefs.save('week'), true);
+    setIdentity(ID);
+    assert.strictEqual(ttprefs.load(), 'day', '切回原账号应读到自己的偏好');
+  });
+
+  await test('课表视图偏好：重新进入页面按偏好恢复 day；分享进入不改偏好；脏值/缺省回落 week', () => {
+    clearMem();
+    setIdentity(ID);
+    let ttprefs = ttPrefs();
+    ttprefs.save('day');
+    const def = reloadTtPage();                    // 模拟重新 require 页面 + 偏好模块
+    ttprefs = ttPrefs();
+    let ctx = ttLoadCtx(def, {});
+    assert.strictEqual(ctx.data.view, 'day', '重进页面应恢复日视图');
+    ctx.refresh();
+    assert.strictEqual(ctx.data.view, 'day', '首次 refresh 不应覆盖恢复的视图');
+    assert.strictEqual(ttprefs.load(), 'day', '恢复偏好不得改写它');
+
+    // 分享进入：仍按用户偏好渲染（只读分享课表），不写偏好
+    ctx = ttLoadCtx(def, { tt: encodeURIComponent(JSON.stringify({ c: [{ name: '高数', day: 0, start: 1, end: 2, weeks: '1-18' }], t: '' })) });
+    assert.ok(ctx._shared, '分享参数应解析到 _shared');
+    assert.strictEqual(ctx.data.view, 'day', '分享进入不应影响已保存的视图偏好');
+    assert.strictEqual(ttprefs.load(), 'day');
+
+    // 脏值 / 缺省 → 周视图
+    mem[ttPrefKey()] = 'month';
+    ctx = ttLoadCtx(def, {});
+    assert.strictEqual(ctx.data.view, 'week', '脏值应回落周视图');
+    assert.strictEqual(ttprefs.load(), null);
+    delete mem[ttPrefKey()];
+    ctx = ttLoadCtx(def, {});
+    assert.strictEqual(ctx.data.view, 'week', '缺省应回落周视图');
+  });
+
+  await test('课表视图偏好：setView 点击周↔日写入；pickDay / 深链 day 不写偏好', () => {
+    clearMem();
+    setIdentity(ID);
+    const ttprefs = ttPrefs();
+    const def = loadTtPage();
+    const ctx = ttDaysCtx(def, 5, 9);
+    assert.strictEqual(ctx.data.view, 'week');
+    def.setView.call(ctx, { currentTarget: { dataset: { v: 'day' } } });
+    assert.strictEqual(ctx.data.view, 'day');
+    assert.strictEqual(ttprefs.load(), 'day', '周→日点击应写入 day');
+    def.setView.call(ctx, { currentTarget: { dataset: { v: 'week' } } });
+    assert.strictEqual(ctx.data.view, 'week');
+    assert.strictEqual(ttprefs.load(), 'week', '日→周点击应写入 week');
+    // 同值点击不算切换（无写入动作）：先置 day，再点 day 保持 day
+    ttprefs.save('day');
+    ctx.data.view = 'day';
+    def.setView.call(ctx, { currentTarget: { dataset: { v: 'day' } } });
+    assert.strictEqual(ttprefs.load(), 'day');
+
+    // pickDay 只切选中天，不写视图偏好
+    ttprefs.save('week');
+    ctx.data.view = 'week';
+    def.pickDay.call(ctx, { currentTarget: { dataset: { td: '2' } } });
+    assert.strictEqual(ctx.data.view, 'week', 'pickDay 不改视图');
+    assert.strictEqual(ttprefs.load(), 'week', 'pickDay 不写视图偏好');
+
+    // 深链 day：只在本次会话定位，不写偏好（用户此前的 week 保留）
+    ttprefs.save('week');
+    const linked = ttLoadCtx(def, { wk: '9', day: '3' });
+    def.applyAgentHandoff.call(linked);
+    assert.strictEqual(linked.data.view, 'day', '深链 day 本次应显示日视图');
+    assert.strictEqual(linked._day, 2, '深链 day=3 应定位到周三（下标 2）');
+    assert.strictEqual(ttprefs.load(), 'week', '深链 day 不得写入偏好');
+  });
+
+  await test('日视图滑动：左滑切下一天（本周内、周次不变），dayBar 高亮同步，动画收尾与切周一致', async () => {
+    const def = loadTtPage();
+    const ctx = ttDaysCtx(def, 5, 9);
+    ctx.data.view = 'day';
+    assert.strictEqual(ctx._day, 0, '初始选中周一');
+    assert.deepStrictEqual(def._swipeTarget.call(ctx, 1), { kind: 'day', dir: 1, value: 1 }, '日视图左滑目标应为下一天');
+    def.onSwipeStart.call(ctx, { touches: [{ clientX: 300, clientY: 400 }] });
+    def.onSwipeMove.call(ctx, { touches: [{ clientX: 240, clientY: 400 }] });
+    assert.ok(/translateX\(-60px\)/.test(ctx.data.swipeStyle), '日视图跟手位移：' + ctx.data.swipeStyle);
+    def.onSwipeEnd.call(ctx, { changedTouches: [{ clientX: 220, clientY: 400 }] });
+    assert.ok(ctx._supTap > Date.now(), '切天后同样进入 320ms 点击抑制');
+    assert.ok(/translateX\(-187\.5px\);opacity:\.25;transition:transform \.16s ease/.test(ctx.data.swipeStyle), '切天沿用飞出动画：' + ctx.data.swipeStyle);
+    await sleep(190);
+    assert.strictEqual(ctx.data.view, 'day', '滑动不应切换周/日视图');
+    assert.strictEqual(ctx._day, 1, '左滑应选中下一天（周二）');
+    assert.strictEqual(ctx._dayUser, true);
+    assert.strictEqual(ctx.data.wk, 9, '日视图切天不得切周');
+    assert.strictEqual(ctx.data.dayBar[0].on, false);
+    assert.strictEqual(ctx.data.dayBar[1].on, true, 'dayBar 高亮应同步到周二');
+    assert.strictEqual(ctx.data.dayList.length, 1);
+    assert.strictEqual(ctx.data.dayList[0].name, '课1', '日视图列表应同步为周二课程');
+    assert.ok(ctx.log.some((x) => x.wk === 9 && /translateX\(187\.5px\);opacity:0;transition:none/.test(x.swipeStyle || '')), '新天应从另一侧进场');
+    await sleep(160);
+    assert.ok(/translateX\(0\);opacity:1;transition:transform \.23s cubic-bezier\(\.22,\.8,\.3,1\)/.test(ctx.data.swipeStyle), '飞入动画：' + ctx.data.swipeStyle);
+    await sleep(300);
+    assert.strictEqual(ctx.data.swipeStyle, '', '动画结束后应清空内联样式');
+    assert.strictEqual(ctx._swAnim, false);
+  });
+
+  await test('日视图滑动：右滑切上一天；周一右滑阻尼回弹不切天', async () => {
+    const def = loadTtPage();
+    let ctx = ttDaysCtx(def, 5, 9);
+    ctx._day = 2;
+    ctx._dayUser = true;
+    ctx.refresh();
+    ctx.data.view = 'day';
+    assert.strictEqual(ctx.data.dayBar[2].on, true);
+    def.onSwipeStart.call(ctx, { touches: [{ clientX: 200, clientY: 400 }] });
+    def.onSwipeMove.call(ctx, { touches: [{ clientX: 260, clientY: 400 }] });
+    assert.ok(/translateX\(60px\)/.test(ctx.data.swipeStyle), '右滑应 1:1 跟手：' + ctx.data.swipeStyle);
+    def.onSwipeEnd.call(ctx, { changedTouches: [{ clientX: 280, clientY: 400 }] });
+    await sleep(190);
+    assert.strictEqual(ctx._day, 1, '右滑应选中上一天（周二）');
+    assert.strictEqual(ctx.data.view, 'day');
+    assert.strictEqual(ctx.data.wk, 9);
+    assert.strictEqual(ctx.data.dayBar[1].on, true, 'dayBar 高亮应同步到周二');
+    assert.strictEqual(ctx.data.dayBar[2].on, false);
+    await sleep(320);
+    assert.strictEqual(ctx.data.swipeStyle, '');
+
+    // 周一右滑 → 无上一天：0.28 阻尼 + 回弹，选中天与周次都不变
+    ctx = ttDaysCtx(def, 5, 9);
+    ctx._day = 0;
+    ctx._dayUser = true;
+    ctx.refresh();
+    ctx.data.view = 'day';
+    def.onSwipeStart.call(ctx, { touches: [{ clientX: 200, clientY: 400 }] });
+    def.onSwipeMove.call(ctx, { touches: [{ clientX: 280, clientY: 400 }] });
+    assert.ok(/translateX\(22px\)/.test(ctx.data.swipeStyle), '周一右滑应 0.28 阻尼：' + ctx.data.swipeStyle);
+    def.onSwipeEnd.call(ctx, { changedTouches: [{ clientX: 280, clientY: 400 }] });
+    assert.ok(/translateX\(0\);opacity:1;transition:transform \.2s/.test(ctx.data.swipeStyle), '应只回弹：' + ctx.data.swipeStyle);
+    assert.ok(!ctx.log.some((x) => /opacity:\.25/.test(x.swipeStyle || '')), '边界不应有飞出动画');
+    await sleep(260);
+    assert.strictEqual(ctx._day, 0, '周一右滑不切天');
+    assert.strictEqual(ctx.data.wk, 9, '日视图边界不得切周');
+    assert.strictEqual(ctx.data.swipeStyle, '');
+  });
+
+  await test('日视图滑动：本周最后可见天左滑阻尼回弹（不切天、不切周）', async () => {
+    const def = loadTtPage();
+    const ctx = ttDaysCtx(def, 5, 9);
+    ctx._day = 4;
+    ctx._dayUser = true;
+    ctx.refresh();
+    ctx.data.view = 'day';
+    assert.strictEqual(ctx.data.dayBar[4].on, true);
+    def.onSwipeStart.call(ctx, { touches: [{ clientX: 300, clientY: 400 }] });
+    def.onSwipeMove.call(ctx, { touches: [{ clientX: 220, clientY: 400 }] });
+    assert.ok(/translateX\(-22px\)/.test(ctx.data.swipeStyle), '最后可见天左滑应 0.28 阻尼：' + ctx.data.swipeStyle);
+    def.onSwipeEnd.call(ctx, { changedTouches: [{ clientX: 220, clientY: 400 }] });
+    assert.ok(/translateX\(0\);opacity:1;transition:transform \.2s/.test(ctx.data.swipeStyle), '应只回弹：' + ctx.data.swipeStyle);
+    assert.ok(!ctx.log.some((x) => /opacity:\.25/.test(x.swipeStyle || '')), '边界不应有飞出动画');
+    await sleep(260);
+    assert.strictEqual(ctx._day, 4, '边界不应切天');
+    assert.strictEqual(ctx.data.view, 'day');
+    assert.strictEqual(ctx.data.wk, 9, '边界不应切周（仍是第 9 周）');
+    assert.strictEqual(ctx.data.swipeStyle, '');
+  });
+
+  /* ============================================================
      7c. 课表进入速度（2026-11-06 用户反馈「先加载当前周保障进入速度」）
         旧行为（已修复，回归防回退）：onShow 先 loadCached() 同步渲染本机缓存，随后无条件
         setData({state:'loading'}) 把「当前周课表」盖成「课表加载中…」骨架，且 120ms 后才 loadRemote()
