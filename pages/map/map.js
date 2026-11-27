@@ -56,12 +56,12 @@ Page({
   onUnload() { this._alive = false; clearTimeout(this._measureTimer); },
 
   measureCanvas(retry = 0) {
-    if (!this._alive) return;
+    if (!this._alive || this.data.floorOpen) return;
     clearTimeout(this._measureTimer);
     const seq = (this._measureSeq || 0) + 1;
     this._measureSeq = seq;
     wx.createSelectorQuery().in(this).select('#map').fields({ node: true, size: true, rect: true }).exec(items => {
-      if (!this._alive || seq !== this._measureSeq) return;
+      if (!this._alive || this.data.floorOpen || seq !== this._measureSeq) return;
       const item = items && items[0];
       if (!item || !item.node || !item.width || !item.height) {
         if (retry < 5) this._measureTimer = setTimeout(() => this.measureCanvas(retry + 1), 150);
@@ -72,7 +72,8 @@ Page({
       this._rect = { x: item.left || 0, y: item.top || 0 };
       const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       const dpr = Math.min(info.pixelRatio || 1, 2, Math.sqrt(2100000 / (item.width * item.height)));
-      if (!first && this._w === item.width && this._h === item.height && this._dpr === dpr) return;
+      if (!first && !this._restoreCanvas && this._w === item.width && this._h === item.height && this._dpr === dpr) return;
+      this._restoreCanvas = false;
       const anchor = first ? null : this.unproject(this._w / 2, this._h / 2);
       this._w = item.width;
       this._h = item.height;
@@ -135,8 +136,8 @@ Page({
   },
 
   area() {
-    const top = Math.min(46, this._h * .16);
-    const bottom = this.data.sel ? Math.min(74, this._h * .3) : 18;
+    const top = 12;
+    const bottom = 12;
     return { width: Math.max(1, this._w - 32), height: Math.max(1, this._h - top - bottom),
       x: this._w / 2, y: (this._h + top - bottom) / 2 };
   },
@@ -213,6 +214,7 @@ Page({
   },
   worldPath(points, z = 0) { return points.map(p => this.project(p[0], p[1], z)); },
   draw() {
+    if (this.data.floorOpen) return;
     const c = this._ctx, w = this._w, h = this._h;
     const dark = this.data.themeClass == null ? this._systemDark : this.data.themeClass === 'theme-dark';
     const colors = dark ? COLORS.dark : COLORS.light;
@@ -304,10 +306,10 @@ Page({
       sub: item ? [building.n, level + ' 层', item.org].filter(Boolean).join(' · ')
         : missing ? building.n + ' · 房间未收录' : building.k
     }));
-    this.setData({ query, results, searched: !!query.trim() });
+    this.setData({ query, results, searched: !!query.trim() }, () => this.measureCanvas());
   },
   closeResults() {
-    if (this.data.searched) this.setData({ searched: false, results: [] });
+    if (this.data.searched) this.setData({ searched: false, results: [] }, () => this.measureCanvas());
   },
   clearSearch() { this.setData({ query: '' }); this.closeResults(); },
   confirmSearch() {
@@ -348,7 +350,7 @@ Page({
     if (!b) return;
     this._activeRoom = hit;
     this.setData({sel: {id: b.id, name: b.n, hasRooms: !!DIRECTORY.indoor[b.id]}, room,
-      subtitle: this.subtitle(b, room, hit), details: false});
+      subtitle: this.subtitle(b, room, hit), details: false}, () => this.measureCanvas());
     this.refreshRoute(b);
     if (center && this._ctx) {
       const area = this.area();
@@ -360,15 +362,15 @@ Page({
   },
   clearSelection() {
     this._route = this._activeRoom = null;
-    this.setData({ sel: null, room: '', subtitle: '', details: false, floorOpen: false });
+    this.setData({ sel: null, room: '', subtitle: '', details: false, floorOpen: false }, () => this.measureCanvas());
     this.scheduleDraw();
   },
-  toggleDetails() { this.setData({ details: !this.data.details }); },
+  toggleDetails() { this.setData({ details: !this.data.details }, () => this.measureCanvas()); },
   fitRoute() {
     if (!this._ctx || !this.data.sel) return;
     const b = BY_ID[this.data.sel.id], route = this._route;
     if (!route || route.pts.length < 2) return;
-    this.setData({ details: false });
+    this.setData({ details: false }, () => this.measureCanvas());
     const area = this.area(), v = this._view;
     const points = route.pts.map(p => this.raw(p[0], p[1])).concat([this.raw(b.x, b.y, this.heightOf(b))]);
     const bounds = this.bounds(points);
@@ -386,7 +388,8 @@ Page({
   },
   closeFloors() {
     this._plan = this._planCtx = this._planGesture = null;
-    this.setData({ floorOpen: false, hasPlan: false });
+    this._restoreCanvas = true;
+    this.setData({ floorOpen: false, hasPlan: false }, () => this.measureCanvas());
   },
   tapFloor(e) { this.showFloor(Number(e.currentTarget.dataset.floor)); },
   showFloor(level) {

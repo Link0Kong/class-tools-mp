@@ -1,15 +1,17 @@
 <page-meta page-style="{{themeStyle}}"></page-meta>
 
 <view class="campus {{themeClass}}">
-  <view class="mbar">
-    <view class="msearchbox">
-      <input class="msearch" value="{{query}}" placeholder="楼栋、房号或机构" confirm-type="search" adjust-position="{{false}}"
-        aria-label="搜索楼栋、房号或机构" bindinput="onSearch" bindconfirm="confirmSearch" />
-      <button wx:if="{{query}}" class="clear icon" bindtap="clearSearch" aria-label="清空搜索">×</button>
-    </view>
-    <view class="modes">
-      <button class="{{mode === 'flat' ? 'on' : ''}}" data-mode="flat" bindtap="setMode">平面</button>
-      <button class="{{mode === 'iso' ? 'on' : ''}}" data-mode="iso" bindtap="setMode">2.5D</button>
+  <block wx:if="{{!floorOpen}}">
+    <view class="mbar">
+      <view class="msearchbox">
+        <input class="msearch" value="{{query}}" placeholder="楼栋、房号或机构" confirm-type="search" adjust-position="{{false}}"
+          aria-label="搜索楼栋、房号或机构" bindinput="onSearch" bindconfirm="confirmSearch" />
+        <button wx:if="{{query}}" class="clear icon" bindtap="clearSearch" aria-label="清空搜索">×</button>
+      </view>
+      <view class="modes">
+        <button class="{{mode === 'flat' ? 'on' : ''}}" data-mode="flat" bindtap="setMode">平面</button>
+        <button class="{{mode === 'iso' ? 'on' : ''}}" data-mode="iso" bindtap="setMode">2.5D</button>
+      </view>
     </view>
     <scroll-view wx:if="{{searched}}" class="suggestions" scroll-y>
       <button wx:for="{{results}}" wx:key="key" class="suggestion" data-index="{{index}}" bindtap="tapResult">
@@ -18,82 +20,83 @@
       </button>
       <view wx:if="{{!results.length}}" class="empty">未找到，试试「图书馆」或「01104」</view>
     </scroll-view>
-  </view>
 
-  <view class="mstage">
-    <canvas type="2d" id="map" class="mcanvas" bindtouchstart="onTouchStart" catchtouchmove="onTouchMove"
-      bindtouchend="onTouchEnd" bindtouchcancel="onTouchCancel" aria-label="旗山校区地图"></canvas>
-    <view class="mtools">
-      <button class="icon" aria-label="缩小" data-zoom="out" bindtap="zoom">−</button>
-      <button class="icon" aria-label="放大" data-zoom="in" bindtap="zoom">+</button>
-      <button wx:if="{{mode === 'iso'}}" bindtap="rotate">旋转</button>
-      <button bindtap="resetView">全图</button>
-    </view>
-    <button wx:if="{{!sel}}" class="about" bindtap="aboutMap">校园示意图 ⓘ</button>
-    <view class="mloading" wx:if="{{loading}}">地图加载中…</view>
-    <view class="mloading" wx:elif="{{failed}}">
-      <text>地图暂时无法绘制</text>
-      <button bindtap="retryCanvas">重试</button>
-    </view>
-
-    <view class="msheet" wx:if="{{sel}}">
-      <view class="mshead">
-        <view class="msinfo">
-          <text class="msname">{{sel.name}}</text>
-          <text class="msmeta">{{subtitle}}{{routeMeta ? (subtitle ? ' · ' : '') + routeMeta : ''}}</text>
-        </view>
-        <button bindtap="toggleDetails">{{details ? '收起' : '详情'}}</button>
-        <button bindtap="clearSelection" class="icon" aria-label="清除选中建筑">×</button>
+    <view class="mstage">
+      <view class="mtools">
+        <button class="icon" aria-label="缩小" data-zoom="out" bindtap="zoom">−</button>
+        <button class="icon" aria-label="放大" data-zoom="in" bindtap="zoom">+</button>
+        <button wx:if="{{mode === 'iso'}}" bindtap="rotate">旋转</button>
+        <button bindtap="resetView">全图</button>
+        <button class="about" bindtap="aboutMap" aria-label="关于校园地图">ⓘ</button>
       </view>
-      <scroll-view wx:if="{{details}}" class="msbody" scroll-y>
-        <view class="msroute">
-          <text class="route-label">{{routeTitle}}</text>
-          <view class="origins">
-            <button wx:for="{{origins}}" wx:key="id" class="{{item.id === origin ? 'on' : ''}}" data-origin="{{item.id}}" bindtap="chooseOrigin">{{item.name}}</button>
-            <button class="{{origin === sel.id ? 'on' : ''}}" data-origin="building" bindtap="chooseOrigin">此楼出发</button>
+      <view class="mregion">
+        <view class="mplot">
+          <canvas type="2d" id="map" class="mcanvas" bindtouchstart="onTouchStart" catchtouchmove="onTouchMove"
+            bindtouchend="onTouchEnd" bindtouchcancel="onTouchCancel" aria-label="旗山校区地图"></canvas>
+          <view class="mloading" wx:if="{{loading}}">地图加载中…</view>
+          <view class="mloading" wx:elif="{{failed}}">
+            <text>地图暂时无法绘制</text>
+            <button bindtap="retryCanvas">重试</button>
           </view>
-          <text class="msmeta">{{routeText || (routeMeta ? '沿校园道路步行' : '暂无路线')}}</text>
-        </view>
-        <view class="msactions">
-          <button wx:if="{{routeMeta}}" class="on" bindtap="fitRoute">路线全览</button>
-          <button wx:if="{{sel.hasRooms}}" bindtap="openFloors">楼层与房间</button>
-          <button bindtap="openTT">课表</button>
-        </view>
-      </scroll-view>
-    </view>
-  </view>
 
-  <view wx:if="{{floorOpen}}" class="moverlay">
-    <view class="backdrop" bindtap="closeFloors"></view>
-    <view class="floor-sheet">
-      <view class="mshead">
-        <text class="msinfo msname">{{sel.name}} · {{floor}} 层</text>
-        <button bindtap="closeFloors">回校园图</button>
-      </view>
-      <scroll-view class="floor-body" scroll-y>
-        <view class="floors">
-          <button wx:for="{{floors}}" wx:key="*this" class="{{item === floor ? 'on' : ''}}" data-floor="{{item}}" bindtap="tapFloor">{{item}} 层</button>
         </view>
-        <picker wx:if="{{orgs.length}}" range="{{orgs}}" value="{{orgIndex}}" bindchange="filterOrg" aria-label="按机构筛选">
-          <view class="org-picker">{{orgs[orgIndex]}} ▾</view>
-        </picker>
-        <block wx:if="{{hasPlan}}">
-          <view class="floor-tools">
-            <button data-zoom="out" bindtap="zoomPlan" aria-label="缩小平面图">−</button>
-            <button data-zoom="in" bindtap="zoomPlan" aria-label="放大平面图">+</button>
-            <button bindtap="fitPlan">适配全图</button>
+        <view class="msheet" wx:if="{{sel}}">
+          <view class="mshead">
+            <view class="msinfo">
+              <text class="msname">{{sel.name}}</text>
+              <text class="msmeta">{{subtitle}}{{routeMeta ? (subtitle ? ' · ' : '') + routeMeta : ''}}</text>
+            </view>
+            <button bindtap="toggleDetails">{{details ? '收起' : '详情'}}</button>
+            <button bindtap="clearSelection" class="icon" aria-label="清除选中建筑">×</button>
           </view>
-          <canvas type="2d" id="floorPlan" class="floor-plan" bindtouchstart="planStart" catchtouchmove="planMove"
-            bindtouchend="planEnd" bindtouchcancel="planCancel" aria-label="楼层平面图" />
-        </block>
-        <text wx:if="{{roomInfo}}" class="msmeta">{{roomInfo}}</text>
-        <view class="rooms">
-          <button wx:for="{{rooms}}" wx:key="key" class="{{item.key === activeRoom ? 'on' : ''}}" data-key="{{item.key}}" bindtap="chooseRoom">
-            <text>{{item.code}}</text><text class="msmeta">{{item.name}}{{item.org ? ' · ' + item.org : ''}}</text>
-          </button>
-          <text wx:if="{{!rooms.length}}" class="empty">该层暂无已收录的房间</text>
+          <scroll-view wx:if="{{details}}" class="msbody" scroll-y>
+            <view class="msroute">
+              <text class="route-label">{{routeTitle}}</text>
+              <view class="origins">
+                <button wx:for="{{origins}}" wx:key="id" class="{{item.id === origin ? 'on' : ''}}" data-origin="{{item.id}}" bindtap="chooseOrigin">{{item.name}}</button>
+                <button class="{{origin === sel.id ? 'on' : ''}}" data-origin="building" bindtap="chooseOrigin">此楼出发</button>
+              </view>
+              <text class="msmeta">{{routeText || (routeMeta ? '沿校园道路步行' : '暂无路线')}}</text>
+            </view>
+            <view class="msactions">
+              <button wx:if="{{routeMeta}}" class="on" bindtap="fitRoute">路线全览</button>
+              <button wx:if="{{sel.hasRooms}}" bindtap="openFloors">楼层与房间</button>
+              <button bindtap="openTT">课表</button>
+            </view>
+          </scroll-view>
         </view>
-      </scroll-view>
+      </view>
     </view>
+  </block>
+
+  <view wx:else class="floor-page">
+    <view class="mshead">
+      <text class="msinfo msname">{{sel.name}} · {{floor}} 层</text>
+      <button bindtap="closeFloors">回校园图</button>
+    </view>
+    <view class="floors">
+      <button wx:for="{{floors}}" wx:key="*this" class="{{item === floor ? 'on' : ''}}" data-floor="{{item}}" bindtap="tapFloor">{{item}} 层</button>
+    </view>
+    <picker wx:if="{{orgs.length}}" range="{{orgs}}" value="{{orgIndex}}" bindchange="filterOrg" aria-label="按机构筛选">
+      <view class="org-picker">{{orgs[orgIndex]}} ▾</view>
+    </picker>
+    <block wx:if="{{hasPlan}}">
+      <view class="floor-tools">
+        <button data-zoom="out" bindtap="zoomPlan" aria-label="缩小平面图">−</button>
+        <button data-zoom="in" bindtap="zoomPlan" aria-label="放大平面图">+</button>
+        <button bindtap="fitPlan">适配全图</button>
+      </view>
+      <canvas type="2d" id="floorPlan" class="floor-plan" bindtouchstart="planStart" catchtouchmove="planMove"
+        bindtouchend="planEnd" bindtouchcancel="planCancel" aria-label="楼层平面图" />
+    </block>
+    <text wx:if="{{roomInfo}}" class="floor-selection">{{roomInfo}}</text>
+    <scroll-view class="floor-body" scroll-y>
+      <view class="rooms">
+        <button wx:for="{{rooms}}" wx:key="key" class="{{item.key === activeRoom ? 'on' : ''}}" data-key="{{item.key}}" bindtap="chooseRoom">
+          <text>{{item.code}}</text><text class="msmeta">{{item.name}}{{item.org ? ' · ' + item.org : ''}}</text>
+        </button>
+        <text wx:if="{{!rooms.length}}" class="empty">该层暂无已收录的房间</text>
+      </view>
+    </scroll-view>
   </view>
 </view>
