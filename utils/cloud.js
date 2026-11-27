@@ -54,10 +54,7 @@ const CONFIG = {
     // 2026-11-12 名单页「管理」：设置/清除班委职务（网页同名 RPC class_set_role，仅管理员）
     setRole: 'rpc/class_set_role', rosterSearch: 'rpc/class_roster_search',
     // 2026-11-08 诊断 v2 + 课表登录（契约 _diag_task/CONTRACT.md §1/§4）
-    diagAgent: 'rpc/diag_agent_info', ttLoginEnqueue: 'rpc/tt_login_enqueue', ttLoginStatus: 'rpc/tt_login_status',
-    // 2026-11-11 投票（契约 web/vote/CONTRACT.md §2：poll_create / poll_list / poll_detail / poll_submit / poll_manage）
-    pollCreate: 'rpc/poll_create', pollList: 'rpc/poll_list', pollDetail: 'rpc/poll_detail',
-    pollSubmit: 'rpc/poll_submit', pollManage: 'rpc/poll_manage'
+    diagAgent: 'rpc/diag_agent_info', ttLoginEnqueue: 'rpc/tt_login_enqueue', ttLoginStatus: 'rpc/tt_login_status'
   },
   tables: {
     homework: 'homework', notices: 'notices', marks: 'marks',
@@ -2322,129 +2319,6 @@ function waterRoomUpsert(rv, persons) {
 }
 function waterForceFresh(rv) { return Date.now() - (_waterAt[waterCacheKey(rv)] || 0) < TTL.water; }
 
-// ---------------------------------------------------------------- 投票（2026-11-11，契约 web/vote/CONTRACT.md §2）
-// 5 个 poll_* RPC 全部复用上面的 rpcCall 通道（POST {restBase}rpc/<name>，
-// header 统一由 headerOf 生成：Authorization: Bearer <publishableKey> + X-Class-Token），
-// **不新增请求通道、不打印任何 token/body**。
-// 返回统一 { ok, reason, ... }：ok=false 时 reason 一律是可直接 wx.showToast 的中文；
-// RPC 成功（HTTP 200）但 jsonb 内 {ok:false,reason} → 原样透传云端中文原因。
-const POLL_NET_ERR = '网络不可用，稍后重试';
-// 传输层错误 → 中文 reason；成功返回 ''
-function pollTransportReason(r) {
-  if (r && r.ok === true) return '';
-  const err = String((r && r.error) || '');
-  if (err === 'forbidden') return '请先完成身份验证';
-  if (err === 'cloud-disabled') return '云端未连接';
-  return POLL_NET_ERR;
-}
-// 统一取出 RPC 成功返回的 jsonb；失败返回 {ok:false,reason}，成功返回 null（由调用方拼装）
-function pollReply(r) {
-  const reason = pollTransportReason(r);
-  if (reason) return { ok: false, reason: reason };
-  const d = r.data;
-  if (!d || typeof d !== 'object' || Array.isArray(d)) return { ok: false, reason: POLL_NET_ERR };
-  if (d.ok === false) return { ok: false, reason: String(d.reason || '操作失败') };
-  return null;
-}
-// 可见人范围参数（契约 §1.6，2026-11-11 18:08 增量）：非 custom 恒 []；归一/校验在 utils/vote.js + 服务端。
-// 旧页面不传 audience → 'all'（后端默认值等价）；只在显式传入时由 pollManage 发送（旧版兼容：不传 = 不修改）。
-const POLL_AUD = ['all', 'committee', 'league', 'custom'];
-function pollAudienceParams(payload) {
-  const p = payload || {};
-  const aud = String(p.audience == null ? '' : p.audience);
-  const audience = POLL_AUD.indexOf(aud) >= 0 ? aud : 'all';
-  const seats = audience !== 'custom' ? [] : (Array.isArray(p.audienceSeats) ? p.audienceSeats : [])
-    .map(Number).filter(function (n) { return isFinite(n); });
-  return { audience: audience, seats: seats };
-}
-// 发起：payload 由 utils/vote.js buildPayload() 生成
-// （id/title/description/mode/options/settings/deadline/audience/audienceSeats）
-function pollCreate(payload) {
-  const p = payload || {};
-  const aud = pollAudienceParams(p);
-  const body = {
-    p_id: String(p.id == null ? '' : p.id),
-    p_title: String(p.title == null ? '' : p.title),
-    p_description: String(p.description == null ? '' : p.description),
-    p_mode: p.mode === 'long' ? 'long' : 'quick',
-    p_options: Array.isArray(p.options) ? p.options : [],
-    p_settings: (p.settings && typeof p.settings === 'object') ? p.settings : {},
-    p_deadline: Math.max(0, Math.round(Number(p.deadline) || 0)),
-    // 可见范围（§1.6）：新客户端总是显式传；all/committee/league 时座号恒 []
-    p_audience: aud.audience,
-    p_audience_seats: aud.seats
-  };
-  if (!body.p_id || !body.p_title) return Promise.resolve({ ok: false, reason: '投票参数不完整', poll: null });
-  return rpcCall(CONFIG.rpc.pollCreate, body).then(function (r) {
-    const bad = pollReply(r);
-    if (bad) return Object.assign({ poll: null }, bad);
-    return Object.assign({ ok: true, reason: '' }, r.data);
-  });
-}
-// 列表：{ ok, now, polls[] }（失败时保留空列表，页面自行保留上次数据）
-function pollList() {
-  return rpcCall(CONFIG.rpc.pollList, {}).then(function (r) {
-    const bad = pollReply(r);
-    if (bad) return { ok: false, reason: bad.reason, now: Date.now(), polls: [] };
-    const d = r.data;
-    return {
-      ok: true, reason: '',
-      now: Number(d.now) || Date.now(),
-      polls: Array.isArray(d.polls) ? d.polls : []
-    };
-  });
-}
-// 详情：{ ok, now, poll, closed, total, counts, has_voted, my_choices, results_hidden, mine, can_manage, voters }
-function pollDetail(id) {
-  const pid = String(id == null ? '' : id);
-  if (!pid) return Promise.resolve({ ok: false, reason: '缺少投票参数', poll: null });
-  return rpcCall(CONFIG.rpc.pollDetail, { p_id: pid }).then(function (r) {
-    const bad = pollReply(r);
-    if (bad) return Object.assign({ poll: null }, bad);
-    return Object.assign({ ok: true, reason: '' }, r.data);
-  });
-}
-// 投票/改票：choices = 选项 id 数组；成功返回与 poll_detail 相同结构（含最新 counts）
-function pollSubmit(id, choices) {
-  const pid = String(id == null ? '' : id);
-  if (!pid) return Promise.resolve({ ok: false, reason: '缺少投票参数', poll: null });
-  const body = { p_id: pid, p_choices: (Array.isArray(choices) ? choices : []).map(String) };
-  return rpcCall(CONFIG.rpc.pollSubmit, body).then(function (r) {
-    const bad = pollReply(r);
-    if (bad) return Object.assign({ poll: null }, bad);
-    return Object.assign({ ok: true, reason: '' }, r.data);
-  });
-}
-// 管理（契约 §2.4）：payload = { id, action:'edit'|'close'|'extend'|'delete', title?, description?, options?, settings?, deadline?, audience?, audienceSeats? }
-// deadline 传 0 = 改为不限时；不传（undefined）= 不修改。edit 要求同时传 title/options/settings/deadline。
-// audience：不传（undefined）= 不修改可见范围（旧版页面兼容）；传 all|committee|league|custom = 修改
-//（custom 需同时传 audienceSeats 座号数组）。
-function pollManage(payload) {
-  const p = payload || {};
-  const pid = String(p.id == null ? '' : p.id);
-  const action = String(p.action == null ? '' : p.action);
-  if (!pid || ['edit', 'close', 'extend', 'delete'].indexOf(action) < 0) {
-    return Promise.resolve({ ok: false, reason: '管理参数不完整', poll: null });
-  }
-  const body = { p_id: pid, p_action: action };
-  if (p.title !== undefined) body.p_title = String(p.title == null ? '' : p.title);
-  if (p.description !== undefined) body.p_description = String(p.description == null ? '' : p.description);
-  if (p.options !== undefined) body.p_options = Array.isArray(p.options) ? p.options : null;
-  if (p.settings !== undefined) body.p_settings = (p.settings && typeof p.settings === 'object') ? p.settings : null;
-  if (p.deadline !== undefined) body.p_deadline = Math.max(0, Math.round(Number(p.deadline) || 0));
-  // 可见范围（§1.6）：只有显式传入才发送，未传时服务端保持原范围（旧版页面 / 旧缓存兼容）
-  if (p.audience !== undefined) {
-    const aud = pollAudienceParams(p);
-    body.p_audience = aud.audience;
-    body.p_audience_seats = aud.seats;
-  }
-  return rpcCall(CONFIG.rpc.pollManage, body).then(function (r) {
-    const bad = pollReply(r);
-    if (bad) return Object.assign({ poll: null }, bad);
-    return Object.assign({ ok: true, reason: '' }, r.data);
-  });
-}
-
 // ---------------------------------------------------------------- 课表（2026-11-07 起：CloudBase 快照优先 + 旧 tt.json legacy 兜底）
 // 数据源顺序（见 web/tools/tests/dns_pause_tt_health_spec.md §4「mp 特有」）：
 //   1) CloudBase public.site_assets（id='tt'，2026-11-07 新增）：GET ?select=body,meta&id=eq.tt，
@@ -2597,9 +2471,6 @@ module.exports = {
   diagAgentInfo: diagAgentInfo, diagAnalyses: diagAnalyses, diagRepairs: diagRepairs,
   diagReport: diagReport, diagPing: diagPing,
   ttLoginEnqueue: ttLoginEnqueue, ttLoginStatus: ttLoginStatus,
-  // 2026-11-11 投票（契约 web/vote/CONTRACT.md §2；页面见 pages/vote、votedetail）
-  pollCreate: pollCreate, pollList: pollList, pollDetail: pollDetail,
-  pollSubmit: pollSubmit, pollManage: pollManage,
   // 2026-11-11 水量共享（契约 web/tools/tests/_water_shared_contract.md §1/§2）
   waterList: waterList, waterUpsert: waterUpsert, waterDelete: waterDelete,
   waterRoomGet: waterRoomGet, waterRoomUpsert: waterRoomUpsert, waterForceFresh: waterForceFresh,

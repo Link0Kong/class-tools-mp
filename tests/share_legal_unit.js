@@ -3,9 +3,9 @@
  * 覆盖：
  *   A. app.json 分包：PPT 三页同属 pages/ppt（utils/ppt.js 随包）、不常用重页面不在主包、
  *      不做 PPT 预下载、tabBar 不在分包；
- *   B. utils/sharecard：抽签/投票视图（标题/结果/隐藏结果）+ canvas 5:4 导出（假 canvas 返回临时图）；
+ *   B. utils/sharecard：抽签/通知视图 + canvas 5:4 导出（假 canvas 返回临时图）；
  *   C. 法律正文数据：隐私/协议版本、生效日期、运营者、收集/第三方/跨境/权利/联系方式关键段落、无外链；
- *   D. 页面接线：draw / drawrec / vote / votedetail / group / identity / me / data / legal 的分享按钮或协议入口。
+ *   D. 页面接线：draw / drawrec / group / identity / me / data / legal 的分享按钮或协议入口。
  */
 'use strict';
 const assert = require('assert');
@@ -123,30 +123,6 @@ async function run(outerTest) {
     assert.strictEqual(sharecard.signature(Object.assign({}, v, { time: '11:00' })), sharecard.signature(v), '签名不含时间');
   });
 
-  await T('分享卡 B2：投票视图 = 标题具体内容 + 前 4 选项；结果字段被遮住（微信卡片不可直接预览结果）', async function () {
-    const d = {
-      title: '周三班会时间投票', statusText: '进行中', total: 12, resultsHidden: false,
-      options: [
-        { text: '周三 18:00', showBar: true, pct: 50, count: 6 },
-        { text: '周三 19:00', showBar: true, pct: 50, count: 6 },
-        { text: '周四 18:00', showBar: true, pct: 0, count: 0 },
-        { text: '周四 19:00', showBar: true, pct: 0, count: 0 },
-        { text: '第五项不应出现', showBar: true, pct: 0, count: 0 }
-      ]
-    };
-    const v = sharecard.buildVoteView({ detail: d, time: '10:00' });
-    assert.strictEqual(v.title, '周三班会时间投票');
-    assert.strictEqual(v.options.length, 4);
-    assert.strictEqual(v.options[0].text, '周三 18:00');
-    assert.strictEqual(v.options[0].pct, undefined, '分享视图不应带百分比');
-    assert.strictEqual(v.options[0].count, undefined, '分享视图不应带票数');
-    assert.strictEqual(v.resultsMasked, true, '投票分享卡必须标记结果已遮住');
-    assert.ok(v.hint.indexOf('结果') >= 0, '应提示结果到投票页查看');
-    const hidden = sharecard.buildVoteView({ detail: Object.assign({}, d, { resultsHidden: true }) });
-    assert.strictEqual(hidden.options[0].pct, undefined);
-    assert.strictEqual(hidden.resultsMasked, true);
-  });
-
   await T('分享卡 B4：通知视图 = 标题/分类/状态/摘要/要点/字段/来源；要点最多 3 条', async function () {
     const v = sharecard.buildNoticeView({
       card: {
@@ -201,7 +177,7 @@ async function run(outerTest) {
     assert.strictEqual(roster.subtitle, '仅姓名与座号 · 不含学号');
   });
 
-  await T('分享卡 B5：投票画布不出现百分比/票数；通知画布画出标题/分类/状态/来源', async function () {
+  await T('分享卡 B5：通知画布画出标题/分类/状态/来源', async function () {
     const fake = function () {
       const texts = [];
       const g = {
@@ -216,23 +192,6 @@ async function run(outerTest) {
       };
       return { g: g, texts: texts };
     };
-    const vote = sharecard.buildVoteView({
-      detail: {
-        title: '周三班会时间投票', statusText: '进行中', total: 12,
-        options: [{ text: '周三 18:00', showBar: true, pct: 50, count: 6 }, { text: '周三 19:00', showBar: true, pct: 50, count: 6 }]
-      },
-      time: '10:00'
-    });
-    const a = fake();
-    assert.strictEqual(sharecard.draw(a.g, vote), true);
-    const voteText = a.texts.join('|');
-    assert.ok(voteText.indexOf('周三班会时间投票') >= 0, '投票卡应画出标题');
-    assert.ok(voteText.indexOf('周三 18:00') >= 0, '投票卡应画出选项');
-    assert.ok(voteText.indexOf('结果请打开投票页查看') >= 0, '投票卡应提示结果到投票页查看');
-    assert.strictEqual(voteText.indexOf('%'), -1, '投票分享卡不能出现百分比');
-    assert.strictEqual(voteText.indexOf('人已投'), -1, '投票分享卡不能出现已投人数');
-    assert.strictEqual(/[0-9]+\s*票/.test(voteText), false, '投票分享卡不能出现票数');
-
     const notice = sharecard.buildNoticeView({
       card: {
         title: '图书馆闭馆通知', cat: '教务', statusLabel: '截止 11月21日 18:00',
@@ -339,19 +298,6 @@ async function run(outerTest) {
     assert.ok(js.indexOf('抽签结果 · ') >= 0, '标题应包含抽签结果 N 个');
   });
 
-  await T('分享 D2：投票列表/详情都有分享入口；详情标题=投票标题、path=详情 ?id=', async function () {
-    const listWxml = src('pages/vote/vote.wxml');
-    const detailWxml = src('pages/votedetail/votedetail.wxml');
-    const listJs = src('pages/vote/vote.js');
-    const detailJs = src('pages/votedetail/votedetail.js');
-    assert.ok(/class="vote-share"[^>]*data-id="\{\{item\.id\}\}"[^>]*catchtap="openShare"/.test(listWxml), '列表卡片缺少带 pollId 的分享入口');
-    assert.ok(/bindtap="openShare"/.test(detailWxml) && /<share-sheet/.test(detailWxml), '详情缺少分享弹层');
-    assert.ok(/id="shareCanvas"/.test(detailWxml), '详情缺少 5:4 分享卡画布');
-    assert.ok(/sharecard\.buildVoteView/.test(detailJs) && /_shareTitle/.test(detailJs), '标题取自 poll detail');
-    assert.ok(/\/pages\/votedetail\/votedetail/.test(detailJs) && /encodeURIComponent\(id\)/.test(detailJs), '分享 path 带 pollId');
-    assert.ok(/target\.dataset|shareGid/.test(listJs), '列表分享应绑定当前投票 id');
-  });
-
   await T('分享 D6：通知卡片有分享入口；弹层含 5:4 卡片封面 + 长图 + 图片/微信卡片两个选项', async function () {
     const wxml = src('pages/nt/nt.wxml');
     const js = src('pages/nt/nt.js');
@@ -364,16 +310,6 @@ async function run(outerTest) {
     assert.ok(/sharecard\.buildNoticeView/.test(js) && /shareflow\.renderPoster/.test(js), '通知分享应生成 5:4 卡片与长图');
     assert.ok(/'gid=' \+ encodeURIComponent\(gid\)/.test(js), '微信卡片应带 gid 深链');
     assert.ok(/班级通知｜/.test(js), '卡片分享标题应带通知标题');
-  });
-
-  await T('分享 D7：投票详情分享卡/长图均不展示结果；页面提示与视图口径一致', async function () {
-    const wxml = src('pages/votedetail/votedetail.wxml');
-    const js = src('pages/votedetail/votedetail.js');
-    const card = src('utils/sharecard.js');
-    assert.ok(/不显示结果/.test(wxml), '投票详情应说明分享内容不显示结果');
-    assert.ok(/resultsMasked: true/.test(card), '投票分享视图应显式标记结果已遮住');
-    assert.ok(/结果请打开投票页查看/.test(card), '投票分享卡应提示结果到投票页查看');
-    assert.ok(/sharecard\.buildVoteView/.test(js) && /_sharePosterOpt/.test(js), '详情页应生成无结果卡片与长图');
   });
 
   await T('分享 D3：分组结果页有分享入口和具体标题；抽签记录分享带存证 id', async function () {
@@ -397,17 +333,13 @@ async function run(outerTest) {
     });
   });
 
-  await T('分享 D9：名单 / 国标表 / 点名新增可见分享入口；投票列表分享先取详情再生成卡片', async function () {
+  await T('分享 D9：名单 / 国标表 / 点名新增可见分享入口', async function () {
     assert.ok(/class="rd-share"[^>]*bindtap="openShare"/.test(src('pages/committee/committee.wxml')), '名单缺少分享入口');
     assert.ok(/buildRosterView/.test(src('pages/committee/committee.js')), '名单分享卡未使用名单视图');
     assert.ok(/class="ftt-share"[^>]*bindtap="openShare"/.test(src('pages/fttable/fttable.wxml')), '国标表缺少分享入口');
     assert.ok(/buildFttableView/.test(src('pages/fttable/fttable.js')), '国标表分享卡未使用国标视图');
     assert.ok(/bindtap="openShare"/.test(src('pages/roll/roll.wxml')), '点名缺少分享入口');
     assert.ok(/点名统计/.test(src('pages/roll/roll.js')), '点名分享卡缺少统计信息');
-    const voteWxml = src('pages/vote/vote.wxml');
-    const voteJs = src('pages/vote/vote.js');
-    assert.ok(/<share-sheet/.test(voteWxml) && /id="shareCanvas"/.test(voteWxml), '投票列表缺少分享弹层');
-    assert.ok(/cloud\.pollDetail/.test(voteJs) && /buildVoteView/.test(voteJs), '投票列表分享应先拉详情再生成卡片');
   });
 
   await T('分享 D10：统一分享弹层支持 5:4 卡片 / 长图切换，两个分享选项与无障碍点按区', async function () {

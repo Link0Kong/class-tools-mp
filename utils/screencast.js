@@ -7,7 +7,7 @@
 //   GET  /presence            → {ok,stage,at}（同账号）
 //   GET  /mine / POST /open   → 同账号自动复用大屏会话
 //   POST /text                → 发文字到大屏
-//   POST /cmd {op,args}       → 遥控指令（focus/focus_clear/timer/draw/vote_select/ppt/toast/restore_fs/stage_close）
+//   POST /cmd {op,args}       → 遥控指令（focus/focus_clear/timer/draw/ppt/toast/restore_fs/stage_close）
 //   POST /upload/init·chunk·finish → 传文件到大屏（8MiB 分片）
 //
 // 复用 utils/cloudspace.js 的请求/基址/分片规划（同一 drop 服务、同一 X-Device-Id 鉴权）。
@@ -17,7 +17,6 @@ const cloudspace = require('./cloudspace.js');
 
 const CMD_DEFS = [
   { k: 'focus_ppt', n: '聚焦演示', op: 'focus', args: { panel: 'ppt' } },
-  { k: 'focus_vote', n: '聚焦投票', op: 'focus', args: { panel: 'vote' } },
   { k: 'focus_timer', n: '聚焦计时', op: 'focus', args: { panel: 'timer' } },
   { k: 'focus_draw', n: '聚焦抽签', op: 'focus', args: { panel: 'draw' } },
   { k: 'focus_clear', n: '退出聚焦', op: 'focus_clear', args: {} },

@@ -65,9 +65,6 @@ const TOOLS = [
   { key: 'power', name: '宿舍电费', ico: '⚡', icoImg: '/images/tool-power.png', meta: '关注宿舍 · 电量 · 24h 趋势', desc: '关注自己宿舍，查看剩余电量、近 24h 趋势与估算可用天数；与网站同一份云端数据', url: '/pages/power/power', tab: false, tone: 'tertiary' },
   // 2026-11-06 水量统计（与网站同口径）：关注宿舍沿用「宿舍电费」的选择；**可以勾选进首页**（用户可主动选择）
   { key: 'water', name: '水量', ico: '💧', icoImg: '/images/tool-water.png', meta: '每月抄表 · 自动对比 · 水费', desc: '每月手动抄一次水表，自动对比上次算用量；按校方规则（2 吨/人/月免费，超出 3.03 元/吨）估水费与折合扣电', url: '/pages/water/water', tab: false, tone: 'primary' },
-  // 2026-11-11 投票（与网页 TOOLS 对齐，契约 web/vote/CONTRACT.md §4.1）：限时/长时、自定义标题与选项、实时结果；
-  // 默认不进首页勾选，用户可在「全部工具」编辑首页时主动加入（homeEligible）。
-  { key: 'vote', name: '投票', ico: '🗳', icoImg: '/images/tool-vote.png', meta: '限时 · 长时 · 实时结果', desc: '限时/长时投票，自定义标题与选项，全班实时查看结果', url: '/pages/vote/vote', tab: false, tone: 'primary' },
   // 2026-11-12 文件传输=临时云空间（与网页 TOOLS key='file' 对齐）：同账号跨设备自动共享，
   // 无需房间码/链接/配对；任意大小 8MiB 分片上传、单文件删除、清空空间；文件自上传起保留 3 天。
   { key: 'file', name: '文件传输', ico: '☁', icoImg: '/images/tool-file.png', meta: '个人文件 · PPT 转换 · 班级课件', desc: '同账号跨设备互传个人文件，保留 3 天；可转换个人 PPT，或在班级课件中共享、下载和播放', url: '/pages/cloudspace/cloudspace', tab: false, tone: 'primary' },
@@ -90,19 +87,14 @@ function toolOf(key) {
 function isHidden(key) { return HIDDEN.indexOf(key) >= 0; }
 function visible(t) { return !!t && !isHidden(t.key); }
 
-// 投票入口（2026-11-21 用户口径）：仅班委可见；普通同学与测试账号在目录/首页/说明里完全隐藏。
-// 只影响「入口」展示，不影响 pages/votedetail —— 收到投票或点分享卡片时仍正常进入。
-// id 省略时按本机身份判断；传入身份对象便于单测/页面显式判断。
-const VOTE_KEY = 'vote';
-function entryAllowed(t, id) {
-  if (!visible(t)) return false;
-  if (t.key === VOTE_KEY && !identity.canUseVote(id)) return false;
-  return true;
+// 可见工具即可进入目录 / 首页勾选 / 使用说明。
+function entryAllowed(t) {
+  return visible(t);
 }
 // 可作为首页勾选项：可见、非 noHome、管理员工具仅管理员可勾选（2026-11-22：电费/诊断恢复可勾选，
 // 与网页工具栏（电费用短标签「电费」）和安卓端「全部工具」编辑一致；stats 仍是管理员工具）
 function homeEligible(t, id) {
-  if (!visible(t) || !entryAllowed(t, id) || t.noHome) return false;
+  if (!visible(t) || !entryAllowed(t) || t.noHome) return false;
   if (!t.admin) return true;
   return (id === undefined) ? identity.isAdmin() : !!(id && id.is_admin);
 }
@@ -239,7 +231,6 @@ function normalizeHome(home, id) {
 // 当前勾选的首页工具（≤4；顺序 = 本机勾选/工具顺序）。
 // 注意：云端/网页写入的顺序照单全收（不在这里按 toolOrder 重排），避免两端来回改写；
 // 本机勾选/拖动产生的顺序由 setHomeTool / setToolOrder 保证按 toolOrder 排列。
-// 投票入口对普通同学/测试账号隐藏后，历史勾选里的 vote 也会在这里被过滤（不展示、不占首页位）。
 function homeTools(id) {
   const store = require('./store.js');
   const d = ensure();
@@ -298,8 +289,8 @@ function quickList(n, id) {
 }
 
 // 工具页目录：全部可见工具（含管理员工具，由页面按身份决定是否渲染），按本机 toolOrder 排列
-function catalog(id) {
-  return toolOrder().map(toolOf).filter(function (t) { return entryAllowed(t, id); });
+function catalog() {
+  return toolOrder().map(toolOf).filter(function (t) { return entryAllowed(t); });
 }
 
 module.exports = {

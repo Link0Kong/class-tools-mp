@@ -430,7 +430,7 @@ page {
 /* 输入框 placeholder：仅暗色覆盖（浅色保持系统默认，不改原观感） */
 .theme-dark .ph { color: var(--md-on-surface-variant); }
 
-/* 使用说明 mint hero（2026-11-15 深色 hero 中性化）：与投票详情/抽签记录/体测 hero 同口径，
+/* 使用说明 mint hero（2026-11-15 深色 hero 中性化）：与抽签记录/体测 hero 同口径，
    深色下大面积品牌绿改中性面板，绿色只留图标/装饰小面积；浅色不变。 */
 .theme-dark .ug-tone-mint { --ug-hbg: var(--md-surface-container-high); }
 

@@ -326,7 +326,7 @@ module.exports.run = async function (test) {
     purge();
     const app = JSON.parse(src('app.json'));
     const pages = allPages(app);
-    assert.ok(pages.length >= 31, '页面数 ' + pages.length);
+    assert.ok(pages.length >= 29, '页面数 ' + pages.length);
     const missingMeta = [], missingClass = [], badMeta = [];
     pages.forEach(function (p) {
       const wxml = src(p + '.wxml');
@@ -368,9 +368,8 @@ module.exports.run = async function (test) {
     assert.ok(app.indexOf('.theme-dark .m3-li__lead') >= 0 && app.indexOf('.theme-dark .sk-shimmer') >= 0);
     assert.ok(/M3 TOKENS · DARK \(BEGIN\)[\s\S]*@media \(prefers-color-scheme: dark\)/.test(app),
       'app.wxss 仍保留系统 token @media（跟随系统首帧）');
-    // 深色 hero：投票详情 / 抽签记录（页面级）+ 使用说明 mint（全局，避免 ug.wxss 引入非 .ug-* 选择器）
-    ['pages/votedetail/votedetail.wxss|.theme-dark .vd-hero',
-      'pages/drawrec/drawrec.wxss|.theme-dark .dr-hero',
+    // 深色 hero：抽签记录（页面级）+ 使用说明 mint（全局，避免 ug.wxss 引入非 .ug-* 选择器）
+    ['pages/drawrec/drawrec.wxss|.theme-dark .dr-hero',
       'app.wxss|.theme-dark .ug-tone-mint'].forEach(function (spec) {
       const s = spec.split('|');
       assert.ok(src(s[0]).indexOf(s[1]) >= 0, s[0] + ' 缺深色 hero 中性化 ' + s[1]);

@@ -109,19 +109,6 @@ function isTestSid(sidIn) {
 }
 function isTest() { const v = get(); return !!v && (!!v.is_test || isTestSid(v.sid)); }
 
-// 投票工具入口可见性（2026-11-21 用户口径）：
-//   * 仅班委可见（role 非空或 badge 含「班委」）；
-//   * 测试账号（官方 3260799999 / 9999 段 QA 身份）一律不可见，即使本地身份带班委职务；
-//   * 只控制「入口」，不拦 pages/votedetail：普通同学收到投票/点分享卡片仍能正常进入详情与投票。
-// 入参可以是身份对象；省略时读本机身份。
-function canUseVote(idLike) {
-  const v = (idLike === undefined) ? get() : idLike;
-  if (!v || typeof v !== 'object') return false;
-  if (v.is_test) return false;
-  if (isTestSid(v.sid)) return false;
-  return isCommitteeOf(v);
-}
-
 // v1.3.3：页面不再展示学号（此前 maskSid 打码展示已移除；sid 仅用于云端身份/数据归属，不进页面）
 
 // 身份标签：优先 role，其次 badge
@@ -200,6 +187,6 @@ module.exports = {
   KEY, IDENTITY_PAGE,
   get, has, save, clear, revision,
   token, sid, name, role, badge, isAdmin, label,
-  isCommitteeOf, isCommittee, isTestSid, isTest, canUseVote,
+  isCommitteeOf, isCommittee, isTestSid, isTest,
   ensure, goIdentity, login, logout, onAuthExpired
 };

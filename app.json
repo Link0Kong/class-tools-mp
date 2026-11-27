@@ -21,8 +21,6 @@
     "pages/stats/stats",
     "pages/power/power",
     "pages/water/water",
-    "pages/vote/vote",
-    "pages/votedetail/votedetail",
     "pages/drawrec/drawrec"
   ],
   "subPackages": [

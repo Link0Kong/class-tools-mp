@@ -4,7 +4,7 @@
  * 服务端 drop v2.3 新增 /presence（30s 心跳）；网页大屏每 10s 上报；小程序「全部工具」按 presence 动态显示。
  *
  * 覆盖：
- *   A. utils/screencast.js：11 个遥控指令定义 / presence 解析 / 文字 / 指令 / 上传分片规划（复用 cloudspace）；
+ *   A. utils/screencast.js：10 个遥控指令定义 / presence 解析 / 文字 / 指令 / 上传分片规划（复用 cloudspace）；
  *   B. 请求契约：GET /presence、POST /text、POST /cmd（同 drop 服务、X-Device-Id 鉴权）；
  *   C. 页面：app.json 注册 / 4 文件 / 分享三件套 / WXML handler / 未在线空态文案 / 无真实账号；
  *   D. pages/all 动态显示：presence 在线才 push「大屏互联」卡片，点击路由到 screencast；
@@ -52,10 +52,10 @@ async function run(outerTest) {
   cfg.dropBase = 'https://drop.test';
 
   // A. 指令定义 -----------------------------------------------------------
-  await T('A1 遥控指令 11 项（聚焦×4/退出聚焦/计时×3/抽签/恢复全屏/关闭大屏）', function () {
-    assert.strictEqual(sc.CMD_DEFS.length, 11);
+  await T('A1 遥控指令 10 项（聚焦×3/退出聚焦/计时×3/抽签/恢复全屏/关闭大屏）', function () {
+    assert.strictEqual(sc.CMD_DEFS.length, 10);
     const keys = sc.CMD_DEFS.map(function (d) { return d.k; });
-    ['focus_ppt', 'focus_vote', 'focus_timer', 'focus_draw', 'focus_clear',
+    ['focus_ppt', 'focus_timer', 'focus_draw', 'focus_clear',
       'timer_start', 'timer_pause', 'timer_reset', 'draw', 'restore_fs', 'stage_close'].forEach(function (k) {
       assert.ok(keys.indexOf(k) >= 0, k + ' missing');
     });
@@ -105,10 +105,10 @@ async function run(outerTest) {
   });
   await T('B4 sendCmd：POST /cmd {sessionId,op,args}', function () {
     reqLog.length = 0;
-    return sc.sendCmd('sess-1', 'focus_vote').then(function () {
+    return sc.sendCmd('sess-1', 'focus_ppt').then(function () {
       const q = reqLog[reqLog.length - 1];
       assert.ok(/\/cmd$/.test(q.url), q.url);
-      assert.deepStrictEqual(q.data, { sessionId: 'sess-1', op: 'focus', args: { panel: 'vote' } });
+      assert.deepStrictEqual(q.data, { sessionId: 'sess-1', op: 'focus', args: { panel: 'ppt' } });
     });
   });
   await T('B5 未知指令不请求', function () {

@@ -217,7 +217,7 @@ Page({
       // —— 今日课程 / 下一次课 ——
       const source = ttplan.localSource(d);
       const courseFields = courseCardState(source, now);
-      const quick = tools.quickList(QUICK_N);   // 用户勾选的首页工具（≤4；无勾选时为空 → 引导空态；投票仅班委可见）
+      const quick = tools.quickList(QUICK_N);   // 用户勾选的首页工具（≤4；无勾选时为空 → 引导空态）
       const state = {
         state: 'data',
         errorText: '',

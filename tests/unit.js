@@ -379,12 +379,8 @@ const fakeCanvas = (() => {
     // 迁移：前 4 个 = 勾选；全量顺序 = 本机 toolOrder
     assert.deepStrictEqual(tools.quickList(4).map((t) => t.key), ['draw', 'hw', 'tt', 'nt']);
     assert.strictEqual(tools.quickList(99).length, 4, 'quickList 最多 4 个（勾选集合本身 ≤4）');
-    // 当前身份是测试账号：投票入口隐藏（2026-11-21 用户口径），其余工具顺序不变
     // 2026-11-22 分组拆分：draw 与 group 是两个独立工具（group 紧跟 draw，可勾选进首页）
     assert.deepStrictEqual(tools.catalog().map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'file', 'map', 'stats', 'diag']);
-    // 班委（非测试身份）仍可见投票入口，且目录顺序仍 = toolOrder
-    const committee = { token: 'tok-ut-c', sid: 'fixture-committee-ut', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
-    assert.deepStrictEqual(tools.catalog(committee).map((t) => t.key), ['draw', 'hw', 'tt', 'nt', 'ft', 'roll', 'bz', 'group', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag']);
     assert.strictEqual(tools.toolOf('draw').name, '抽签');
     assert.strictEqual(tools.toolOf('group').name, '分组');
     assert.strictEqual(tools.toolOf('group').url, '/pages/group/group');
@@ -2479,9 +2475,6 @@ const fakeCanvas = (() => {
   /* ---------------- 2026-11-10 通知附件外置（迁移第 2 步）：签名 URL / data URI 双形态（断言在 nt_attach_url_tests.js） ---------------- */
   await require('./nt_attach_url_tests.js').run(test);
 
-  /* ---------------- 2026-11-11 投票专项（列表/发起/详情/投票/管理 + RPC 契约；断言在 vote_unit_tests.js） ---------------- */
-  await require('./vote_unit_tests.js').run(test);
-
   await require('./screencast_unit_tests.js').run(test);
 
   /* ---------------- 2026-11-12 文件传输·临时云空间专项（utils/cloudspace + pages/cloudspace） ---------------- */
@@ -2517,7 +2510,7 @@ const fakeCanvas = (() => {
   /* ---------------- 2026-11-18 自建后端切流（三档 base）+ 网络层体验优化（断言在 net_layer_tests.js） ---------------- */
   await require('./net_layer_tests.js').run(test);
 
-  /* ---------------- 2026-11-19 分享卡（抽签/投票 canvas）+ 法律正文 + 分包（断言在 share_legal_unit.js） ---------------- */
+  /* ---------------- 2026-11-19 分享卡（抽签/通知 canvas）+ 法律正文 + 分包（断言在 share_legal_unit.js） ---------------- */
   await require('./share_legal_unit.js').run(test);
 
   /* ---------------- 2026-11-19 鸿蒙间隔参数（16/24/32vp 边距、12vp 卡片、16/8vp 元素、2/8vp 文本） ---------------- */

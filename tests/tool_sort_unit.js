@@ -164,9 +164,9 @@ function pageCtx(def) {
   await test('勾选：上限 4（第 5 个被拒、状态不变）+ 取消勾选释放位子 + 勾选顺序按 toolOrder', () => {
     const { store, tools, cloud } = fresh();
     clearMem();
-    // 自定义工具顺序：draw / group / hw / nt / ft / tt ...（2026-11-09 追加 ppt 演示，2026-11-11 追加 vote 投票，
+    // 自定义工具顺序：draw / group / hw / nt / ft / tt ...（2026-11-09 追加 ppt 演示，
     // 2026-11-12 追加 file 文件传输，2026-11-14 追加 map 地图，2026-11-22 分组拆分追加 group）
-    const order = ['draw', 'group', 'hw', 'nt', 'ft', 'tt', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag'];
+    const order = ['draw', 'group', 'hw', 'nt', 'ft', 'tt', 'roll', 'bz', 'power', 'water', 'file', 'map', 'stats', 'diag'];
     tools.setToolOrder(order);
     assert.deepStrictEqual(tools.toolOrder(), order);
     // 现有勾选按新工具顺序重排（勾选集合不变）
@@ -215,7 +215,7 @@ function pageCtx(def) {
     assert.deepStrictEqual(keysOf(tools.quickList(4)), ['roll', 'tt', 'draw', 'hw'], '勾选 = 旧顺序前 4 个');
     const order = tools.toolOrder();
     assert.deepStrictEqual(order.slice(0, 7), legacy, 'toolOrder 应沿用旧的全量顺序');
-    assert.deepStrictEqual(order.slice(7), ['group', 'power', 'water', 'vote', 'file', 'map', 'stats', 'diag'], '其余工具按 TOOLS 顺序补在末尾（group 是独立工具）');
+    assert.deepStrictEqual(order.slice(7), ['group', 'power', 'water', 'file', 'map', 'stats', 'diag'], '其余工具按 TOOLS 顺序补在末尾（group 是独立工具）');
     assert.deepStrictEqual(store.get().homeTools, ['roll', 'tt', 'draw', 'hw']);
     assert.strictEqual(store.get().homeToolsAt, 1700000000000, '迁移不改 homeToolsAt（交给 LWW 裁决）');
     // 迁移幂等：再读不变
@@ -240,15 +240,13 @@ function pageCtx(def) {
     const { store, tools } = fresh();
     clearMem();
     store.get().toolOrder = ['hw', 'tt', 'futureTool', 'hw', 'diag'];
-    assert.deepStrictEqual(tools.toolOrder(), ['hw', 'tt', 'diag', 'nt', 'ft', 'draw', 'group', 'roll', 'bz', 'power', 'water', 'vote', 'file', 'map', 'stats', 'ppt'],
+    assert.deepStrictEqual(tools.toolOrder(), ['hw', 'tt', 'diag', 'nt', 'ft', 'draw', 'group', 'roll', 'bz', 'power', 'water', 'file', 'map', 'stats'],
       '已知 key 保留顺序，未知 key 丢弃，缺失 key 按 TOOLS 顺序补末尾');
     // normalizeToolOrder 纯函数
     assert.deepStrictEqual(tools.normalizeToolOrder(['diag']).slice(0, 3), ['diag', 'tt', 'hw']);
     assert.strictEqual(tools.normalizeToolOrder(['diag']).length, tools.TOOLS.length);
-    // catalog 顺序 = toolOrder；测试账号看不到投票入口，班委身份下顺序完整
-    const committee = { token: 'tok-tool-committee', sid: 'fixture-committee-tools', name: '班委夹具', role: '班长', badge: '班委', is_admin: false, ts: 1 };
-    assert.deepStrictEqual(keysOf(tools.catalog(committee)), tools.toolOrder());
-    assert.deepStrictEqual(keysOf(tools.catalog()), tools.toolOrder().filter(function (k) { return k !== 'vote'; }));
+    // catalog 顺序 = toolOrder（不再按身份过滤入口）
+    assert.deepStrictEqual(keysOf(tools.catalog()), tools.toolOrder());
   });
 
   /* ---------- 6. moveTool / setToolOrder ---------- */

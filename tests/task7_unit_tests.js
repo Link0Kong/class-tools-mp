@@ -8,8 +8,7 @@
  *      nt 页按钮反馈与状态、诊断页 notify diag。
  *   C. 第 6 条 水量共享：23A/23B 固定 4 人间、云端合并（同月云端覆盖/本地独有补传）、离线 pending 队列、
  *      cloud.water* 的 PostgREST 请求口径、页面文案去「免费」。
- *   D. 第 8 条 名单快捷预设：roster 预设集合（全班/班委/团员）、class_league 6h 缓存、roster-picker 组件行为、
- *      投票「指定成员」预设。
+ *   D. 第 8 条 名单快捷预设：roster 预设集合（全班/班委/团员）、class_league 6h 缓存、roster-picker 组件行为。
  *   E. 第 2 条 徽章去重：util.showBadge、班委页渲染、工具描述同步。
  *
  * 运行方式：
@@ -764,40 +763,6 @@ function run(test) {
       ctx.data.selMap = { 1: true, 3: true };
       ctx.methods.confirm.call(ctx);
       assert.deepStrictEqual(detail, { seats: [1, 3] }, 'confirm detail = { seats:[座号升序] }');
-    });
-
-    await test('D4 投票「指定成员」快捷预设：全班/班委/团员/清空 → 写 form.audSeats 座号数组', async function () {
-      purge();
-      C.clearMem(); C.setIdentity();
-      const store = R('utils/store.js');
-      store.get().classMembers = [
-        { seat: 1, sid: 's1', name: '张三', role: '班长', badge: '班委' },
-        { seat: 2, sid: 's2', name: '李四', role: '', badge: '' },
-        { seat: 3, sid: 's3', name: '王五', role: '学习委员', badge: '班委' }
-      ];
-      store.get().classLeague = [{ seat: 2, name: '李四' }];
-      const cloud = R('utils/cloud.js'); enableCloud(cloud);
-      C.setReq(function (o) { o.success({ statusCode: 200, data: [] }); });
-      const def = loadPage('vote/vote');
-      assert.strictEqual(typeof def.quickAudience, 'function', '投票页缺 quickAudience');
-      const ctx = ctxOf(def);
-      ctx.data.form = Object.assign({}, ctx.data.form, { aud: 'custom', audSeats: [] });
-      ctx._syncMembers = function () {};   // 只测数据逻辑（UI 同步由 _syncMembers 单独负责）
-      ctx.quickAudience({ currentTarget: { dataset: { k: 'committee' } } });
-      assert.deepStrictEqual(ctx.data.form.audSeats, [1, 3], '班委预设写入 form.audSeats（座号数组）');
-      ctx.quickAudience({ currentTarget: { dataset: { k: 'league' } } });
-      assert.deepStrictEqual(ctx.data.form.audSeats, [2], '团员预设（缓存）');
-      ctx.quickAudience({ currentTarget: { dataset: { k: 'all' } } });
-      assert.deepStrictEqual(ctx.data.form.audSeats, [1, 2, 3], '全班预设');
-      ctx.quickAudience({ currentTarget: { dataset: { k: 'none' } } });
-      assert.deepStrictEqual(ctx.data.form.audSeats, [], '清空');
-      const wxml = src('pages/vote/vote.wxml');
-      ['data-k="all"', 'data-k="committee"', 'data-k="league"', 'data-k="none"'].forEach(function (s) {
-        assert.ok(wxml.indexOf(s) >= 0, '投票 WXML 缺预设按钮 ' + s);
-      });
-      assert.ok(/quickAudience/.test(wxml), '按钮绑定 quickAudience');
-      const css = src('pages/vote/vote.wxss');
-      assert.ok(/vote-mem-qbtn/.test(css), '预设按钮样式（点按区域 ≥40px：min-height 80rpx）');
     });
 
     /* ============================================================

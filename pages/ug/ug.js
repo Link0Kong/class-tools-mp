@@ -1,12 +1,11 @@
 // pages/ug/ug.js —— 使用说明（v2.0.0 卡片化重构：一屏一张卡 + 分类 chips + 总览 + 上下张）
 //
 // 结构（契约 2026-11-12「使用说明卡片化重构」§1/§2/§4）：
-//   * 20 张卡片，一屏一张；swiper 横向跟手、首尾 clamp 不循环；
-//     投票卡仅班委可见（2026-11-21），普通同学/测试账号实际为 19 张；
+//   * 18 张卡片，一屏一张；swiper 横向跟手、首尾 clamp 不循环；
 //   * 卡面：hero 场景图（WXSS view 形状，11 类 scene，不新增图片资源）+ 标题 + 一句话作用 + 3 条步骤 + 1 条提示；
 //   * 顶部：分类胶囊 + 页码 + 「总览」按钮；分类 chips 点按跳到该分类首卡；
 //   * 底部：上一张 / 页码 / 下一张（首尾禁用态）；
-//   * 总览：遮罩弹层按分类分组列出全部 20 张卡，点条目关闭并跳卡；
+//   * 总览：遮罩弹层按分类分组列出全部 18 张卡，点条目关闭并跳卡；
 //   * swiper 高度由 selector query 实测卡片最大高度后 setData（clamp 屏幕可用高度），不写死避免截断。
 //
 // 保留：top-app-bar / share.enable / onShareAppMessage / onShareTimeline /
@@ -26,7 +25,7 @@ const CATS = [
   { key: 'more', name: '更多' }
 ];
 
-// 20 张卡（顺序即轮播顺序，契约 §4.2）；文案按 §0 硬规则：标题 ≤8 字、作用 ≤20 字、步骤 ≤24 字、提示 ≤30 字。
+// 18 张卡（顺序即轮播顺序，契约 §4.2）；文案按 §0 硬规则：标题 ≤8 字、作用 ≤20 字、步骤 ≤24 字、提示 ≤30 字。
 const CARDS = [
   {
     id: 'id', cat: 'start', icon: '🛡',
@@ -120,13 +119,6 @@ const CARDS = [
     scene: 'droplet', tone: 'blue'
   },
   {
-    id: 'vote', cat: 'team', icon: '🗳',
-    title: '投票', sub: '限时快投或跨天投票，实时结果',
-    steps: ['选限时 5–120 分钟或指定截止', '标题与 2–20 个选项可加配图', '设单选多选、匿名与可见范围'],
-    tip: '一人一票按账号去重，结果实时可见',
-    scene: 'ballot', tone: 'mint'
-  },
-  {
     id: 'file', cat: 'team', icon: '☁',
     title: '文件传输', sub: '个人文件、PPT 转换与班级课件',
     steps: ['上传个人文件，同账号设备可取件', '在 PPT 文件行转换并下载兼容版或 PDF', '打开班级课件，可共享、播放或下载'],
@@ -176,7 +168,6 @@ const SECTION_MAP = {
   roll: 'roll', rollcall: 'roll',
   power: 'power', powercard: 'home',
   water: 'water',
-  vote: 'vote',
   ppt: 'file', deck: 'file',
   file: 'file', cloudspace: 'file', transfer: 'file',
   screencast: 'screencast', cast: 'screencast', stage: 'screencast',
@@ -200,12 +191,6 @@ function winInfo() {
   return { w: 375, h: 667 };
 }
 
-// 2026-11-21：投票入口仅班委可见（普通同学/测试账号隐藏）。使用说明里的投票卡跟随同一口径：
-// 不给无入口的同学展示一个用不了的功能说明；只影响卡片，不影响其它说明。
-function cardsFor(id) {
-  return CARDS.filter(function (c) { return c.id !== 'vote' || identity.canUseVote(id); });
-}
-
 // 总览分组：同一份卡片数据渲染，禁止另维护一份文案
 function buildOvGroups(cards) {
   const listAll = cards || CARDS;
@@ -224,8 +209,8 @@ function catOf(key) {
   return CATS[0];
 }
 
-// 首帧也按当前身份过滤（onLoad 会再算一次，兼容同一页面模块缓存后身份变化）
-const INITIAL_CARDS = cardsFor();
+// 首帧直接用卡片数据（onLoad 会再量一次，兼容同一页面模块缓存后身份变化）
+const INITIAL_CARDS = CARDS;
 
 Page({
   data: {
@@ -248,8 +233,7 @@ Page({
     this._agent = agent.pick(this);            // AI 页面接力（wx.onAgentHandoff），只消费一次
     this._agentQ = agent.pickQuery(options);   // 备用：handoff query 随页面参数传入
     const win = winInfo();
-    // 投票卡按当前身份过滤（仅班委；测试账号不显示），索引与总览用同一份 cards
-    const cards = cardsFor();
+    const cards = CARDS;
     this._cards = cards;
     // 首帧先给一个按屏幕高度估算的占位高度，onReady 后再用 selector query 实测替换
     this.setData({

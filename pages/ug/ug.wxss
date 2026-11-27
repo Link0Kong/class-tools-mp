@@ -294,17 +294,6 @@
 .ug-cloud-b { position: absolute; left: 42rpx; top: 0; width: 58rpx; height: 58rpx; border-radius: 50%; background: var(--ug-hfg); opacity: .3; }
 .ug-cloud-base { position: absolute; left: 4rpx; bottom: 0; width: 104rpx; height: 38rpx; border-radius: 20rpx; background: var(--ug-hfg); opacity: .3; }
 
-/* ballot：3 条不同长度的选项条 + 勾 */
-.ug-ballot { width: 470rpx; display: flex; flex-direction: column; }
-.ug-opt { display: flex; flex-direction: row; align-items: center; margin: 10rpx 0; }
-.ug-opt-box {
-  flex: none; width: 46rpx; height: 46rpx; box-sizing: border-box;
-  border: 4rpx solid var(--ug-hfg); border-radius: 8rpx;
-  color: var(--md-surface-container-lowest); font-size: 28rpx; line-height: 38rpx; text-align: center;
-}
-.ug-opt-box--on { background: var(--ug-hfg); border-color: var(--ug-hfg); }
-.ug-opt-bar { margin-left: 18rpx; height: 40rpx; border-radius: 10rpx; background: var(--ug-hfg); opacity: .2; }
-
 /* droplet：大水滴 + 用量刻度条 */
 .ug-droplet { display: flex; flex-direction: row; align-items: center; }
 .ug-drop {

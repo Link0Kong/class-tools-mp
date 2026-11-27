@@ -213,7 +213,7 @@ function migrate(force) {
 }
 
 // ---------------------------------------------------------------- 2026-11-11 名单快捷预设（需求 8）
-// 抽签/分组/点名名单选择器 + 投票「指定成员」共用「全班 / 班委 / 团员」基础集合：
+// 抽签/分组/点名名单选择器共用「全班 / 班委 / 团员」基础集合：
 //   * 点击预设只替换当前选择为基础集合，之后仍可逐个点气泡增删；
 //   * 座号数组数据格式不变（只存 classMembers 里的座号；团员来自 class_league 缓存，过滤到班级名单内）；
 //   * 团员名单走 utils/cloud.js leaguePull（6h TTL + 本机缓存 store.classLeague），离线时返回空数组。
@@ -227,7 +227,7 @@ function searchText(value) {
 
 function isCommittee(m) { return !!String(m.role || '').trim() || String(m.badge || '').includes('班委'); }
 
-// 筛选只改变显示的成员。勾选座号和投票受众由使用方保存。
+// 筛选只改变显示的成员。勾选座号由使用方保存。
 function filterMembers(list, scope, query, league, matchedSeats) {
   const terms = searchText(query).split(/\s+/).filter(Boolean);
   const exactSeats = new Set(matchedSeats || []);

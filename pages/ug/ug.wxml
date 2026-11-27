@@ -124,24 +124,6 @@
       </view>
     </view>
 
-    <!-- ballot：3 条不同长度的选项条 + 勾 -->
-    <view wx:elif="{{scene === 'ballot'}}" class="ug-sc ug-sc-ballot">
-      <view class="ug-ballot">
-        <view class="ug-opt">
-          <view class="ug-opt-box"></view>
-          <view class="ug-opt-bar" style="width:300rpx"></view>
-        </view>
-        <view class="ug-opt">
-          <view class="ug-opt-box"></view>
-          <view class="ug-opt-bar" style="width:230rpx"></view>
-        </view>
-        <view class="ug-opt">
-          <view class="ug-opt-box ug-opt-box--on">✓</view>
-          <view class="ug-opt-bar" style="width:180rpx"></view>
-        </view>
-      </view>
-    </view>
-
     <!-- droplet：大水滴 + 用量刻度条 -->
     <view wx:elif="{{scene === 'droplet'}}" class="ug-sc ug-sc-droplet">
       <view class="ug-droplet">

@@ -1,5 +1,17 @@
 # 版本记录
 
+## 移除小程序端投票功能（2026-11-27，源码就绪；未上传发布；VERSION 仍 2.1.3）
+
+> 用户要求：完全移除微信小程序投票功能，同时在本地保留备份，方便后续恢复使用。
+
+- **页面与入口**：删除 `pages/vote`（列表 / 发起 / 编辑）与 `pages/votedetail`（详情 / 投票 / 结果 / 管理），`app.json` 不再注册；`utils/tools.js` 移除 `vote` 工具项与入口口径，全部工具、首页快捷、使用说明（含 ballot 插画）不再出现投票。
+- **逻辑与云端调用**：删除 `utils/vote.js`；`utils/cloud.js` 移除 `poll_create` / `poll_list` / `poll_detail` / `poll_submit` / `poll_manage` 五个 RPC 封装与配置；`utils/identity.js` 移除 `canUseVote`。
+- **分享 / 大屏 / 图标**：`utils/sharecard.js` 移除投票视图与画布；`utils/screencast.js` 移除 `focus_vote`（聚焦投票）遥控指令；删除 `images/tool-vote.png`。
+- **文档**：README 功能列表去掉投票；本文件保留此前的投票历史条目。
+- **测试**：删除 `tests/vote_unit_tests.js`；`unit.js`、`tool_sort_unit.js`、`task7_unit_tests.js`、`share_legal_unit.js`、`screencast_unit_tests.js`、`appearance_unit_tests.js` 同步移除投票断言。`node tests/unit.js` **606 passed / 0 failed**；`tool_sort_unit.js` **24/0**（顺带修正既有 `ppt` 期望）；`share_legal_unit.js` **19/0**；`task7_unit_tests.js` **24/0**；`appearance_unit_tests.js` **13/0**；`screencast_unit_tests.js` 通过；`staticcheck.py` handlers / 分享 handler 0 缺失；`code_quality_check.js` 全部通过。
+- **未改**：VERSION、服务端、`web/vote/CONTRACT.md` 与其他端；`utils/legal-data.js` 的正式法律文本仍含投票数据处理表述，待发布 / 法务流程单独更新。
+- **本地备份**：`git tag archive/vote-feature-20261127`、分支 `backup/vote-feature-20261127`（均指向移除前的 `9e10066`）；工作区 `archive/mp-vote-feature-20261127/` 含移除前文件快照、移除补丁与恢复说明（仅本机，不入库）。后续需要恢复时，可直接 `git revert` 本次提交，或按备份目录的 README 操作。
+
 ## 2.1.3（2026-11-27，已上传微信开发版）
 
 - 「文件传输」统一提供个人文件与班级课件。旧演示快捷方式保留原有排序，个人 PPT 可从文件行转换，历史课件可继续播放与下载。

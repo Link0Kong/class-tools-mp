@@ -6,8 +6,8 @@
 //   * 不用未公开 API；只用 canvas 2d + wx.canvasToTempFilePath；
 //   * 页面 onShareAppMessage 必须同步返回，所以这里只做「提前生成、失败回退静态图」：
 //     页面在结果渲染后异步调 render()，成功后把临时文件路径交给分享；未生成/失败时用 images/share/*.png。
-//   * 绘制的文字全部来自页面已渲染的数据（抽签结果序号 / 投票标题与选项 / 通知标题与摘要），
-//     不读学号、宿舍号等隐私字段；投票卡固定不画结果（百分比/票数），避免微信卡片直接预览投票结果。
+//   * 绘制的文字全部来自页面已渲染的数据（抽签结果序号 / 通知标题与摘要），
+//     不读学号、宿舍号等隐私字段。
 //   * 画布固定 500×400（5:4），导出 1000×800；用基础 fillRect / fillText / arcTo，兼容真机与单测假 canvas。
 
 const W = 500;
@@ -28,7 +28,6 @@ const COLOR = {
 const FONT = 'sans-serif';
 const FALLBACK = {
   draw: '/images/share/draw.png',
-  vote: '/images/share/default.png',
   notice: '/images/share/nt.png',
   group: '/images/share/draw.png',
   hw: '/images/share/hw.png',
@@ -189,34 +188,6 @@ function buildDrawView(opt) {
     subtitle: parts.join(' · '),
     rows: rows,
     proof: proof,
-    time: txt(o.time)
-  };
-}
-
-// 投票分享卡（2026-11-20；信息增强）：标题 / 状态 / 时限 / 发起人 / 说明 / 规则 / 4 个选项。
-// **固定不画百分比/票数/总票数**：微信卡片在聊天里直接可见，结果只能点开详情查看。
-function buildVoteView(opt) {
-  const o = opt || {};
-  const d = o.detail || {};
-  const row = o.row || {};
-  const options = (Array.isArray(d.options) ? d.options : []).slice(0, 4).map(function (x) {
-    return { text: txt(x && x.text) };
-  });
-  const tags = (Array.isArray(d.tags) ? d.tags : []).map(function (t) {
-    return txt(t && typeof t === 'object' ? t.text : t);
-  }).filter(Boolean).slice(0, 3);
-  return {
-    kind: 'vote',
-    title: txt(d.title || row.title || '投票'),
-    status: txt(d.statusText || row.statusText),
-    modeText: txt(d.modeText || row.modeText),
-    ownerText: txt(d.ownerText || (d.owner ? ('发起人 ' + d.owner) : '')),
-    deadlineText: txt(d.deadlineText || ''),
-    desc: txt(d.desc || ''),
-    tags: tags,
-    hint: '结果请打开投票页查看',
-    resultsMasked: true,
-    options: options,
     time: txt(o.time)
   };
 }
@@ -519,75 +490,6 @@ function drawDraw(g, v) {
   footer(g, v.proof ? ('存证 ' + v.proof) : '未存证 · 打开抽签页', v.time);
 }
 
-// 投票卡：展示标题 / 状态 / 时限 / 发起人 / 说明 / 规则 / 选项，但**不展示任何结果**
-// （百分比、票数、总票数都不画；结果只能点开投票页查看）。
-function drawVote(g, v) {
-  base(g);
-  brand(g, '投票');
-  let y = 74;
-  g.fillStyle = COLOR.ink;
-  g.font = '700 28px ' + FONT;
-  const titleLines = wrapLines(g, v.title || '投票', W - 56, 2, '700 28px ' + FONT);
-  titleLines.forEach(function (line) {
-    g.fillText(line, 28, y);
-    y += 34;
-  });
-  if (!titleLines.length) y = 78;
-
-  const statusParts = [];
-  if (v.status) statusParts.push(v.status);
-  if (v.modeText) statusParts.push(v.modeText);
-  pill(g, 28, y - 2, statusParts.join(' · ') || '进行中', COLOR.teal, COLOR.tealSoft);
-  y += 32;
-
-  const meta = [v.ownerText, v.deadlineText].concat(v.tags || []).filter(Boolean).join(' · ');
-  if (meta) {
-    g.font = '12px ' + FONT;
-    g.fillStyle = COLOR.ink3;
-    g.fillText(clipText(g, meta, W - 56, '12px ' + FONT), 28, y + 2);
-    y += 20;
-  }
-
-  if (v.desc) {
-    g.font = '13px ' + FONT;
-    g.fillStyle = COLOR.ink2;
-    const dLines = wrapLines(g, v.desc, W - 56, 2, '13px ' + FONT);
-    dLines.forEach(function (line) {
-      g.fillText(line, 28, y + 2);
-      y += 19;
-    });
-    y += 4;
-  }
-
-  const opts = v.options || [];
-  if (!opts.length) {
-    g.font = '14px ' + FONT;
-    g.fillStyle = COLOR.ink2;
-    g.fillText(clipText(g, '打开投票页查看选项并参与投票', W - 56, '14px ' + FONT), 28, y + 14);
-  } else {
-    // 2×2 选项卡：只写选项文字，不出现结果条 / 百分比 / 票数
-    const cols = 2;
-    const gap = 12;
-    const cw = (W - 56 - gap) / cols;
-    const ch = Math.max(34, Math.min(44, Math.floor((338 - y - 8) / 2)));
-    opts.forEach(function (o2, i) {
-      const cx = 28 + (i % cols) * (cw + gap);
-      const cy = y + Math.floor(i / cols) * (ch + 8);
-      g.fillStyle = COLOR.card;
-      roundRect(g, cx, cy, cw, ch, 10);
-      g.strokeStyle = COLOR.line;
-      if (g.strokeRect) { g.lineWidth = 1; g.strokeRect(cx, cy, cw, ch); }
-      g.font = '700 11px ' + FONT;
-      g.fillStyle = COLOR.teal;
-      g.fillText(String(i + 1), cx + 10, cy + ch / 2 + 4);
-      g.font = '600 13px ' + FONT;
-      g.fillStyle = COLOR.ink;
-      g.fillText(clipText(g, o2.text, cw - 34, '600 13px ' + FONT), cx + 24, cy + ch / 2 + 4);
-    });
-  }
-  footer(g, v.hint || '结果请打开投票页查看', v.time);
-}
-
 // 通知卡：标题 / 分类 / 状态 / 摘要 / 要点 / 时间地点等字段 / 来源 / 发布者 / 附件数量；
 // 不放附件原文、图片本体与学号。
 function drawNotice(g, v) {
@@ -727,7 +629,6 @@ function drawInfo(g, v) {
 function draw(g, view) {
   if (!g || !view) return false;
   if (view.kind === 'draw') drawDraw(g, view);
-  else if (view.kind === 'vote') drawVote(g, view);
   else if (view.kind === 'notice') drawNotice(g, view);
   else if (view.kind === 'info') drawInfo(g, view);
   else return false;
@@ -803,7 +704,6 @@ module.exports = {
   COLOR: COLOR,
   wrapLines: wrapLines,
   buildDrawView: buildDrawView,
-  buildVoteView: buildVoteView,
   buildNoticeView: buildNoticeView,
   buildGroupView: buildGroupView,
   buildHwView: buildHwView,
