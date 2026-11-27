@@ -598,7 +598,7 @@ function run(test) {
     /* ============================================================
        需求 11：工作台双卡轮换 + 常驻浮动 + 暂停/降级
        ============================================================ */
-    await test('需求11：工作台两卡同时展示最新条目（作业列表按截止升序、通知排除长期安排/已处理）', function () {
+    await test('工作台按截止时间展示个人任务，通知排除长期安排和已处理项', function () {
       purge();
       C.clearMem();
       C.setIdentity(ID);
@@ -610,12 +610,15 @@ function run(test) {
       ];
       store.get().ntDone = { g5: true };           // 已处理的一条：不应出现在轮换列表/待处理计数
       store.save();
+      const task = R('utils/task.js');
+      task.upsert(task.emptyItem({ title: '个人任务 A', due: dayAfter(7) }));
+      task.upsert(task.emptyItem({ title: '个人任务 B', due: dayAfter(1) }));
       const def = loadPage('index/index');
       const ctx = ctxOf(def, { _hidden: false, _first: true });
       ctx.refresh();
-      assert.strictEqual(ctx.data.hw.open, 3);
-      assert.strictEqual(ctx.data.hw.items.length, 3, '作业卡应带轮换条目列表');
-      assert.strictEqual(ctx.data.hw.title, '示例作业 C', '第一条 = 最早截止的作业');
+      assert.strictEqual(ctx.data.hw.open, 2);
+      assert.deepStrictEqual(ctx.data.hw.items.map(function (it) { return it.title; }), ['个人任务 B', '个人任务 A']);
+      assert.strictEqual(ctx.data.hw.title, '个人任务 B');
       assert.ok(ctx.data.hw.anim === '');
       def._rotStop.call(ctx);                      // 测试内不留 5s 轮换计时器
       // 通知视图：排除已处理 / 长期安排 / 行动=false
@@ -636,12 +639,10 @@ function run(test) {
       purge();
       C.clearMem();
       C.setIdentity(ID);
-      const { store } = fresh();
-      store.get().homework = [
-        { id: 'h1', subject: '作业一', date: dayAfter(5), time: '18:00', ts: 1 },
-        { id: 'h2', subject: '作业二', date: dayAfter(10), time: '18:00', ts: 2 }
-      ];
-      store.save();
+      fresh();
+      const task = R('utils/task.js');
+      task.upsert(task.emptyItem({ title: '任务一', due: dayAfter(5) }));
+      task.upsert(task.emptyItem({ title: '任务二', due: dayAfter(10) }));
       const def = loadPage('index/index');
       const ctx = ctxOf(def, { _hidden: false, _rot: null, _rotTimers: [], state: 'data' });
       ctx.data.state = 'data';
@@ -656,7 +657,7 @@ function run(test) {
       keys.forEach(function (k) {
         assert.ok(/^hw\.(anim|idx|title|sub)$/.test(k), '轮换只应更新文案字段，出现：' + k);
       });
-      assert.strictEqual(ctx.data.hw.title, '作业二', '轮换到第二条');
+      assert.strictEqual(ctx.data.hw.title, '任务二', '轮换到第二条');
       assert.strictEqual(ctx.data.hw.idx, 1);
       assert.strictEqual(ctx.data.hw.anim, 'in');
       await sleep(400);

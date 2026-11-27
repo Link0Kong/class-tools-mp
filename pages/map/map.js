@@ -93,7 +93,7 @@ Page({
         const matches = DIRECTORY.search(this._target);
         const target = matches[0];
         if (target) {
-          if (matches.length === 1 || !target.item) this.openTarget(target);
+          if (matches.length === 1) this.openTarget(target);
           else this.search(this._target);
         } else wx.showToast({ title: '地图未收录该教室', icon: 'none' });
       }
@@ -313,8 +313,8 @@ Page({
   },
   clearSearch() { this.setData({ query: '' }); this.closeResults(); },
   confirmSearch() {
-    const hit = DIRECTORY.search(this.data.query)[0];
-    if (hit) { this.clearSearch(); this.openTarget(hit); }
+    const hits = DIRECTORY.search(this.data.query);
+    if (hits.length === 1) { this.clearSearch(); this.openTarget(hits[0]); }
   },
   tapResult(e) {
     const hit = this._hits && this._hits[Number(e.currentTarget.dataset.index)];

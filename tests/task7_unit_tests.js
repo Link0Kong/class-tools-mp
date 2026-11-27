@@ -174,7 +174,7 @@ function run(test) {
   global.getApp = function () { return { notifyPages() {} }; };
 
   return (async function () {
-    await test('任务页与工作台同步移除已加入的班级作业，最后一项加入后回到个人任务', async function () {
+    await test('班级作业在任务页加入后才出现在工作台，最后一项加入后回到个人任务', async function () {
       purge(); C.clearMem(); C.setIdentity();
       const d = R('utils/store.js').get(), task = R('utils/task.js');
       d.homework = [{ id: 'h1', content: '同名' }, { id: 'h2', content: '同名' },
@@ -193,8 +193,7 @@ function run(test) {
       assert.strictEqual(page.data.seg, 'class');
       assert.strictEqual(task.items().length, 1);
       home.refresh();
-      assert.strictEqual(home.data.task.hwOpen, 2);
-      assert.strictEqual(home.data.hw.open, 3);
+      assert.strictEqual(home.data.hw.open, 1);
       page.classAllToTask();
       assert.strictEqual(page.data.classCount, 0);
       assert.strictEqual(page.data.seg, 'my');
@@ -206,7 +205,6 @@ function run(test) {
       task.resetCache();
       page.refresh(); home.refresh();
       assert.strictEqual(page.data.classCount, 0);
-      assert.strictEqual(home.data.task.hwOpen, 0);
       assert.strictEqual(home.data.hw.open, 2);
       task.removeTask(first.id);
       page.onCloudSync();
@@ -265,8 +263,9 @@ function run(test) {
       const store = R('utils/store.js');
       C.setIdentity();
       store.get().termStart = '2026-09-01';
-      store.get().homework = [{ id: 'h1', subject: '高数', content: '习题', date: '2099-01-01' }];
       store.save();
+      const task = R('utils/task.js');
+      const item = task.upsert(task.emptyItem({ title: '高数习题', due: '2099-01-01' }));
       const cloud = R('utils/cloud.js'); enableCloud(cloud);
       C.setReq(function (o) { o.success({ statusCode: 200, data: [] }); });
       const def = loadPage('index/index');
@@ -274,14 +273,14 @@ function run(test) {
       ctx._hidden = false;
       ctx.refresh();
       assert.strictEqual(ctx.data.state, 'data', '有本机缓存 → 首屏同步 data（不等网络）');
-      assert.ok(ctx.data.hw.open >= 1, '本机作业直接渲染');
+      assert.strictEqual(ctx.data.hw.open, 1, '本机个人任务直接渲染');
       assert.ok(ctx.__log.length >= 1, 'refresh() 同步 setData（本机缓存立即渲染，不等网络）');
       assert.strictEqual(ctx.data.state, 'data');
       const calls = ctx.__log.length;
       assert.ok(calls >= 1, '首次 refresh 会 setData');
       ctx.refresh();
       assert.strictEqual(ctx.__log.length, calls, '状态未变化 → 不再 setData（diffPatch 返回 null）');
-      store.get().hwDone = { h1: true }; store.save();
+      task.setDone(item.id, true);
       ctx.refresh();
       assert.strictEqual(ctx.__log.length, calls + 1, '只有变化时才 setData');
       const keys = ctx.__log[ctx.__log.length - 1].join(',');

@@ -2,7 +2,7 @@
 //
 // 首页只负责「今天要做什么」：
 //   · 今日课程时间线（本次/下一次课；没有课表缓存时自动拉一次 tt.json）
-//   · 待办：作业待交、通知待处理（各显示数量 + 最近/最紧一条）
+//   · 待办：个人任务、通知待处理（各显示数量 + 最近/最紧一条）
 //   · 常用工具：用户在「工具」页主动勾选的工具（≤4，顺序 = 勾选顺序；2026-11-06 起不再自动取前 4 个），
 //     无勾选时显示引导空态「尚未勾选常用工具」→ 去工具页勾选
 // 统计总览 / 云同步详情 / 数据与隐私 / 完整工具清单已分别归到「我的」与「工具」页，首页不再重复。
@@ -43,20 +43,8 @@ function courseCardState(source, now) {
   };
 }
 
-function hwOpenItems(d) {
-  const list = task.pendingHomework(d);
-  list.sort(function (a, b) {
-    const x = util.hwDue(a), y = util.hwDue(b);
-    if (x == null && y == null) return 0;
-    if (x == null) return 1;
-    if (y == null) return -1;
-    return x - y;
-  });
-  return list;
-}
-
-function shortTitle(h) {
-  const s = String((h && (h.subject || h.content)) || '').trim();
+function shortTitle(title) {
+  const s = String(title || '').trim();
   return s.length > 18 ? s.slice(0, 18) + '…' : s;
 }
 
@@ -124,7 +112,7 @@ Page({
     quickEmpty: false,      // true = 用户没有勾选任何首页工具 → 「常用工具」区域显示引导空态
     today: null,            // utils/ttplan.plan() 的结果
     hw: { open: 0, items: [], idx: 0, title: '', sub: '', anim: '' },
-    task: { open: 0, myday: 0, important: 0, title: '', sub: '' },
+    task: { myday: 0, important: 0 },
     nt: { state: 'syncing', pending: 0, items: [], idx: 0, title: '', sub: '', anim: '' },
     // 关注宿舍电费卡片（v2.0.0）：未选择时只做引导、0 请求；选择后读 store.power + power 行
     powerCard: { has: false, sel: '', label: '', qText: '—', unit: '度', stateKey: 'idle', stateText: '未选择', updText: '', loading: false }
@@ -161,20 +149,19 @@ Page({
       this.refresh();
     }
     this.loadPowerCard();
-    // 需求 16：进页强制拉一次 marks（绕过 2min TTL）→ 作业完成 / 通知已处理计数立即刷新
+    // 返回工作台时刷新通知处理状态。
     if (identity.has() && cloud.isEnabled()) {
       cloud.marksPull(true).then(() => { _ntAt = 0; this.refresh(); }).catch(function () { /* 离线保留本机状态 */ });
     }
   },
-  // 本机是否有可立即渲染的工作台缓存（作业/通知缓存/课表/勾选状态任一即可）
+  // 本机是否有可立即渲染的工作台缓存。
   _hasLocalData() {
     try {
       const d = store.get();
-      if (Array.isArray(d.homework) && d.homework.length) return true;
+      if (task.items().length) return true;
       if (ttplan.localSource(d).courses.length) return true;
       if (d.ntDone && Object.keys(d.ntDone).length) return true;
       if (d.classMembers && d.classMembers.length) return true;
-      if (d.task && ((d.task.items && d.task.items.length) || (d.task.lists && d.task.lists.length))) return true;
     } catch (e) { /* ignore */ }
     return false;
   },
@@ -214,35 +201,17 @@ Page({
     wx.stopPullDownRefresh();
   },
 
-  // 重绘：本机数据（课表缓存 / 作业 / 身份）+ 通知缓存
+  // 重绘本机课表和个人任务，并补充通知缓存。
   refresh() {
     try {
-      cloud.pruneHomework();
       const d = store.get();
       const now = new Date();
       const id = identity.get();
-      // —— 待办任务 = 个人任务 + 班级作业（任务工具接管原作业卡槽位）——
       const tc = task.counts();
       const taskOpenAll = task.viewItems('all', '', '', 'due');
-      const open = hwOpenItems(d);
-      const merged = [];
-      open.forEach(function (h) {
-        const di = util.dueInfo(h);
-        merged.push({ title: shortTitle(h), sub: di && di.txt ? di.txt : '', due: util.hwDue(h), order: 0, kind: 'hw' });
+      const hwItems = taskOpenAll.slice(0, 5).map(function (t) {
+        return { title: shortTitle(t.title), sub: task.dueText(t) };
       });
-      taskOpenAll.forEach(function (t) {
-        merged.push({
-          title: shortTitle({ content: t.title }), sub: task.dueText(t),
-          due: task.dueMs(t), order: Number(t.order) || 0, kind: 'task'
-        });
-      });
-      merged.sort(function (a, b) {
-        if (a.due == null && b.due == null) return (a.order || 0) - (b.order || 0);
-        if (a.due == null) return 1;
-        if (b.due == null) return -1;
-        return a.due - b.due;
-      });
-      const hwItems = merged.slice(0, 5).map(function (x) { return { title: x.title, sub: x.sub }; });
       const hwView = cardViewOf(hwItems);
 
       // —— 今日课程 / 下一次课 ——
@@ -260,8 +229,8 @@ Page({
         quick: quick,
         quickEmpty: quick.length === 0,
         ...courseFields,
-        hw: Object.assign({ open: merged.length }, hwView),
-        task: { open: tc.all, hwOpen: open.length, myday: tc.myday, important: tc.important }
+        hw: Object.assign({ open: taskOpenAll.length }, hwView),
+        task: { myday: tc.myday, important: tc.important }
       };
       // 需求 9：只把变化的顶层字段 setData（避免每次 onShow 整页重渲染；首次 state 不同 → 全量下发）
       const patch = util.diffPatch(this.data, state);
@@ -380,9 +349,13 @@ Page({
 
   ntView(groups) {
     // 已处理（marks kind='ntdone'，v19 跨端持久化）不计入待处理；长期通知（长期安排 + 无时间/长期有效）不占待办
-    const done = store.get().ntDone;
-    const stats = notice.statOf(groups, done);
-    const items = ntOpenItems(groups, done).slice(0, 5);
+    const data = store.get();
+    const hidden = data.ntHide || {};
+    const visible = (groups || []).filter(function (g) {
+      return g && !g._hidden && !hidden[g.id] && !hidden['auto_' + g.id];
+    });
+    const stats = notice.statOf(visible, data.ntDone);
+    const items = ntOpenItems(visible, data.ntDone).slice(0, 5);
     const view = cardViewOf(items);
     return Object.assign({ state: 'ok', pending: stats.pending }, view);
   },

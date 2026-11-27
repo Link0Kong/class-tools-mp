@@ -497,12 +497,19 @@ async function run(test) {
       { id: 'info', title: '资料无时间' },
       { id: 'recdef', title: '长期安排定义', recurrence: { freq: 'daily', time: hhmm(occTs) }, actionable: false },
       { id: 'occ', title: '每日请假', recurrence: { freq: 'daily', time: hhmm(occTs), startAt: iso(now - 30 * D) } },
-      { id: 'expired', title: '已过期', deadline: iso(now - D) }
+      { id: 'expired', title: '已过期', deadline: iso(now - D) },
+      { id: 'global', title: '全班隐藏', deadline: iso(now + H), _hidden: true },
+      { id: 'personal', title: '个人隐藏', deadline: iso(now + H), recurrence: { freq: 'daily', time: hhmm(occTs) } },
+      { id: 'legacy', title: '旧版隐藏', deadline: iso(now + H) }
     ];
-    const view = def.ntView.call({}, groups);
+    const store = require(path.join(ROOT, 'utils/store.js'));
+    const get = store.get;
+    let view;
+    store.get = function () { return { ntHide: { auto_personal: true, legacy: true } }; };
+    try { view = def.ntView.call({}, groups); } finally { store.get = get; }
     assert.strictEqual(view.state, 'ok');
     assert.strictEqual(view.pending, 2, '工作台计数 = 普通待处理 + 期次（资料/长期定义/已过期不计）：' + view.pending);
-    assert.ok(view.items.length >= 2, '轮换条目 ≥2');
+    assert.deepStrictEqual(view.items.map(function (it) { return it.title; }).sort(), ['每日请假', '紧急'].sort());
     assert.ok(view.items.some(function (it) { return it.sub.indexOf('本次 ') === 0; }), '期次条目计入轮换：' + JSON.stringify(view.items));
     assert.ok(!view.items.some(function (it) { return it.title === '资料无时间' || it.title === '长期安排定义' || it.title === '已过期'; }),
       '资料/长期定义/已过期不进轮换');

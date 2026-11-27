@@ -109,7 +109,7 @@
       </block>
     </view>
 
-    <!-- 待办：任务（个人任务 + 班级作业统一入口；接管原作业卡槽位，保留轮换/浮动样式） -->
+    <!-- 待办：个人任务 -->
     <view class="m3-card m3-card--outlined wb-task wb-task--float wb-task--float-a enter enter-3" bindtap="goTask" hover-class="wb-task--tap">
       <view class="wb-task-ico wb-task-ico--primary"><image class="wb-task-img" src="/images/tool-task.png" mode="aspectFit"></image></view>
       <view class="grow">
@@ -118,12 +118,10 @@
           <text class="wb-rot wb-rot--{{hw.anim}}">{{hw.title}}<text wx:if="{{hw.sub}}"> · {{hw.sub}}</text></text>
         </view>
         <view class="wb-task-s muted" wx:else>任务都完成了</view>
-        <view class="wb-task-s muted" wx:if="{{task.open || task.hwOpen}}">
-          <text wx:if="{{task.open}}">个人 {{task.open}}</text>
-          <text wx:if="{{task.open && task.hwOpen}}"> · </text>
-          <text wx:if="{{task.hwOpen}}">班级作业 {{task.hwOpen}}</text>
-          <text wx:if="{{task.myday}}"> · 我的一天 {{task.myday}}</text>
-          <text wx:if="{{task.important}}"> · 重要 {{task.important}}</text>
+        <view class="wb-task-s muted" wx:if="{{task.myday || task.important}}">
+          <text wx:if="{{task.myday}}">我的一天 {{task.myday}}</text>
+          <text wx:if="{{task.myday && task.important}}"> · </text>
+          <text wx:if="{{task.important}}">重要 {{task.important}}</text>
         </view>
       </view>
       <text class="chev"></text>
