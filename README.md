@@ -91,7 +91,7 @@ ai/                            微信「小程序 AI」原子接口（独立分�
 - 阿里云 ECS 自建 **PostgreSQL 18 + PostgREST 13**（`https://tool.furina.fun/v1/rdb/rest/`）作为数据与身份后端（2026-11-28 起）；腾讯云 CloudBase 仅保留到 2026-12-10 到期前供旧版/回滚
 - 微信云开发（云函数 `notify`）只承担订阅消息的 openid 获取与发送，数据读写走 ECS
 - 自建 ECS（`https://tool.furina.fun`）承载文件传输 / 大屏互联、PPT 媒体缓存与抽签核验页
-- 订阅消息云函数（Node.js）
+- 订阅消息云函数（Node.js）；`cloudfunctions/notify/` 改动不会随小程序包发布，需在微信开发者工具右键「上传并部署」。其 REST 默认地址已在 2026-11-28 改为 ECS 自建（`rest-config.js`），也可用云函数环境变量 `NOTIFY_REST_BASE` 覆盖。
 - 测试：Node.js `assert` + wx mock；Python 静态检查
 
 > `ai/` 是微信「小程序 AI」原子接口，默认不注册进 `app.json`（AI 开发模式关闭），不会进入发布包；启用前请自行评估平台审核与合规要求。
