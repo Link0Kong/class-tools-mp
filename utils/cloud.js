@@ -12,7 +12,7 @@
 // 硬约束：
 //   * 只用原生 wx.request，不接云开发 SDK、不引第三方库；零真实域名/密钥（全部来自 cloud-config.js）；
 //   * 未配置 / 断网时退化为「纯本地」：功能照常、不报错、动作进待补发队列，恢复后自动补发；
-//   * 所有 wx.request 统一从这里发出（课表读取也在这里，见 ttFetch：CloudBase site_assets 优先、旧 tt.json 兜底）。
+//   * 所有 wx.request 统一从这里发出（课表读取也在这里，见 ttFetch：云端 site_assets 优先、旧 tt.json 兜底）。
 
 const store = require('./store.js');
 const identity = require('./identity.js');
@@ -217,7 +217,7 @@ function headers(write, opts) {
 //   2) 重试增强：幂等只读请求最多 2 次尝试（指数退避 + 抖动），额外吸收 502/503/504 网关瞬时错误；
 //   3) 并发控制：全局并发上限（默认 8；当前网络连续失败时降为 3，避免把拥堵链路打爆）；
 //   4) 在途合并：相同 GET 请求同时只发一个（多页面/定时器重复拉同一张表）。
-// 旧 CloudBase base 下行为不回退：成功路径请求数/顺序不变，仅在失败/重复场景下变化。
+// 旧档位（cloudbase 回滚档）下行为不回退：成功路径请求数/顺序不变，仅在失败/重复场景下变化。
 
 // 超时分级：opts.timeout（显式） > opts.timeoutKey（login/poll/upload）> CONFIG.timeout
 function timeoutOf(opts) {
@@ -2319,13 +2319,13 @@ function waterRoomUpsert(rv, persons) {
 }
 function waterForceFresh(rv) { return Date.now() - (_waterAt[waterCacheKey(rv)] || 0) < TTL.water; }
 
-// ---------------------------------------------------------------- 课表（2026-11-07 起：CloudBase 快照优先 + 旧 tt.json legacy 兜底）
+// ---------------------------------------------------------------- 课表（2026-11-07 起：云端快照优先 + 旧 tt.json legacy 兜底）
 // 数据源顺序（见 web/tools/tests/dns_pause_tt_health_spec.md §4「mp 特有」）：
-//   1) CloudBase public.site_assets（id='tt'，2026-11-07 新增）：GET ?select=body,meta&id=eq.tt，
+//   1) 云端 public.site_assets（id='tt'，2026-11-07 新增）：GET ?select=body,meta&id=eq.tt，
 //      走统一 request 通道（Authorization: Bearer <publishableKey> + X-Class-Token）；
 //      body 可能是 JSON 字符串，需 parse；必须是 {c:[...]}（与旧 tt.json 同构，可带 t/meta）；
 //   2) 上一步失败（网络 / 404 / 空行 / 格式错 / 旧配置没有 tables.siteAssets）→ 回退 legacy CONFIG.ttUrl：
-//      wx.request GET，**不带身份头**（避免把班级 token 发到非 CloudBase 域名）；
+//      wx.request GET，**不带身份头**（避免把班级 token 发到非云端域名）；
 //   3) 两者都失败 → reject（调用方 catch 后保留本机缓存，不阻塞页面）。
 // 身份守卫 / 云开关 / cloudOff / 6h TTL 缓存命中（TTL 内 0 请求）语义保持不变。
 // 旧工具页/测试仍只认 {c,t,meta}，云快照 body 直接返回、结构同构。

@@ -1,5 +1,5 @@
 // pages/stats/stats.js —— 访问统计（可视化 + 账号明细，仅管理员）
-// 数据来源：CloudBase public.visits（slot,sid,name,ts,client,ver,dev,did）。
+// 数据来源：云端 public.visits（slot,sid,name,ts,client,ver,dev,did）。
 // 契约：web/统计多端_详细统计_契约_20261120.md（过滤 / 聚合 / 趋势 / 账号明细 / 120 条上限）。
 // 页面只做数据渲染：所有聚合在 render() 一次算好，WXML 不参与计算。
 const identity = require('../../utils/identity.js');

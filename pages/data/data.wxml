@@ -118,7 +118,7 @@
       <view class="data-li"><text class="data-li__k">收集</text><text class="data-li__v">姓名 / 角色 / 徽章 / 管理员标识（身份校验）；作业完成、通知已处理 / 置顶、工具栏顺序、体测录入与历史、抽签 / 分组参数与名单、点名名单与到·假、隐藏项、课表与提醒偏好、昵称、个人任务（分组 / 步骤 / 备注 / 截止 / 提醒，附件仅本机）、关注宿舍（仅规范楼栋 + 房间号，用于电费页本人查看）、反馈内容。</text></view>
       <view class="data-li"><text class="data-li__k">不采集</text><text class="data-li__v">证件信息、位置、通讯录、相册；不显示学号。</text></view>
       <view class="data-li"><text class="data-li__k">用途</text><text class="data-li__v">仅用于本班级工具功能与跨端（网页 / 小程序）同步，不做广告或其它用途。</text></view>
-      <view class="data-li"><text class="data-li__k">存储</text><text class="data-li__v">本机微信存储 + 腾讯云 CloudBase PostgreSQL；云端数据只有本人 token 可读（RLS）。</text></view>
+      <view class="data-li"><text class="data-li__k">存储</text><text class="data-li__v">本机微信存储 + 班级工具站自建 PostgreSQL（阿里云 ECS）；云端数据只有本人 token 可读（RLS）。</text></view>
       <view class="data-li"><text class="data-li__k">订阅</text><text class="data-li__v">通知提醒需微信授权订阅消息；openid 仅用于发送提醒、仅云函数使用。</text></view>
       <view class="data-li"><text class="data-li__k">保留</text><text class="data-li__v">身份 token 有效期约 30 天（到期重新验证）；云端个人数据随「清除」动作覆盖 / 置否 / 归档。</text></view>
       <view class="data-li"><text class="data-li__k">共享</text><text class="data-li__v">不向任何第三方共享或出售；访问统计仅管理员可见，诊断对已认证同学可见；关注宿舍只在电费页本人可见，不导出、不对外分享。</text></view>

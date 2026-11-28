@@ -1,7 +1,7 @@
 // app.js —— 班级工具站（v12 原生小程序入口 · 班级身份 token 版）
 //
 // 身份（2026-11-04 起）：
-//   * 启动页固定为 pages/identity/identity；输入 学号 + 姓名 → CloudBase RPC class_verify；
+//   * 启动页固定为 pages/identity/identity；输入 学号 + 姓名 → 云端 RPC class_verify；
 //   * 校验通过后 token/身份保存在 wx storage 'zq_class_identity'，此后所有数据请求自动带
 //     X-Class-Token（统一由 utils/cloud.js 发出）；
 //   * 没有有效身份时，任何页面都不能使用/请求班级数据（页面守卫 reLaunch 回身份页）。

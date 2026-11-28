@@ -13,7 +13,7 @@
 //   water = { rooms: { "<roomverify>": { p: 4|6, recs: [ { m:"YYYY-MM", r:<吨>, ts:<ms> } ] } } }
 //   recs 按月唯一、按 m 升序、最多 120 条；r 保留 2 位小数；ts = 写入时间。
 //
-// 2026-11-11 云端共享（契约 §1–§4；唯一新增数据源仍是既有 CloudBase PostgREST，不新增外部请求来源）：
+// 2026-11-11 云端共享（契约 §1–§4；唯一新增数据源仍是既有 PostgREST 云端，不新增外部请求来源）：
 //   * public.water      {roomverify, month, reading, persons, updated_at}  主键 (roomverify,month)
 //   * public.water_room {roomverify, persons}                              主键 roomverify
 //   * 进入/切宿舍：先渲染本机缓存 → GET 云端；同 month 云端覆盖本地，本地独有月份补传；

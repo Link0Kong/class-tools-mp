@@ -64,8 +64,8 @@
 
 | 类型 | 域名 | 用途 |
 | --- | --- | --- |
-| request 合法域名 | `https://tool.furina.fun` | 任务 AI（`/task-ai/suggest`）、文件传输 / 大屏互联（`/drop`）、课表兜底（`/tt.json`）、PPT 媒体缓存（`/pptfiles`）、自建 REST（`/v1/rdb/rest/`） |
-| request 合法域名 | `https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com` | `cloudbase` REST 档位的 CloudBase 网关 |
+| request 合法域名 | `https://tool.furina.fun` | 全部业务请求：REST（`/v1/rdb/rest/`，2026-11-28 起生产）、任务 AI（`/task-ai/suggest`）、文件传输 / 大屏互联（`/drop`）、课表兜底（`/tt.json`）、PPT 媒体缓存（`/pptfiles`） |
+| request 合法域名 | `https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com` | **仅旧版客户端 / 回滚**需要；2.1.3 起不再请求，CloudBase 2026-12-10 到期后可移除 |
 | downloadFile 合法域名 | `https://tool.furina.fun` | drop 文件下载、`/pptfiles` 媒体（图片 / 视频 / 缩略图） |
 | downloadFile 合法域名 | `https://tool-furina-fun.oss-cn-hongkong.aliyuncs.com` | 仅在 `pptEcs.enabled=false` 或非 `/ppt/**` 直链回退 OSS 香港默认域名时需要；香港默认域名能否通过微信校验未查证，发布前用真机正式版验一张图 + 一段视频 |
 
@@ -88,7 +88,8 @@ ai/                            微信「小程序 AI」原子接口（独立分�
 ## 技术栈
 
 - 原生 WXML / WXSS / JavaScript（CommonJS），无前端框架、无构建依赖
-- 微信云开发 CloudBase（PostgreSQL + PostgREST）作为数据与身份后端
+- 阿里云 ECS 自建 **PostgreSQL 18 + PostgREST 13**（`https://tool.furina.fun/v1/rdb/rest/`）作为数据与身份后端（2026-11-28 起）；腾讯云 CloudBase 仅保留到 2026-12-10 到期前供旧版/回滚
+- 微信云开发（云函数 `notify`）只承担订阅消息的 openid 获取与发送，数据读写走 ECS
 - 自建 ECS（`https://tool.furina.fun`）承载文件传输 / 大屏互联、PPT 媒体缓存与抽签核验页
 - 订阅消息云函数（Node.js）
 - 测试：Node.js `assert` + wx mock；Python 静态检查

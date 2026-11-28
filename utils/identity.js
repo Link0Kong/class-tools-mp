@@ -1,4 +1,4 @@
-// utils/identity.js —— 身份层（唯一身份来源：CloudBase RPC class_verify）
+// utils/identity.js —— 身份层（唯一身份来源：云端 RPC class_verify，ECS 自建 PostgreSQL）
 //
 // 背景（v12 / 1.3.0）：
 //   * 旧的「账号 + 密码注册登录」「X-Device-Id 鉴权」「pages/verify 二次认证」全部下线；

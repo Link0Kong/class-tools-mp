@@ -1,6 +1,6 @@
 // pages/identity/identity.js —— 身份界面（启动首屏 / 唯一身份入口）
 //
-// 流程：输入 姓名 + 学号 → CloudBase RPC class_verify → 保存 token/身份 → class_members 同步名单 → 工作台。
+// 流程：输入 姓名 + 学号 → 云端 RPC class_verify → 保存 token/身份 → class_members 同步名单 → 工作台。
 // 说明：本机已有有效身份时（如从工作台返回/热启动），短暂展示身份卡后自动进入工作台。
 const identity = require('../../utils/identity.js');
 const share = require('../../utils/share.js');

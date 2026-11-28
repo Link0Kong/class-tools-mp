@@ -1,6 +1,6 @@
 // utils/diag.js —— 诊断页纯逻辑（与网站 DIAG 模块对齐，v2.0.0 网站功能同步；2026-11-08 诊断 v2 对所有已认证同学可见）
 //
-// 数据来源：CloudBase public.service_health（RLS auth_admin()，仅管理员可读）
+// 数据来源：云端 public.service_health（ECS 自建 PostgreSQL；RLS auth_admin()，仅管理员可读）
 //   { id,name,kind,status,detail,meta,checked_at }（云端巡检 + 采集主机心跳上报）
 // 与网站同口径（2026-11-07 v2：18 行 / 5 组）：
 //   * 分组：站点与网页 / 云端后台 / 信息采集 / 定时任务 / 采集主机；

@@ -3,7 +3,7 @@
 //   * 班委：class_members 中 role/badge 非空的成员；管理员可进入「管理」设置职务；
 //   * 团员：class_league RPC（utils/cloud.js leaguePull，6h TTL + 本机缓存）∩ 班级名单；
 //   * 全班：全部成员，仅姓名与座号。
-// 数据来源：CloudBase RPC class_members / class_league / class_set_role（仅管理员）。
+// 数据来源：云端 RPC class_members / class_league / class_set_role（仅管理员；ECS 自建 PostgreSQL）。
 // 隐私：页面只显示姓名与座号；不显示/不导出学号。
 const identity = require('../../utils/identity.js');
 const cloud = require('../../utils/cloud.js');

@@ -1,5 +1,19 @@
 # 版本记录
 
+## 2026-11-28 · P4 切流后的小程序收尾（源码就绪；未上传发布；VERSION 仍 2.1.3）
+
+> 背景：生产已于 2026-11-28 11:39 切到 ECS 自建 PostgreSQL 18 + PostgREST 13（`https://tool.furina.fun/v1/rdb/rest/`），
+> 腾讯云 CloudBase 2026-12-10 到期。2.1.3 的客户端档位本来就是 `selfhosted`，本次只做云函数与文案收尾。
+
+- **云函数 `cloudfunctions/notify/rest-config.js`**：默认 `restBase` 由 CloudBase 网关改为
+  `https://tool.furina.fun/v1/rdb/rest/`，`NOTIFY_REST_BASE` 仍可覆盖；函数独立部署，需在微信开发者工具
+  「上传并部署」后生效（仓库改动不会自动上线）。微信云开发 env `fengdan-…` 仅承担 openid 与订阅消息发送，不受到期影响。
+- **配置注释**：`utils/cloud-config.js` 两档说明改为「切流完成」口径；`cloudbase` 档只保留到 2026-12-10 前作旧版/回滚通道。
+- **文案**：`pages/data/data.wxml`「存储」改为「自建 PostgreSQL（阿里云 ECS）」；README 域名表/技术栈同步；
+  `cloud.js`、`identity.js`、`diag.js`、`stats.js`、`committee.js`、`water.js`、`app.js` 注释去掉 CloudBase 字样。
+- **未改**：数据契约、userdata v6、页面逻辑、VERSION、包体；正式发布仍由用户上传（下次发版带出文案改动）。
+- **验证**：`cd tests && node unit.js` **612 passed / 0 failed**（含 `net_layer_tests.js` N1 断言档位 = selfhosted）；`node task7_unit_tests.js` **24 passed / 0 failed**（含云函数 `NOTIFY_REST_BASE` 覆盖）。
+
 ## 记住课表周/日视图 + 日视图左右滑动切天（2026-11-27，源码就绪；未上传发布；VERSION 仍 2.1.3）
 
 > 用户要求：「应用应该记住用户的课表用周视图还是日视图，并且在日视图时左右滑动应该切换的是临近的天」。

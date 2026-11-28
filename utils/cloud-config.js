@@ -16,27 +16,30 @@
 //     与 marks 同步；用户可在「我的 → 数据与隐私」关闭云同步（cloudOff，仅本机）。
 //   * 2026-11-23 网站域名 tool.furina.fun 的 ICP 备案已通过（网站备案号 闽ICP备2026042939号-2）；
 //     小程序自身备案号见 utils/compliance.js（闽ICP备2026042939号，保持不变、不带 -2）。
-//     域名相关配置（dropBase / ttLegacy）已按正式域名恢复；REST 切流仍等 P4 数据迁移窗口。
+//     域名相关配置（dropBase / ttLegacy）已按正式域名恢复。
+//   * 2026-11-28 P4 生产切流完成：数据与身份全部落 ECS（PostgreSQL + PostgREST），
+//     CloudBase 仅保留到 2026-12-10 到期前供旧版客户端与回滚使用。
 
 // ================================================================
-// REST base 两档（2026-11-18 自建后端切流；2026-11-23 备案已通过）
+// REST base 两档（2026-11-18 自建后端切流；2026-11-28 P4 已完成）
 // ----------------------------------------------------------------
-// 后端从腾讯云 CloudBase 迁到自建（PostgreSQL + PostgREST），
+// 后端从腾讯云 CloudBase 迁到自建（阿里云 ECS · PostgreSQL 18 + PostgREST 13），
 // API 路径/语义与 CloudBase 完全一致，客户端切流只改「档位」一个常量；
-// 2026-11-24 切流：默认档改为 selfhosted（域名/HTTPS/自建库均已就绪）。
-// 切流前该域名由 Caddy 同源反代到 CloudBase，因此新版先发布也不会坏；Caddy 一切即指向自建库。
+// 2026-11-28 切流：生产 Caddy 的 /v1/rdb/rest/* 已指向 ECS 本地 PostgREST。
 //
-//   cloudbase  ：现状（腾讯云 CloudBase 网关）；默认档，CloudBase 到期前有效
-//   selfhosted ：正式域名 https://tool.furina.fun/v1/rdb/rest/（备案已通过，域名/HTTPS 就绪；切流另行安排）
+//   cloudbase  ：腾讯云 CloudBase 网关；仅回滚/旧版用，2026-12-10 到期
+//   selfhosted ：正式域名 https://tool.furina.fun/v1/rdb/rest/（生产档）
 //
 // 两档使用同一份 publishableKey（自建网关剥离 Authorization 头时，
 // RLS 仍按 X-Class-Token 校验，客户端鉴权逻辑无需改动）。
 // 切流/回滚：只改 ACTIVE_REST_PROFILE 一行 → 重新上传发布即可。
+// 2026-11-28 P4 切流已完成：生产 = selfhosted（Caddy → ECS 自建 PostgREST）。
+// cloudbase 档只保留到腾讯云 CloudBase 2026-12-10 到期前，作旧版/回滚通道。
 const REST_PROFILES = {
   cloudbase: 'https://tool-d4gosudok46e0e081.api.tcloudbasegateway.com/v1/rdb/rest/',
   selfhosted: 'https://tool.furina.fun/v1/rdb/rest/'
 };
-// 当前档位：'cloudbase' | 'selfhosted'（2026-11-24 起 = selfhosted；回滚改回 'cloudbase' 重新上传）
+// 当前档位：'cloudbase' | 'selfhosted'（2026-11-28 切流后 = selfhosted；CloudBase 到期后不可再回滚）
 const ACTIVE_REST_PROFILE = 'selfhosted';
 
 // 档位 → REST 根（未知档位回退到当前档位，避免配置写错时整个站点离线）
